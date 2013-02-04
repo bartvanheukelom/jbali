@@ -1,0 +1,16 @@
+<ivy-module version="2.0">
+    <info organisation="org.jbali" module="core"/>
+    <dependencies>
+    
+        <dependency org="com.google.guava" name="guava" rev="r09" conf="default"/>
+        <dependency org="org.slf4j" name="slf4j-api" rev="1.6.1" conf="default" />
+        <dependency org="xom" name="xom" rev="1.2.5" conf="default" />
+       <!--  <dependency org="jalopy" name="jalopy" rev="1.5rc3" /> -->
+         
+        <dependency org="com.google.code.gson" name="gson" rev="1.4" conf="default" />
+        <dependency org="javassist" name="javassist" rev="3.8.0.GA" conf="default" />
+        <dependency org="dom4j" name="dom4j" rev="1.6" conf="default" />
+        <dependency org="javax.servlet" name="servlet-api" rev="2.5" conf="default" />
+        
+    </dependencies>
+</ivy-module>

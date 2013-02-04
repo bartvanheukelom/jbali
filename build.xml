@@ -1,0 +1,39 @@
+<project basedir="." name="Bali" default="ivyreport"
+	xmlns:ivy="antlib:org.apache.ivy.ant">
+	
+	<property name="weber" location="/home/bart/weber" />
+	
+	<!-- one jar -->
+	<property name="one-jar.dist.dir" value="${weber}/lib/java/one-jar-ant" />
+	<taskdef name="one-jar" classname="com.simontuffs.onejar.ant.OneJarTask" classpath="${one-jar.dist.dir}" onerror="report"/>
+	
+	<target name="ivyreport">
+	    <mkdir dir="export/ivy-report" />
+	    <ivy:resolve />
+	    <ivy:report todir="export/ivy-report" />
+	</target>
+	
+	<target name="export-service-compiler">
+		
+		<mkdir dir="export" />
+		
+		<ivy:retrieve pattern="export/sclib/[module]-[type]-[artifact]-[revision].[ext]" />
+		
+		<one-jar destfile="export/service-compiler.jar">
+			<manifest>
+				<attribute name="One-Jar-Main-Class" value="org.jbali.service.compiler.ServiceCompiler" />
+			</manifest>
+			<main>
+				<fileset dir="bin" />
+			</main>			<lib>
+				<fileset dir="export/sclib" />
+			</lib>
+		</one-jar>
+		
+	</target>
+	
+	<target name="clean">
+		<delete dir="export" />
+	</target>
+	
+</project>
