@@ -35,6 +35,7 @@ public class Maps {
 		return map;
 	}
 	
+	@SafeVarargs
 	public static <K,V> Map<K, V> merge(Map<? extends K, ? extends V> ... sources) {
 		HashMap<K, V> nw = new HashMap<K, V>();
 		for (Map<? extends K, ? extends V> map : sources) {

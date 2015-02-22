@@ -46,7 +46,7 @@ public class ServiceCompiler {
 		
 	}
 
-	private static void writeCode(final File outputDir, PrintWriter o, GeneratedCode code) throws IOException {
+	private static void writeCode(final File outputDir, @SuppressWarnings("unused") PrintWriter o, GeneratedCode code) throws IOException {
 		
 		File output = new File(outputDir, code.getClassName() + ".java");
 //		o.println(output + ":");

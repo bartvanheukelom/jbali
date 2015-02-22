@@ -2,7 +2,7 @@
     <info organisation="org.jbali" module="core"/>
     <dependencies>
     
-        <dependency org="com.google.guava" name="guava" rev="r09" conf="default"/>
+        <dependency org="com.google.guava" name="guava" rev="14.0.1" conf="default"/>
         <dependency org="org.slf4j" name="slf4j-api" rev="1.6.1" conf="default" />
         <dependency org="xom" name="xom" rev="1.2.5" conf="default" />
        <!--  <dependency org="jalopy" name="jalopy" rev="1.5rc3" /> -->
