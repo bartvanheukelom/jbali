@@ -9,13 +9,15 @@ import org.jbali.service.compiler.ServiceDefinition.Operation;
 import org.jbali.service.compiler.StructDefinition.StructField;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.gson.JsonObject;
 
 public class JavaGenerator {
 
 	private final Map<String, Class<?>> typeMap = Maps.<String,Class<?>>createHash(
 			"long", Long.class,
 			"string", String.class,
-			"int", Integer.class
+			"int", Integer.class,
+			"jsonobject", JsonObject.class
 	);
 	
 	// TODO pakage = field
