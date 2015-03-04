@@ -3,9 +3,7 @@
 	
 	<property name="weber" location="/home/bart/weber" />
 	
-	<!-- one jar -->
-	<property name="one-jar.dist.dir" value="${weber}/lib/java/one-jar-ant" />
-	<taskdef name="one-jar" classname="com.simontuffs.onejar.ant.OneJarTask" classpath="${one-jar.dist.dir}" onerror="report"/>
+	<taskdef name="one-jar" classname="com.simontuffs.onejar.ant.OneJarTask" classpath="lib/one-jar-ant-task-0.97.jar" onerror="report" />
 	
 	<target name="ivyreport">
 	    <mkdir dir="export/ivy-report" />
@@ -29,6 +27,8 @@
 				<fileset dir="export/sclib" />
 			</lib>
 		</one-jar>
+		
+		<delete dir="export/sclib" />
 		
 	</target>
 	
