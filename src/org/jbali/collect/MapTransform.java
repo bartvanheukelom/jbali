@@ -43,4 +43,13 @@ public class MapTransform {
 		return transformKeys(in.entrySet(), transformKey);
 	}
 	
+	// --- only values ---
+	
+	public static <OK,OV,NV> ImmutableMap<OK,NV> transformValues(Collection<Entry<OK, OV>> entries, Function<OV, NV> transformValue) {
+		return transformMap(entries, e -> SimpleMapEntry.of(e.getKey(), transformValue.apply(e.getValue())));
+	}
+	
+	public static <OK,OV,NV> ImmutableMap<OK,NV> transformValues(Map<OK,OV> in, Function<OV, NV> transformValue) {
+		return transformValues(in.entrySet(), transformValue);
+	}
 }
