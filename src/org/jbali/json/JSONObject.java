@@ -27,14 +27,16 @@ SOFTWARE.
 import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeSet;
+
+import com.google.common.base.Preconditions;
 
 /**
  * A JSONObject is an unordered collection of name/value pairs. Its
@@ -1412,7 +1414,7 @@ public class JSONObject {
      *  with <code>}</code>&nbsp;<small>(right brace)</small>.
      * @throws JSONException If the value is or contains an invalid number.
      */
-    static String valueToString(Object value) throws JSONException {
+    public static String valueToString(Object value) throws JSONException {
         if (value == null || value.equals(null)) {
             return "null";
         }
@@ -1593,4 +1595,29 @@ public class JSONObject {
 		}
 		return m;
 	}
+	
+	public static JSONObject create(String key1, Object val1, Object... rest) {
+
+   	 Preconditions.checkArgument(rest.length % 2 == 0, "Number of parameters must be even");
+
+   	 JSONObject obj = new JSONObject();
+   	 
+   	 obj.map.put(key1, wrap(val1));
+   	 for (int i = 0; i < rest.length; i+=2) {
+   		 final Object rawKey = rest[i];
+   		 final Object val = rest[i+1];
+   		 if (rawKey != null) {
+   			 String key;
+   			 try {
+   				 key = (String) rawKey;
+   			 } catch (ClassCastException e) {
+   				 throw new IllegalArgumentException("Key #" + (i/2 + 1) + " (" + rawKey + ") isn't a string");
+   			 }
+   			 obj.map.put(key, wrap(val));
+   		 }
+   	 }
+
+   	 return obj;
+   	 
+    }
 }

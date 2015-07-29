@@ -913,4 +913,9 @@ public class JSONArray {
            throw new JSONException(e);
         }
     }
+    
+    public static JSONArray create(Object... array) {
+    	return new JSONArray(array);
+    }
+    
 }

@@ -4,5 +4,13 @@
         <dependency org="com.google.guava" name="guava" rev="18.0" conf="default"/>
         <dependency org="org.slf4j" name="slf4j-api" rev="1.7.10" conf="default" />
         <dependency org="com.google.code.gson" name="gson" rev="2.3.1" conf="default" />
+        <dependency org="org.apache.activemq" name="activemq-client" rev="5.11.1" conf="default" />
+        <dependency org="joda-time" name="joda-time" rev="2.3" conf="default" />
+        <dependency org="commons-codec" name="commons-codec" rev="1.10" conf="default" />
+        
+        <!-- only for tests -->
+       	<dependency org="org.slf4j" name="jcl-over-slf4j" rev="1.7.10"/>
+       	<dependency org="ch.qos.logback" name="logback-classic" rev="1.1.2" conf="default" />
+        
     </dependencies>
 </ivy-module>

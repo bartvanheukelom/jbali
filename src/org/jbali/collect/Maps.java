@@ -3,6 +3,10 @@ package org.jbali.collect;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
+
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMap.Builder;
 
 public class Maps {
 
@@ -124,6 +128,14 @@ public class Maps {
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
+	}
+	
+	public static <K, V> ImmutableMap<K, V> mapCollection(Iterable<V> collect, Function<V,K> keyGetter) {
+		final Builder<K, V> builder = ImmutableMap.builder();
+		for (V v : collect) {
+			builder.put(keyGetter.apply(v), v);
+		}
+		return builder.build();
 	}
 	
 }
