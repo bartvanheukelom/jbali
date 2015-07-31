@@ -1,7 +1,9 @@
 package org.jbali.jmsrpc;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.Arrays;
 import java.util.NoSuchElementException;
 
 import org.jbali.json.JSONArray;
@@ -74,22 +76,41 @@ public class TextMessageService {
 			}
 			
 			// execute
-			Object ret = method.invoke(endpoint, args);
+			Object ret;
+			try {
+				ret = method.invoke(endpoint, args);
+			} catch (InvocationTargetException e) {
+				throw e.getCause();
+			}
+			// TODO return more info for mismatched arguments, such as index
 			
 			// return response
 			response = JSONArray.create(1, JavaJsonSerializer.serialize(ret));
 			
 		} catch (Throwable e) {
+			
 			log.warn("Error in text request for method " + methName, e);
+			
+			StackTraceElement[] orgTrace = e.getStackTrace();
+			StackTraceElement[] locTrace = new Throwable().getStackTrace();
+			e.setStackTrace(Arrays.copyOfRange(orgTrace, 0, orgTrace.length - locTrace.length));
+			
 			try {
 				response = JSONArray.create(0, JavaJsonSerializer.serialize(e));
 			} catch (Throwable e2) {
 				log.warn("Error serializing error", e2);
 				response = JSONArray.create(0, JavaJsonSerializer.serialize(new RuntimeException("Error occurred but could not be serialized")));
+			} finally {
+				e.setStackTrace(orgTrace);
 			}
 		}
 		
-		return response.toString(2);
+		try {
+			return response.toString(2);
+		} catch (Throwable e) {
+			log.warn("Error toStringing JSON response", e);
+			return "[0, null]";
+		}
 		
 	}
 	
