@@ -1,10 +1,12 @@
 package org.jbali.threads;
 
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.jbali.collect.Maps;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,8 +15,13 @@ public class PacketOrderer<P> {
 	private static final Logger log = LoggerFactory.getLogger(PacketOrderer.class);
 
 	private final Object lock = new Object();
-	private final Map<Long, P> waiting = Maps.createHash();
+
+	// state
 	private long lastSeq = 0;
+	private final Map<Long, P> waiting = Maps.createHash();
+	private DateTime waitingSince = null;
+	
+	// callbacks
 	private final Function<P, Long> seqGetter;
 	private final Consumer<P> orderedConsumer;
 
@@ -22,7 +29,24 @@ public class PacketOrderer<P> {
 		this.seqGetter = seqGetter;
 		this.orderedConsumer = orderedConsumer;
 	}
+	
+	public class Status {
+		public final int waitingCount;
+		public final DateTime waitingSince;
+		public final long lastSeq;
+		public Status(int waitingCount, DateTime waitingSince, long lastSeq) {
+			this.waitingCount = waitingCount;
+			this.waitingSince = waitingSince;
+			this.lastSeq = lastSeq;
+		}
+	}
 
+	public Status getStatus() {
+		synchronized (lock) {
+			return new Status(waiting.size(), waitingSince, lastSeq);
+		}
+	}
+	
 	public void inPacket(P p) {
 		synchronized (lock) {
 			long pSeq = seqGetter.apply(p);
@@ -51,13 +75,24 @@ public class PacketOrderer<P> {
 //					log.debug("Waiting is next #" + pSeq);
 					
 				}
+				if (waiting.isEmpty()) waitingSince = null;
 			} else if (pSeq <= lastSeq) {
 				log.info("inPacket #" + pSeq + " already handled in the past: " + p);
 			} else {
 				// this packet comes after the expected one, store it for later
 //				log.debug("Store");
+				if (waiting.isEmpty()) waitingSince = DateTime.now();
 				waiting.put(pSeq, p);
 			}
+		}
+	}
+
+	public void latePackets(List<P> events) {
+		synchronized (lock) {
+			// TODO optimize:
+			// - cut off list-head until lastSeq
+			// - clear waiting map-head until last of list
+			events.forEach(this::inPacket);
 		}
 	}
 	
