@@ -3,6 +3,7 @@ package org.jbali.collect;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 
 import com.google.common.collect.ImmutableMap;
@@ -136,6 +137,15 @@ public class Maps {
 			builder.put(keyGetter.apply(v), v);
 		}
 		return builder.build();
+	}
+	
+	/**
+	 * Like {@link ConcurrentMap#replace(Object, Object, Object)}, but also supports <code>null</code> as "old value" to mean no current mapping.
+	 * May not work as expected if the given map actually contains <code>null</code> values.
+	 */
+	public static <K,V> boolean replace(ConcurrentMap<K, V> map, K key, V oldVal, V newVal) {
+		if (oldVal == null) return map.putIfAbsent(key, newVal) == null;
+		else return map.replace(key, oldVal, newVal);
 	}
 	
 }
