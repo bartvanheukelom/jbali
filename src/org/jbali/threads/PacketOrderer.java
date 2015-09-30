@@ -10,6 +10,8 @@ import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Preconditions;
+
 public class PacketOrderer<P> {
 	
 	private static final Logger log = LoggerFactory.getLogger(PacketOrderer.class);
@@ -44,6 +46,14 @@ public class PacketOrderer<P> {
 	public Status getStatus() {
 		synchronized (lock) {
 			return new Status(waiting.size(), waitingSince, lastSeq);
+		}
+	}
+	
+
+	public void setLastSeq(long ls) {
+		synchronized (lock) {
+			Preconditions.checkState(lastSeq == 0, "lastSeq should only be set once, before receiving the first packet");
+			lastSeq = ls;
 		}
 	}
 	
