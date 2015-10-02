@@ -1,8 +1,10 @@
 package org.jbali.reflect;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -46,6 +48,18 @@ public class Methods {
 		return ImmutableMap.copyOf(map);
 	}
 	
+	public static String invocationToString(Method method, Object[] args) {
+		StringBuilder callStr = new StringBuilder(method.getName());
+		callStr.append('(');
+		try {
+			callStr.append(Stringsjoin(",", args));
+		} catch (Throwable e) {
+			callStr.append("argsToStringError: " + e.getMessage());
+		}
+		callStr.append(')');
+		return callStr.toString();
+	}
+	
 	/**
 	 * Invoke the named method on the given object with the given args. Only works for instance methods that are not overloaded.
 	 * @return The result of the invocation.
@@ -65,5 +79,28 @@ public class Methods {
 		
 	}
 
+	// TODO move into Strings
+	private static String Stringsjoin(String separator, Object[] parts) {
+		if (parts == null) return "";
+		return Stringsjoin(separator, Arrays.asList(parts));
+	}
+	private static String Stringsjoin(String separator, Object parts) {
+		
+		if (!parts.getClass().isArray()) {
+			throw new IllegalArgumentException("parts is not an array");
+		}
+		
+		StringBuilder b = new StringBuilder();
+		boolean first = true;
+		for (int p = 0; p < Array.getLength(parts); p++) {
+			if (first) first = false;
+			else b.append(separator);
+			b.append(String.valueOf(Array.get(parts, p)));
+		}
+		
+		return b.toString();
+		
+	}
+	
 	
 }
