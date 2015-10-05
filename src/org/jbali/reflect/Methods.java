@@ -51,7 +51,7 @@ public class Methods {
 	public static String invocationToString(Method method, Object[] args) {
 		StringBuilder callStr = new StringBuilder(method.getName());
 		callStr.append('(');
-		try {
+		if (args != null) try {
 			callStr.append(Stringsjoin(",", args));
 		} catch (Throwable e) {
 			callStr.append("argsToStringError: " + e.getMessage());
