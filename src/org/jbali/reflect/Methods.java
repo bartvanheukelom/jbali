@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -26,6 +27,16 @@ public class Methods {
 	}
 	public static boolean isStatic(Method m) {
 		return Modifier.isStatic(m.getModifiers());
+	}
+	
+	/**
+	 * Return wheter two methods have the same name. Currently only accepts methods without parameters.
+	 * TODO compare parameters
+	 */
+	public static boolean equivalent(Method a, Method b) {
+		Preconditions.checkArgument(a.getParameterCount() == 0);
+		Preconditions.checkArgument(b.getParameterCount() == 0);
+		return a.getName().equals(b.getName());
 	}
 	
 	public static ImmutableMap<String, Method> mapPublicMethodsByName(Class<?> c) {

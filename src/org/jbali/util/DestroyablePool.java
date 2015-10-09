@@ -11,7 +11,7 @@ public class DestroyablePool implements Destroyable {
 	private List<Destroyable> things = new ArrayList<>();
 	private boolean doneAdding = false;
 	
-	public <C extends Destroyable> C addComponent(C d) {
+	public <C extends Destroyable> C addComponent(C d) { // TODO rename to add
 		synchronized (lock) {
 			Preconditions.checkState(!doneAdding, "Already done adding");
 			Preconditions.checkState(things != null, "Already destroyed");
