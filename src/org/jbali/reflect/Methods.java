@@ -4,7 +4,6 @@ import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -91,12 +90,7 @@ public class Methods {
 	}
 
 	// TODO move into Strings
-	private static String Stringsjoin(String separator, Object[] parts) {
-		if (parts == null) return "";
-		return Stringsjoin(separator, Arrays.asList(parts));
-	}
 	private static String Stringsjoin(String separator, Object parts) {
-		
 		if (!parts.getClass().isArray()) {
 			throw new IllegalArgumentException("parts is not an array");
 		}
