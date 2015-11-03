@@ -10,30 +10,17 @@ import com.google.common.collect.ImmutableMap;
 public abstract class BaseServiceHandler implements ServiceHandler {
 
 	private final ImmutableMap<String, OperationHandler> handlers;
-
-	protected interface OperationHandler {
-		Object handle(Object impl);
-		Class<?> getInputType();
-	}
 	
 	protected BaseServiceHandler(ImmutableMap<String, OperationHandler> handlers) {
 		this.handlers = handlers;
 	}
-	
-	@Override public Object handle(String operation, Object input) {
-		return getOperation(operation).handle(input);
-	}
 
-	private OperationHandler getOperation(String operation) {
+	public OperationHandler getOperation(String operation) {
 		final OperationHandler op = handlers.get(operation);
 		if (op == null) {
 			throw new NoSuchElementException("Unknown operation " + operation);
 		}
 		return op;
-	}
-	
-	@Override public Class<?> getInputType(String operation) {
-		return getOperation(operation).getInputType();
 	}
 	
 }
