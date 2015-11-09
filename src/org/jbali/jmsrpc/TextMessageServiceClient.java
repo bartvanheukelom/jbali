@@ -16,7 +16,7 @@ public class TextMessageServiceClient {
 			(proxy, method, args) -> {
 				
 				JSONArray reqJson = JSONArray.create(method.getName());
-				if (args != null) Arrays.asList(args).stream()
+				if (args != null) Arrays.stream(args)
 					.map(JavaJsonSerializer::serialize)
 					.forEach(reqJson::put);
 				
