@@ -12,6 +12,7 @@ import org.jbali.serialize.JavaJsonSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 
 public class TextMessageService {
@@ -22,6 +23,7 @@ public class TextMessageService {
 	private final ImmutableMap<String, Method> methods;
 	
 	public TextMessageService(Object endpoint) {
+		Preconditions.checkNotNull(endpoint);
 		this.endpoint = endpoint;
 		methods = Methods.mapPublicMethodsByName(endpoint.getClass());
 	}
@@ -79,8 +81,12 @@ public class TextMessageService {
 			Object ret;
 			try {
 				ret = method.invoke(endpoint, args);
-			} catch (InvocationTargetException e) {
+			} catch (InvocationTargetException | ExceptionInInitializerError e) {
+				// actual exceptions inside method
 				throw e.getCause();
+			} catch (IllegalAccessException | NullPointerException e) {
+				// should not happen
+				throw new AssertionError(e);
 			}
 			// TODO return more info for mismatched arguments, such as index
 			

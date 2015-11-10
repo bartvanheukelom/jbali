@@ -11,8 +11,8 @@ import org.jbali.json.JSONObject;
 /**
  * <p>Provides serialization of Java values from/to JSON, without loss of data or type information. Exceptions:</p>
  * <ul>
- * <li>All maps are unserialized as ImmutableMap</li>
- * <li>All lists are unserialized as ImmutableList</li>
+ * <li>All maps are unserialized as ImmutableMap NOPE NOT YET</li>
+ * <li>All lists are unserialized as ImmutableList NOPE NOT YET</li>
  * </ul>
  * <p>Cyclic structures are not supported.</p>
  */
