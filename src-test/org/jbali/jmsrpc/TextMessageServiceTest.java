@@ -1,13 +1,12 @@
-package org.jbali.serialize;
+package org.jbali.jmsrpc;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.NoSuchElementException;
 
-import org.jbali.jmsrpc.TextMessageService;
-import org.jbali.jmsrpc.TextMessageServiceClient;
 import org.jbali.json.JSONArray;
 import org.jbali.threads.ThreadPool;
 import org.joda.time.LocalDate;
@@ -21,6 +20,7 @@ public class TextMessageServiceTest {
 		void tooMany(int a);
 		void tooFew(int a, Object b);
 		Object echo(Object a);
+		void nestedLocalFail();
 	}
 	
 	public interface LocalEP {
@@ -30,11 +30,28 @@ public class TextMessageServiceTest {
 		void eur();
 		void nope();
 		Object echo(Object a);
+		@Override
+		boolean equals(Object obj);
+		void localFail();
+		void nestedLocalFail();
 	}
 
 	static class Endpoint implements EP {
 		
 		public String val = null;
+		
+		@Override
+		public String toString() {
+			throw new AssertionError();
+		}
+		@Override
+		public boolean equals(Object obj) {
+			throw new AssertionError(); 
+		}
+		@Override
+		public int hashCode() {
+			throw new AssertionError(); 
+		}
 		
 		@Override
 		public void setVal(String v) {
@@ -58,11 +75,6 @@ public class TextMessageServiceTest {
 			throw new IllegalArgumentException();
 		}
 		
-		@Override
-		public String toString() {
-			return "HI";
-		}
-		
 		@Override public Object echo(Object a) {
 			return a;
 		}
@@ -70,10 +82,17 @@ public class TextMessageServiceTest {
 		@Override public void tooFew(int a, Object b) {}
 		@Override public void tooMany(int a) {}
 		
+		@Override
+		public void nestedLocalFail() {
+			throw new TextMessageServiceClientException("MUHAHAHA");
+		}
+		
 	}
 	
 	@Test
 	public void testRaw() throws Exception {
+		
+		System.out.println("==================== testRaw =====================");
 		
 		Endpoint ep = new Endpoint();
 		
@@ -119,24 +138,54 @@ public class TextMessageServiceTest {
 	@Test
 	public void testClient() throws Exception {
 		
+		System.out.println("==================== testClient =====================");
+		
 		Endpoint ep = new Endpoint();
 		
 		TextMessageService svc = new TextMessageService(ep);
 		LocalEP client = TextMessageServiceClient.create(LocalEP.class, r -> {
+			System.out.println("submit " + r);
+			if (r.startsWith("[\"localFail")) {
+				throw new RuntimeException("Internet fail! Yeah, internet...");
+			}
+			
+			// simulate remote request
 			try {
-				// simulate remote request
 				return ThreadPool.submit(() -> {
 					Thread.sleep(300);
 					return svc.handleRequest(r);
 				}).get();
 			} catch (Exception e) {
 				// handleRequest should not throw
-				throw new RuntimeException(e.getCause());
+				System.out.println("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEK!!!");
+				throw new RuntimeException(e);
 			}
+			
 		});
 		
-		// errors
+		System.out.println("----- toString, hashCode, equals -----");
+		assertEquals("TextMessageServiceClient[LocalEP]", client.toString());
+		assertEquals(System.identityHashCode(client), client.hashCode());
+		assertEquals(client, client);
+		assertFalse(client.equals(TextMessageServiceClient.create(LocalEP.class, r -> null)));
 		
+		// errors
+
+		try {
+			client.localFail();
+			fail();
+		} catch (TextMessageServiceClientException e) {
+			assertTrue(e.getCause().getMessage().startsWith("Internet fail"));
+		}
+		
+		try {
+			client.nestedLocalFail();
+			fail();
+		} catch (TextMessageServiceClientException e) {
+			assertEquals("MUHAHAHA", e.getMessage());
+		}
+		
+		System.out.println("----- nope -----");
 		try {
 			client.nope();
 			fail();
@@ -144,6 +193,7 @@ public class TextMessageServiceTest {
 			assertTrue(e instanceof NoSuchElementException);
 		}
 		
+		System.out.println("----- eur -----");
 		try {
 			client.eur();
 			fail();

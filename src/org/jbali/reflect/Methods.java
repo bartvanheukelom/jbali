@@ -16,6 +16,22 @@ import com.google.common.collect.Maps;
 
 public class Methods {
 	
+	/** Object.toString() */
+	public static final Method OBJECT_TOSTRING;
+	/** Object.equals(Object obj) */
+	public static final Method OBJECT_EQUALS;
+	/** Object.hashCode() */
+	public static final Method OBJECT_HASHCODE;
+	static {
+		try {
+			OBJECT_TOSTRING = Object.class.getMethod("toString");
+			OBJECT_EQUALS = Object.class.getMethod("equals", new Class<?>[]{Object.class});
+			OBJECT_HASHCODE = Object.class.getMethod("hashCode");
+		} catch (NoSuchMethodException e) {
+			throw new AssertionError(e);
+		}
+	}
+	
 	private static final LoadingCache<Class<?>, ImmutableMap<String, Method>> classMethodCache =
 			CacheBuilder.newBuilder()
 				.weakKeys()
