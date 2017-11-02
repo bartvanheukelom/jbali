@@ -1,2 +1,5 @@
 bin
 export
+out
+
+\.idea/workspace\.xml
