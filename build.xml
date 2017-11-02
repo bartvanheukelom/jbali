@@ -1,8 +1,6 @@
 <project basedir="." name="Bali" default="ivyreport"
 	xmlns:ivy="antlib:org.apache.ivy.ant">
-	
-	<property name="weber" location="/home/bart/weber" />
-	
+
 	<taskdef name="one-jar" classname="com.simontuffs.onejar.ant.OneJarTask" classpath="lib/one-jar-ant-task-0.97.jar" onerror="report" />
 	
 	<target name="ivyreport">
@@ -23,7 +21,8 @@
 			</manifest>
 			<main>
 				<fileset dir="bin" />
-			</main>			<lib>
+			</main>
+			<lib>
 				<fileset dir="export/sclib" />
 			</lib>
 		</one-jar>
