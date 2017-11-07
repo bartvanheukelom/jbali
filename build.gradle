@@ -1,0 +1,31 @@
+apply plugin: 'java'
+
+repositories {
+    mavenCentral()
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src']
+        }
+    }
+    test {
+        java {
+            srcDirs = ['src-test']
+        }
+    }
+}
+
+dependencies {
+    compile 'com.google.guava:guava:18.0'
+    compile 'org.slf4j:slf4j-api:1.7.10'
+    compile 'com.google.code.gson:gson:2.3.1'
+    compile 'org.apache.activemq:activemq-client:5.11.1'
+    compile 'joda-time:joda-time:2.3'
+    compile 'commons-codec:commons-codec:1.10'
+
+    testCompile 'junit:junit:4.12'
+    testCompile 'org.slf4j:jcl-over-slf4j:1.7.10'
+    testCompile 'ch.qos.logback:logback-classic:1.1.2'
+}

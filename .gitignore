@@ -1,5 +1,6 @@
 bin
 export
 out
-
+build
+\.gradle
 \.idea/workspace\.xml
