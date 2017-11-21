@@ -1,17 +1,21 @@
 package org.jbali.threads;
 
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
-import java.util.function.Function;
-
+import com.google.common.base.Preconditions;
 import org.jbali.collect.Maps;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Preconditions;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
+/**
+ * Thread-safe utility class that takes incoming packets in any order, then queues and orders
+ * them based on their sequence number, and passes them on to a consumer when it can do so
+ * without creating a gap in the sequence. In this it functions like TCP.
+ */
 public class PacketOrderer<P> {
 	
 	private static final Logger log = LoggerFactory.getLogger(PacketOrderer.class);
@@ -56,53 +60,53 @@ public class PacketOrderer<P> {
 			lastSeq = ls;
 		}
 	}
-	
-	public void inPacket(P p) {
+
+	/**
+	 * Takes an incoming packet.
+	 */
+	public void inPacket(P packet) {
 		synchronized (lock) {
-			long pSeq = seqGetter.apply(p);
-//			log.debug("inPacket #" + pSeq);
-			if (pSeq == lastSeq+1) {
-//				log.debug("Expected");
+			long inSeq = seqGetter.apply(packet);
+			if (inSeq == lastSeq+1) {
 				// this is the next expected packet, consume it
 				while (true) {
 					
 					try {
-						orderedConsumer.accept(p);
+						orderedConsumer.accept(packet);
 					} catch (Throwable e) {
-						log.warn("Error consuming packet #" + pSeq, e);
+						log.warn("Error consuming packet #" + inSeq, e);
 					}
 					// advance the consumed pointer
-					lastSeq = pSeq;
+					lastSeq = inSeq;
 					
 					// now, check if we also already have the next packet in storage, and handle it if so
-//					log.debug("Waiting: " + waiting.keySet());
 					if (waiting.isEmpty()) break;
-//					log.debug("Have waiting");
 					P waitingNext = waiting.remove(lastSeq+1);
 					if (waitingNext == null) break;
-					p = waitingNext;
-					pSeq = lastSeq+1;
-//					log.debug("Waiting is next #" + pSeq);
-					
+					packet = waitingNext;
+					inSeq = lastSeq+1;
 				}
 				if (waiting.isEmpty()) waitingSince = null;
-			} else if (pSeq <= lastSeq) {
-				log.info("inPacket #" + pSeq + " already handled in the past: " + p);
+			} else if (inSeq <= lastSeq) {
+				log.info("inPacket #" + inSeq + " already handled in the past: " + packet);
 			} else {
 				// this packet comes after the expected one, store it for later
-//				log.debug("Store");
 				if (waiting.isEmpty()) waitingSince = DateTime.now();
-				waiting.put(pSeq, p);
+				waiting.put(inSeq, packet);
 			}
 		}
 	}
 
-	public void latePackets(List<P> events) {
+	/**
+	 * Takes a batch of incoming packets. Is functionally equivalent to calling {@link #inPacket(Object)} for each
+	 * packet, but may perform faster.
+	 */
+	public void latePackets(List<P> batch) {
 		synchronized (lock) {
 			// TODO optimize:
 			// - cut off list-head until lastSeq
 			// - clear waiting map-head until last of list
-			events.forEach(this::inPacket);
+			batch.forEach(this::inPacket);
 		}
 	}
 	
