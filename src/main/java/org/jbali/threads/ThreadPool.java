@@ -6,69 +6,58 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 /**
- * Static wrapper around a single <code>Executors.newCachedThreadPool()</code>
+ * Static container for a single <code>Executors.newCachedThreadPool()</code>
  * which can be used everywhere, to minimize the number of independent executors
  * and thus threads.
- * 
- * @author Bart van Heukelom
+ * Also offers shorthands for the most often used methods of the executor.
  */
 public final class ThreadPool {
 	
 	private ThreadPool() {}
 	
-	private static ExecutorService exec = Executors.newCachedThreadPool();
+	public static ExecutorService executor = Executors.newCachedThreadPool();
 
 	/**
 	 * @see java.util.concurrent.Executor#execute(java.lang.Runnable)
 	 */
 	public static void execute(Runnable command) {
-		exec.execute(command);
+		executor.execute(command);
 	}
 	
 	public static void execute(Runnable command, String threadName) {
-		exec.execute(new NamedRunnable(command, threadName));
+		executor.execute(namedRunnable(command, threadName));
 	}
 
 	public static <T> Future<T> submit(Callable<T> task) {
-		return exec.submit(task);
+		return executor.submit(task);
 	}
 
 	/**
 	 * @see java.util.concurrent.ExecutorService#submit(java.lang.Runnable)
 	 */
 	public static Future<?> submit(Runnable task) {
-		return exec.submit(task);
+		return executor.submit(task);
 	}
 	
 	public static Future<?> submit(Runnable task, String threadName) {
-		return exec.submit(new NamedRunnable(task, threadName));
+		return executor.submit(namedRunnable(task, threadName));
 	}
 
 	public static void shutdown() {
-		exec.shutdown();
+		executor.shutdown();
 	}
-	
-	private static class NamedRunnable implements Runnable {
-		
-		private final Runnable command;
-		private final String threadName;
-		
-		public NamedRunnable(Runnable command, String threadName) {
-			this.command = command;
-			this.threadName = threadName;
-		}
-		
-		@Override public void run() {
+
+	private static Runnable namedRunnable(Runnable r, String name) {
+		return () -> {
 			final Thread ct = Thread.currentThread();
 			final String orgName = ct.getName();
-			ct.setName(orgName + ": " + threadName);
+			ct.setName(orgName + ": " + name);
 			try {
-				command.run();
+				r.run();
 			} finally {
 				ct.setName(orgName);
 			}
-		}
-		
+		};
 	}
 	
 }
