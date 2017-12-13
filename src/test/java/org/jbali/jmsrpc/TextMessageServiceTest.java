@@ -119,6 +119,11 @@ public class TextMessageServiceTest {
 		resp = svc.handleRequest(JSONArray.create("setVal", "HI").toString());
 		assertTrue(resp, new JSONArray(resp).getInt(0) == 1);
 		assertEquals("HI", ep.val);
+
+		// even case insensitive
+		resp = svc.handleRequest(JSONArray.create("SETval", "HI2").toString());
+		assertTrue(resp, new JSONArray(resp).getInt(0) == 1);
+		assertEquals("HI2", ep.val);
 		
 		// too few
 		

@@ -6,6 +6,7 @@ import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.NoSuchElementException;
 
+import org.jbali.collect.MapTransform;
 import org.jbali.json.JSONArray;
 import org.jbali.reflect.Methods;
 import org.jbali.serialize.JavaJsonSerializer;
@@ -33,7 +34,10 @@ public class TextMessageService {
 	public TextMessageService(Object endpoint) {
 		Preconditions.checkNotNull(endpoint);
 		this.endpoint = endpoint;
-		methods = Methods.mapPublicMethodsByName(endpoint.getClass());
+		methods = MapTransform.transformKeys(
+				Methods.mapPublicMethodsByName(endpoint.getClass()),
+				String::toLowerCase
+		);
 	}
 	
 	public String handleRequest(String request) {
@@ -55,7 +59,7 @@ public class TextMessageService {
 			
 			// determine method
 			methName = reqJson.getString(RQIDX_METHOD);
-			Method method = methods.get(methName);
+			Method method = methods.get(methName.toLowerCase());
 			if (method == null) throw new NoSuchElementException("Unknown method '" + methName + "'");
 			if (!className.equals(method.getDeclaringClass().getName()))
 				className += ">" + method.getDeclaringClass().getName();
