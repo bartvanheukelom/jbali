@@ -61,17 +61,17 @@ public class TextMessageServiceTest {
 		@Override
 		public void eur() {
 			try {
-				step1();
+				callsThrowing();
 			} catch (Exception e) {
-				throw new RuntimeException("LOLOL", e);
+				throw new RuntimeException("Wrapped e", e);
 			}
 			
 		}
 		
-		private static void step1() {
-			step2();
+		private static void callsThrowing() {
+			throwsIAE();
 		}
-		private static void step2() {
+		private static void throwsIAE() {
 			throw new IllegalArgumentException();
 		}
 		
@@ -200,7 +200,7 @@ public class TextMessageServiceTest {
 		} catch (RuntimeException e) {
 			e.printStackTrace();
 			try {
-				assertEquals("LOLOL", e.getMessage());
+				assertEquals("Wrapped e", e.getMessage());
 				assertTrue(e.getCause() instanceof IllegalArgumentException);
 			} catch (AssertionError ae) {
 				throw ae;
