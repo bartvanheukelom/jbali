@@ -24,9 +24,7 @@ public class TextMessageService {
 	
 	public static final int STATUS_OK = 1;
 	public static final int STATUS_ERROR = 0;
-	
-	
-	
+
 	private static final Logger log = LoggerFactory.getLogger(TextMessageService.class);
 	
 	private final Object endpoint;
@@ -42,6 +40,7 @@ public class TextMessageService {
 		
 		JSONArray response;
 		String methName = "?";
+		String className = endpoint.getClass().getName();
 		boolean requestLogged = false;
 		
 		try {
@@ -57,25 +56,27 @@ public class TextMessageService {
 			// determine method
 			methName = reqJson.getString(RQIDX_METHOD);
 			Method method = methods.get(methName);
-			if (method == null) throw new NoSuchElementException("Unknown method " + methName);
+			if (method == null) throw new NoSuchElementException("Unknown method '" + methName + "'");
+			if (!className.equals(method.getDeclaringClass().getName()))
+				className += ">" + method.getDeclaringClass().getName();
 			
 			// read arguments
 			Parameter[] pars = method.getParameters();
 			Object[] args = new Object[pars.length];
 			for (int p = 0; p < pars.length; p++) {
-				int ri = p+1;
+				Parameter par = pars[p];
+				int indexInReq = p+1;
 				Object arg;
-				if (reqJson.length() < ri+1) {
+				if (reqJson.length() < indexInReq+1) {
 					// this parameter has no argument
 					if (!requestLogged) {
 						log.info(methName + ":");
 						requestLogged = true;
 					}
-					log.info("- Arg #" + p + " omitted");
-//					arg = pars[p].getType() == Maybe.class ? Maybe.unknown() : null;
+					log.info("- Arg #" + p + " (" + par.getType() + " " + par.getName() + ") omitted");
 					arg = null; // let's hope that's sufficient
 				} else {
-					arg = JavaJsonSerializer.unserialize(reqJson.get(ri));
+					arg = JavaJsonSerializer.unserialize(reqJson.get(indexInReq));
 				}
 				args[p] = arg;
 			}
@@ -94,14 +95,14 @@ public class TextMessageService {
 			try {
 				ret = method.invoke(endpoint, args);
 			} catch (InvocationTargetException | ExceptionInInitializerError e) {
-				// InvocationTargetException: actual exception inside method
-				// ExceptionInInitializerError: always unchecked (initializers can't throw checked)
+				// InvocationTargetException: actual exception inside method.
+				// ExceptionInInitializerError: always unchecked (initializers can't throw checked).
 				throw e.getCause();
 			} catch (IllegalAccessException | NullPointerException e) {
-				// should not happen
-				throw new AssertionError(e);
+				// IllegalAccessException: method is public, should not happen.
+				// NullPointerException: endpoint is not null, should not happen.
+				throw new RuntimeException("TextMessageService internal error", e);
 			}
-			// TODO return more info for mismatched arguments, such as index
 			
 			// return response
 			response = JSONArray.create(STATUS_OK, JavaJsonSerializer.serialize(ret));
