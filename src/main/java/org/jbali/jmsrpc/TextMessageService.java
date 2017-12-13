@@ -107,22 +107,47 @@ public class TextMessageService {
 			response = JSONArray.create(STATUS_OK, JavaJsonSerializer.serialize(ret));
 			
 		} catch (Throwable e) {
-			
-			log.warn("Error in text request for method " + methName, e);
-			
-			// remove the current stack trace from the error trace,
-			// because it's not relevant to the client.
-			StackTraceElement[] orgTrace = e.getStackTrace();
-			StackTraceElement[] locTrace = new Throwable().getStackTrace();
-			e.setStackTrace(Arrays.copyOfRange(orgTrace, 0, orgTrace.length - locTrace.length));
+
+			// remove the current stack trace from the error stacktraces,
+			// because it's not relevant to the client or logs.
+			// TODO remove up to the endpoint as well, e.g.:
+			//			at com.blabla.DataServer$RemoteDataServerImpl.authByXId(DataServer.java:123) ~[dataserver.jar:na]
+			//			...
+			//			at org.jbali.jmsrpc.TextMessageService.handleRequest(TextMessageService.java:95) ~[bali.jar:na]
+			StackTraceElement[] locTrace = Thread.currentThread().getStackTrace();
+			if (locTrace.length >= 3) { // you never know on some VMs
+				StackTraceElement caller = locTrace[2];
+				StackTraceElement thisMethod = locTrace[1];
+
+				Throwable toClean = e;
+				while (toClean != null) {
+					StackTraceElement[] errTrace = toClean.getStackTrace();
+
+					// find the calling method in the exception stack
+					for (int i = errTrace.length - 1; i >= 1; i--) {
+						if (errTrace[i].equals(caller)) {
+							// check if the calling method did in fact call this method
+							// (line number won't match)
+							StackTraceElement nextCall = errTrace[i - 1];
+							if (nextCall.getClassName().equals(thisMethod.getClassName())
+									&& nextCall.getMethodName().equals(thisMethod.getMethodName())) {
+								// snip!
+								toClean.setStackTrace(Arrays.copyOfRange(errTrace, 0, i));
+								break;
+							}
+						}
+					}
+					toClean = toClean.getCause();
+				}
+			}
+
+			log.warn("Error in text request for method " + className + "." + methName, e);
 			
 			try {
 				response = JSONArray.create(STATUS_ERROR, JavaJsonSerializer.serialize(e));
 			} catch (Throwable serEr) {
 				log.warn("Error while serializing error", serEr);
 				response = JSONArray.create(STATUS_ERROR, JavaJsonSerializer.serialize(new RuntimeException("Error occurred but could not be serialized")));
-			} finally {
-				e.setStackTrace(orgTrace);
 			}
 		}
 		
