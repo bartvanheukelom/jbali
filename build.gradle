@@ -1,10 +1,18 @@
+buildscript {
+    ext.kotlin_version = '1.2.10'
+    repositories { mavenCentral() }
+    dependencies { classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version" }
+}
+
 apply plugin: 'java'
+apply plugin: 'kotlin'
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     compile ivyDependencies('compile')
     testCompile ivyDependencies('test')
 }
