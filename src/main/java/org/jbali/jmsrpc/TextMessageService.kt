@@ -1,5 +1,6 @@
 package org.jbali.jmsrpc
 
+import org.jbali.errors.removeCurrentStack
 import org.jbali.json.JSONArray
 import org.jbali.reflect.Methods
 import org.jbali.serialize.JavaJsonSerializer
@@ -93,31 +94,7 @@ class TextMessageService(
             //			at com.blabla.DataServer$RemoteDataServerImpl.authByXId(DataServer.java:123) ~[dataserver.jar:na]
             //			...
             //			at org.jbali.jmsrpc.TextMessageService.handleRequest(TextMessageService.java:95) ~[bali.jar:na]
-            val locTrace = Thread.currentThread().stackTrace
-            if (locTrace.size >= 3) { // you never know on some VMs
-                val caller = locTrace[2]
-                val thisMethod = locTrace[1]
-
-                var toClean: Throwable? = e
-                while (toClean != null) {
-                    val errTrace = toClean.stackTrace
-
-                    // find the calling method in the exception stack
-                    for (i in errTrace.size - 1 downTo 1) {
-                        if (errTrace[i] == caller) {
-                            // check if the calling method did in fact call this method
-                            // (line number won't match)
-                            val nextCall = errTrace[i - 1]
-                            if (nextCall.className == thisMethod.className && nextCall.methodName == thisMethod.methodName) {
-                                // snip!
-                                toClean.stackTrace = Arrays.copyOfRange(errTrace, 0, i)
-                                break
-                            }
-                        }
-                    }
-                    toClean = toClean.cause
-                }
-            }
+            e.removeCurrentStack()
 
             log.warn("Error in text request for method $className.$methName", e)
 
