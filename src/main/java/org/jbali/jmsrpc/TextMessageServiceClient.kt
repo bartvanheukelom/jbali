@@ -1,5 +1,7 @@
 package org.jbali.jmsrpc
 
+import arrow.core.Either
+import arrow.core.getOrHandle
 import org.jbali.json.JSONArray
 import org.jbali.reflect.Proxies
 import org.jbali.serialize.JavaJsonSerializer
@@ -7,8 +9,6 @@ import java.util.*
 import java.util.function.Function
 
 object TextMessageServiceClient {
-
-    private class RethrowException(cause: Throwable) : Exception(cause)
 
     /**
      * Create an implementation of the given interface that will:
@@ -33,12 +33,7 @@ object TextMessageServiceClient {
 
             try {
 
-                val teh = Proxies.handleTEH(proxy, method, args, toStringed)
-                // TODO this should work but if teh is null it will return immediately (Kotlin bug?)
-//                teh ?: {
-                // TODO this is the workaround
-                if (teh != null) teh
-                else {
+                Proxies.handleTEH(proxy, method, args, toStringed)?.let { Either.Right(it) } ?: {
 
                     // --- ok, it's a real method --- //
 
@@ -58,28 +53,25 @@ object TextMessageServiceClient {
                     val respStatus = respParsed.getInt(TextMessageService.RSIDX_STATUS)
                     val respPayload = JavaJsonSerializer.unserialize(respParsed.get(TextMessageService.RSIDX_RESPONSE)) ?: null
 
-                    // check for error
+                    // return or throw it
                     when (respStatus) {
-                        TextMessageService.STATUS_OK -> respPayload
-                        else -> throw RethrowException(
+                        TextMessageService.STATUS_OK -> Either.Right(respPayload)
+                        else -> Either.Left(
                                 // the response should be an exception
                                 (respPayload as? Throwable ?: throw IllegalStateException("Service returned an error that is not Throwable but ${respPayload?.javaClass}"))
                                 // add the local stack trace to the remote exception,
                                 // otherwise that info is lost - unless we wrap the exception in a new local one,
                                 // which we don't want because it breaks the remote API.
-                                // 3 = discard lambda, invocation handler and proxy method from trace
-                                .also { augmentStackTrace(it, 3) }
+                                // 5 = discard lambdas, invocation handler and proxy method from trace
+                                .also { augmentStackTrace(it, 5) }
                         )
                     }
 
-                }
+                }()
 
-            } catch (e: RethrowException) {
-                throw e.cause!!
             } catch (e: Throwable) {
                 throw TextMessageServiceClientException("A local/meta exception occured when invoking $toStringed.${method.name}: $e", e)
-            }
-
+            }.getOrHandle { throw it }
 
         }
 
