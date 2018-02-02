@@ -58,20 +58,22 @@ fun Throwable.removeStackFrom(thisMethod: StackTraceElement, caller: StackTraceE
     }
 }
 
-val Throwable.causeChain: Iterable<Throwable> get() {
-    return object : Iterable<Throwable> {
-        override fun iterator(): Iterator<Throwable> {
-            return object : Iterator<Throwable> {
-                var nxt: Throwable? = this@causeChain
-                override fun hasNext() = nxt != null
-                override fun next(): Throwable {
-                    if (nxt == null) throw NoSuchElementException()
-                    val r = nxt!!
-                    nxt = r.cause
-                    return r
-                }
+val Throwable.causeChain: Iterable<Throwable> get() =
+    independentIterable(this, Throwable::cause)
 
-            }
+fun <T> independentIterable(start: T, next: (cur: T) -> T?) =
+    object : Iterable<T> {
+        override fun iterator() = independentIterator(start, next)
+    }
+
+fun <T> independentIterator(start: T, next: (cur: T) -> T?) =
+    object : Iterator<T> {
+        var nxt: T? = start
+        override fun hasNext() = nxt != null
+        override fun next(): T {
+            if (nxt == null) throw NoSuchElementException()
+            val r = nxt!!
+            nxt = next(nxt!!) // so next-next :D
+            return r
         }
     }
-}

@@ -1,7 +1,6 @@
 buildscript {
-    ext.kotlin_version = '1.2.10'
     repositories { mavenCentral() }
-    dependencies { classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version" }
+    dependencies { classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.2.10" }
 }
 
 apply plugin: 'java'
@@ -12,13 +11,18 @@ repositories {
 }
 
 dependencies {
-    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    compile "org.jetbrains.kotlin:kotlin-reflect"
     compile ivyDependencies('compile')
+
+    testCompile "org.jetbrains.kotlin:kotlin-test"
+    testCompile "org.jetbrains.kotlin:kotlin-test-junit"
     testCompile ivyDependencies('test')
 }
 
 /**
  * Read dependencies from Ivy XML
+ * TODO flip it, generate ivy.xml from gradle (or abandon ivy altogether)
  */
 def ivyDependencies(conf) {
     return new XmlParser().parse(file('ivy.xml')).dependencies.dependency.stream()

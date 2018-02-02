@@ -1,11 +1,10 @@
 package org.jbali.util;
 
-import jdk.nashorn.internal.ir.annotations.Immutable;
 import org.junit.Test;
 
 import java.util.EnumSet;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class EnumToolsTest {
 
