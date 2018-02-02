@@ -33,8 +33,12 @@ object TextMessageServiceClient {
 
             try {
 
-                // catch local methods
-                Proxies.handleObjectMethods(proxy, method, args, toStringed) ?: {
+                val teh = Proxies.handleTEH(proxy, method, args, toStringed)
+                // TODO this should work but if teh is null it will return immediately (Kotlin bug?)
+//                teh ?: {
+                // TODO this is the workaround
+                if (teh != null) teh
+                else {
 
                     // --- ok, it's a real method --- //
 
@@ -52,19 +56,19 @@ object TextMessageServiceClient {
                     // parse the response
                     val respParsed = JSONArray(respJson)
                     val respStatus = respParsed.getInt(TextMessageService.RSIDX_STATUS)
-                    val respPayload = JavaJsonSerializer.unserialize(respParsed.get(TextMessageService.RSIDX_RESPONSE))!!
+                    val respPayload = JavaJsonSerializer.unserialize(respParsed.get(TextMessageService.RSIDX_RESPONSE)) ?: null
 
                     // check for error
                     when (respStatus) {
                         TextMessageService.STATUS_OK -> respPayload
                         else -> throw RethrowException(
                                 // the response should be an exception
-                                makeSureIsThrowable(respPayload)
+                                (respPayload as? Throwable ?: throw IllegalStateException("Service returned an error that is not Throwable but ${respPayload?.javaClass}"))
                                 // add the local stack trace to the remote exception,
                                 // otherwise that info is lost - unless we wrap the exception in a new local one,
                                 // which we don't want because it breaks the remote API.
-                                // 1 = discard invocation handler from trace
-                                .also { augmentStackTrace(it, 1) }
+                                // 3 = discard lambda, invocation handler and proxy method from trace
+                                .also { augmentStackTrace(it, 3) }
                         )
                     }
 
@@ -79,12 +83,6 @@ object TextMessageServiceClient {
 
         }
 
-    }
-
-    private fun makeSureIsThrowable(err: Any?) = when(err) {
-        null -> throw IllegalStateException("Service returned a null error")
-        is Throwable -> err
-        else -> throw IllegalStateException("Service returned an error that is not Throwable but " + err.javaClass)
     }
 
     /**

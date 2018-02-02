@@ -1,12 +1,12 @@
 package org.jbali.reflect;
 
+import com.google.common.base.Preconditions;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
-
-import com.google.common.base.Preconditions;
 
 public class Proxies {
 	
@@ -89,16 +89,16 @@ public class Proxies {
 	 * Simple handling of the following Object methods:
 	 * <ul>
 	 * <li><i>toString</i>: returns <code>toStringed</code></li>
-	 * <li><i>equals</i>:   returns <code>proxy</code> == args[0]</li>
-	 * <li><i>hashCode</i>: return System.identityHashCode(proxy)</li>
+	 * <li><i>equals(x)</i>:   returns <code>thiz</code> == x</li>
+	 * <li><i>hashCode</i>: return System.identityHashCode(thiz)</li>
 	 * </ul>
 	 * @return The value to return, or <code>null</code> if the method is not one of those listed above.
 	 */
-	public static Object handleObjectMethods(Object proxy, Method method, Object[] args, String toStringed) {
+	public static Object handleTEH(Object thiz, Method method, Object[] args, String toStringed) {
 		Preconditions.checkNotNull(toStringed);
 		if (method.equals(Methods.OBJECT_TOSTRING)) return toStringed;
-		if (method.equals(Methods.OBJECT_EQUALS))   return proxy == args[0];
-		if (method.equals(Methods.OBJECT_HASHCODE)) return System.identityHashCode(proxy);
+		if (method.equals(Methods.OBJECT_EQUALS))   return thiz == args[0];
+		if (method.equals(Methods.OBJECT_HASHCODE)) return System.identityHashCode(thiz);
 		return null;
 	}
 	

@@ -10,30 +10,32 @@ import java.util.NoSuchElementException;
 import static org.junit.Assert.*;
 
 public class TextMessageServiceTest {
-	
-	public interface EP {
+
+	// these interfaces are "the same" but different versions,
+	// to simulate backwards-compatibility testing
+	public interface ServerEP {
 		void setVal(String v);
 		void eur();
-		void tooMany(int a);
-		void tooFew(int a, Object b);
+		void foo(int a);
+		void bar(int a, Object b);
 		Object echo(Object a);
 		void nestedLocalFail();
 	}
-	
 	public interface LocalEP {
 		void setVal(int v);
-		void tooMany(int a, int b);
-		void tooFew(int a);
+		void foo(int a, int b); // has 1 more parameter
+		void bar(int a); // has 1 less parameter
 		void eur();
-		void nope();
+		void nope(); // missing in server version
 		Object echo(Object a);
 		@Override
-		boolean equals(Object obj);
-		void localFail();
+		boolean equals(Object obj); // ?
 		void nestedLocalFail();
+
+		void localFail(); // hackyhack, will never be submitted
 	}
 
-	static class Endpoint implements EP {
+	static class Endpoint implements ServerEP {
 		
 		public String val = null;
 		
@@ -76,8 +78,8 @@ public class TextMessageServiceTest {
 			return a;
 		}
 		
-		@Override public void tooFew(int a, Object b) {}
-		@Override public void tooMany(int a) {}
+		@Override public void bar(int a, Object b) {}
+		@Override public void foo(int a) {}
 		
 		@Override
 		public void nestedLocalFail() {
@@ -193,6 +195,17 @@ public class TextMessageServiceTest {
 			fail();
 		} catch (Exception e) {
 			assertTrue(e instanceof NoSuchElementException);
+			StackTraceElement[] stack = e.getStackTrace();
+			findBarrier: {
+				e.printStackTrace();
+				for (int i = 0; i < stack.length; i++) {
+					if (stack[i].getClassName().startsWith("====")) {
+						assertEquals(TextMessageServiceTest.class.getName(), stack[i+1].getClassName());
+						break findBarrier;
+					}
+				}
+				fail();
+			}
 		}
 		
 		System.out.println("----- eur -----");
@@ -222,14 +235,10 @@ public class TextMessageServiceTest {
 		LocalDate d = new LocalDate();
 		assertEquals(d, client.echo(d));
 		
-		// too few/many		
-		client.tooFew(12);
-		client.tooMany(12, 13);
-		
-		// return
-		
-		
-		
+		// too few/many
+		client.foo(12, 13);
+		client.bar(12);
+
 	}
 	
 }
