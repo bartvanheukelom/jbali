@@ -14,20 +14,24 @@ dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
     compile "org.jetbrains.kotlin:kotlin-reflect"
     compile "io.arrow-kt:arrow-core:0.6.1"
-    compile ivyDependencies('compile')
+    compile "com.google.guava:guava:18.0"
+    compile "org.slf4j:slf4j-api:1.7.10"
+    compile "com.google.code.gson:gson:2.3.1"
+    compile "org.apache.activemq:activemq-client:5.11.1"
+    compile "joda-time:joda-time:2.3"
+    compile "commons-codec:commons-codec:1.10"
 
     testCompile "org.jetbrains.kotlin:kotlin-test"
     testCompile "org.jetbrains.kotlin:kotlin-test-junit"
-    testCompile ivyDependencies('test')
+    testCompile "org.slf4j:jcl-over-slf4j:1.7.10"
+    testCompile "ch.qos.logback:logback-classic:1.1.2"
+    testCompile "junit:junit:4.12"
 }
 
-/**
- * Read dependencies from Ivy XML
- * TODO flip it, generate ivy.xml from gradle (or abandon ivy altogether)
- */
-def ivyDependencies(conf) {
-    return new XmlParser().parse(file('ivy.xml')).dependencies.dependency.stream()
-            .filter { it.@conf == null || it.@conf == conf }
-            .map { it.@org + ':' + it.@name + ':' + it.@rev }
-            .collect()
+apply plugin: 'idea'
+idea {
+    module {
+        inheritOutputDirs = true
+    }
 }
+
