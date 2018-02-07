@@ -9,19 +9,21 @@ import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.util.*
 
-class TextMessageService(
-        private val endpoint: Any
+class TextMessageService<T : Any>(
+        private val iface: Class<T>,
+        private val endpoint: T
 ) {
 
     private val methods: Map<String, Method> =
-            Methods.mapPublicMethodsByName(endpoint.javaClass)
+            Methods.mapPublicMethodsByName(iface)
                 .mapKeys { it.key.toLowerCase() }
 
     fun handleRequest(request: String): String {
 
         var methName = "?"
         var className = endpoint.javaClass.name
-        var requestLogged = false
+
+        val requestLog = lazy { log.info("In text request $className.$methName:") }
 
         val response = try {
 
@@ -45,10 +47,7 @@ class TextMessageService(
                 val indexInReq = p + 1
                 if (reqJson.length() < indexInReq + 1) {
                     // this parameter has no argument
-                    if (!requestLogged) {
-                        log.info(methName + ":")
-                        requestLogged = true
-                    }
+                    requestLog.value
                     log.info("- Arg #" + p + " (" + par.type + " " + par.name + ") omitted")
                     null // let's hope that's sufficient
                 } else {
@@ -59,10 +58,7 @@ class TextMessageService(
             // check for more args than used
             val extraArgs = reqJson.length() - 1 - pars.size
             if (extraArgs > 0) {
-                if (!requestLogged) {
-                    log.info(methName + ":")
-                    requestLogged = true
-                }
+                requestLog.value
                 log.info("- $extraArgs args too many ignored.")
             }
 
@@ -96,13 +92,15 @@ class TextMessageService(
             //			at org.jbali.jmsrpc.TextMessageService.handleRequest(TextMessageService.java:95) ~[bali.jar:na]
             e.removeCurrentStack()
 
-            log.warn("Error in text request for method $className.$methName", e)
+            requestLog.value
+            log.warn("Error", e)
 
             try {
                 JSONArray.create(STATUS_ERROR, JavaJsonSerializer.serialize(e))!!
             } catch (serEr: Throwable) {
-                log.warn("Error while serializing error", serEr)
-                JSONArray.create(STATUS_ERROR, JavaJsonSerializer.serialize(RuntimeException("Error occurred but could not be serialized")))!!
+                serEr.removeCurrentStack()
+                log.warn("!! Error while serializing error", serEr)
+                JSONArray.create(STATUS_ERROR, JavaJsonSerializer.serialize(RuntimeException("Error occurred but could not be serialized (see log for details)")))!!
             }
 
         }

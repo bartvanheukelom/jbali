@@ -85,7 +85,9 @@ public class TextMessageServiceTest {
 		public void nestedLocalFail() {
 			throw new TextMessageServiceClientException("MUHAHAHA");
 		}
-		
+
+		public void notInInterface() {}
+
 	}
 	
 	@Test
@@ -94,26 +96,37 @@ public class TextMessageServiceTest {
 		System.out.println("==================== testRaw =====================");
 		
 		Endpoint ep = new Endpoint();
-		
-		TextMessageService svc = new TextMessageService(ep);
+		TextMessageService<?> svc = new TextMessageService<>(ServerEP.class, ep);
 		
 		String resp;
-		
-		// errors
-		
+
+
+
+		// ======= errors ========= //
+
+		// invalid JSON
 		resp = svc.handleRequest("THISISNOTJSON");
 		assertTrue(resp, new JSONArray(resp).getInt(0) == 0);
-		
+
+		// no method name
 		resp = svc.handleRequest(JSONArray.create("", "").toString());
 		assertTrue(resp, new JSONArray(resp).getInt(0) == 0);
-		
+
+		// unexisting method
 		resp = svc.handleRequest(JSONArray.create("asdasd", "").toString());
 		assertTrue(resp, new JSONArray(resp).getInt(0) == 0);
-		
+
+		// throws error
 		resp = svc.handleRequest(JSONArray.create("eur").toString());
 		assertTrue(resp, new JSONArray(resp).getInt(0) == 0);
-		
-		// success
+
+		// calling a method that the endpoint has but the interface has not
+		resp = svc.handleRequest(JSONArray.create("notInInterface").toString());
+		assertEquals(0, new JSONArray(resp).getInt(0));
+
+
+
+		// ********* success ********* //
 		
 		resp = svc.handleRequest(JSONArray.create("setVal", "HI").toString());
 		assertTrue(resp, new JSONArray(resp).getInt(0) == 1);
@@ -125,13 +138,11 @@ public class TextMessageServiceTest {
 		assertEquals("HI2", ep.val);
 		
 		// too few
-		
 		resp = svc.handleRequest(JSONArray.create("setVal").toString());
 		assertTrue(resp, new JSONArray(resp).getInt(0) == 1);
 		assertEquals(null, ep.val);
 		
 		// too many
-		
 		resp = svc.handleRequest(JSONArray.create("setVal", "O", "HI").toString());
 		assertTrue(resp, new JSONArray(resp).getInt(0) == 1);
 		assertEquals("O", ep.val);
@@ -146,7 +157,7 @@ public class TextMessageServiceTest {
 		
 		Endpoint ep = new Endpoint();
 		
-		TextMessageService svc = new TextMessageService(ep);
+		TextMessageService<?> svc = new TextMessageService<>(ServerEP.class, ep);
 		LocalEP client = TextMessageServiceClient.create(LocalEP.class, r -> {
 			System.out.println("submit " + r);
 			if (r.startsWith("[\"localFail")) {
