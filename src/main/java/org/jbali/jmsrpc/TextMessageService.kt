@@ -4,13 +4,17 @@ import org.jbali.errors.removeCurrentStack
 import org.jbali.json.JSONArray
 import org.jbali.reflect.Methods
 import org.jbali.serialize.JavaJsonSerializer
+import org.jbali.util.onceFunction
 import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.util.*
 
+private val log = LoggerFactory.getLogger(TextMessageService::class.java)!!
+
 class TextMessageService<T : Any>(
         private val iface: Class<T>,
+        private val svcName: String = iface.name,
         private val endpoint: T
 ) {
 
@@ -21,9 +25,7 @@ class TextMessageService<T : Any>(
     fun handleRequest(request: String): String {
 
         var methName = "?"
-        var className = endpoint.javaClass.name
-
-        val requestLog = lazy { log.info("In text request $className.$methName:") }
+        val logTheRequest = onceFunction { log.info("In text request $svcName.$methName:") }
 
         val response = try {
 
@@ -37,8 +39,6 @@ class TextMessageService<T : Any>(
             // determine method
             methName = reqJson.getString(RQIDX_METHOD)
             val method = methods[methName.toLowerCase()] ?: throw NoSuchElementException("Unknown method '$methName'")
-            if (className != method.declaringClass.name)
-                className += ">" + method.declaringClass.name
 
             // read arguments
             val pars = method.parameters
@@ -47,7 +47,7 @@ class TextMessageService<T : Any>(
                 val indexInReq = p + 1
                 if (reqJson.length() < indexInReq + 1) {
                     // this parameter has no argument
-                    requestLog.value
+                    logTheRequest()
                     log.info("- Arg #" + p + " (" + par.type + " " + par.name + ") omitted")
                     null // let's hope that's sufficient
                 } else {
@@ -58,7 +58,7 @@ class TextMessageService<T : Any>(
             // check for more args than used
             val extraArgs = reqJson.length() - 1 - pars.size
             if (extraArgs > 0) {
-                requestLog.value
+                logTheRequest()
                 log.info("- $extraArgs args too many ignored.")
             }
 
@@ -92,8 +92,8 @@ class TextMessageService<T : Any>(
             //			at org.jbali.jmsrpc.TextMessageService.handleRequest(TextMessageService.java:95) ~[bali.jar:na]
             e.removeCurrentStack()
 
-            requestLog.value
-            log.warn("Error", e)
+            logTheRequest()
+            log.warn("Error handling request", e)
 
             try {
                 JSONArray.create(STATUS_ERROR, JavaJsonSerializer.serialize(e))!!
@@ -116,15 +116,14 @@ class TextMessageService<T : Any>(
 
     companion object {
 
-        val RQIDX_METHOD = 0
+        const val RQIDX_METHOD = 0
 
-        val RSIDX_STATUS = 0
-        val RSIDX_RESPONSE = 1
+        const val RSIDX_STATUS = 0
+        const val RSIDX_RESPONSE = 1
 
-        val STATUS_OK = 1
-        val STATUS_ERROR = 0
+        const val STATUS_OK = 1
+        const val STATUS_ERROR = 0
 
-        private val log = LoggerFactory.getLogger(TextMessageService::class.java)
     }
 
 }

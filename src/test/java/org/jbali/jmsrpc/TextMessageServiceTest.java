@@ -96,7 +96,7 @@ public class TextMessageServiceTest {
 		System.out.println("==================== testRaw =====================");
 		
 		Endpoint ep = new Endpoint();
-		TextMessageService<?> svc = new TextMessageService<>(ServerEP.class, ep);
+		TextMessageService<?> svc = new TextMessageService<>(ServerEP.class, "TestSVCRaw", ep);
 		
 		String resp;
 
@@ -157,7 +157,7 @@ public class TextMessageServiceTest {
 		
 		Endpoint ep = new Endpoint();
 		
-		TextMessageService<?> svc = new TextMessageService<>(ServerEP.class, ep);
+		TextMessageService<?> svc = new TextMessageService<>(ServerEP.class, "TestSVC", ep);
 		LocalEP client = TextMessageServiceClient.create(LocalEP.class, r -> {
 			System.out.println("submit " + r);
 			if (r.startsWith("[\"localFail")) {
@@ -167,7 +167,7 @@ public class TextMessageServiceTest {
 			// simulate remote request
 			try {
 				return ThreadPool.submit(() -> {
-					Thread.sleep(300);
+//					Thread.sleep(300);
 					return svc.handleRequest(r);
 				}).get();
 			} catch (Exception e) {
