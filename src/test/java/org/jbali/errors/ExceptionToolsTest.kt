@@ -5,6 +5,24 @@ import kotlin.test.assertEquals
 
 class ExceptionToolsTest {
 
+    @Test fun testCommonTail() {
+        assertEquals(listOf("a", "b", "c"), commonTail(listOf("a", "b", "c"), listOf("a", "b", "c")))
+
+        assertEquals(listOf("b", "c"), commonTail(listOf("x", "b", "c"), listOf("y", "b", "c")))
+        assertEquals(listOf("b", "c"), commonTail(listOf("b", "c"), listOf("y", "b", "c")))
+        assertEquals(listOf("b", "c"), commonTail(listOf("b", "c"), listOf("b", "c")))
+
+        assertEquals(listOf("c"), commonTail(listOf("b", "c"), listOf("g", "c")))
+
+        assertEquals(listOf("a", "b", "c"), commonHead(listOf("a", "b", "c"), listOf("a", "b", "c")))
+
+        assertEquals(listOf("a", "b"), commonHead(listOf("a", "b", "c"), listOf("a", "b", "x")))
+        assertEquals(listOf("a", "b"), commonHead(listOf("a", "b"), listOf("a", "b", "c")))
+        assertEquals(listOf("a", "b"), commonHead(listOf("a", "b", "c"), listOf("a", "b")))
+
+        assertEquals(listOf("c"), commonHead(listOf("c", "c"), listOf("c", "g")))
+    }
+
     @Test fun testRemoveCurrentStack() {
 
         val locTrace = Thread.currentThread().stackTrace
@@ -27,6 +45,18 @@ class ExceptionToolsTest {
         } catch (e: Exception) {
             {
                 e.removeStackFrom(trcs, caller)
+                val sb = e.stackTrace.last()
+                assertEquals(ExceptionToolsTest::class.qualifiedName, sb.className)
+                assertEquals(::testRemoveCurrentStack.name, sb.methodName)
+            }()
+        }
+
+        // catch adds to stack (use removecommon)
+        try {
+            alex()
+        } catch (e: Exception) {
+            {
+                e.removeCommonStack()
                 val sb = e.stackTrace.last()
                 assertEquals(ExceptionToolsTest::class.qualifiedName, sb.className)
                 assertEquals(::testRemoveCurrentStack.name, sb.methodName)

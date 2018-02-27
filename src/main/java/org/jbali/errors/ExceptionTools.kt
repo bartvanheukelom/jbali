@@ -1,5 +1,6 @@
 package org.jbali.errors
 
+import java.lang.Integer.min
 import java.util.*
 import kotlin.NoSuchElementException
 
@@ -56,6 +57,28 @@ fun Throwable.removeStackFrom(thisMethod: StackTraceElement, caller: StackTraceE
             }
         }
     }
+}
+
+fun Throwable.removeCommonStack() {
+    val locTrace = Thread.currentThread().stackTrace.toList()
+    for (toClean in this.causeChain) {
+        val errTrace = toClean.stackTrace
+        toClean.stackTrace = Arrays.copyOfRange(errTrace, 0, errTrace.size-commonTailLength(locTrace, errTrace.toList()))
+    }
+}
+
+fun <T> commonHead(a: List<T>, b: List<T>): List<T> {
+    var i = 0
+    while (i < min(a.size, b.size) && a[i] == b[i]) i++
+    return a.subList(0, i)
+}
+
+fun <T> commonTail(a: List<T>, b: List<T>) = a.subList(a.size- commonTailLength(a, b), a.size)
+
+fun commonTailLength(a: List<*>, b: List<*>): Int {
+    var i = 0
+    while (i < min(a.size, b.size) && a[a.size-i-1] == b[b.size-i-1]) i++
+    return i
 }
 
 val Throwable.causeChain: Iterable<Throwable> get() =
