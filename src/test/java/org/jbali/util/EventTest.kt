@@ -12,7 +12,7 @@ class EventTest {
     private val evPropName: Event<String> = Event(this::evPropName)
     private val evPropName2: Event<String> = Event("Foo", this::evPropName2)
     private val evPropName3: Event<String> = Event(EventTest::class, this::evPropName3)
-    private var evPropName4: Event<String> = Event(this::evPropName)
+    private var evPropName4: Event<String> = Event(this::evPropName4)
     private val evDelegate by EventDelegate<String>()
 
     @Test fun testEventNames() {
