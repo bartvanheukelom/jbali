@@ -2,6 +2,15 @@ package org.jbali.util
 
 import arrow.core.Either
 
+enum class SortOrder {
+    ASCENDING, DESCENDING;
+    fun <T : Comparable<T>> comparator(): Comparator<T> = when (this) {
+        SortOrder.ASCENDING -> naturalOrder()
+        SortOrder.DESCENDING -> reverseOrder()
+    }
+}
+
+
 /**
  * Return a function 'f_once' that will invoke f,
  * only the first time f_once is invoked.
