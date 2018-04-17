@@ -5,8 +5,20 @@ import com.google.common.base.Optional;
 
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.stream.Stream;
 
 public class EnumTools {
+
+	@SuppressWarnings("unchecked")
+	public static EnumSet<?> setFromNamesUnsafe(Class enumClass, Stream<String> names) {
+		EnumSet result = EnumSet.noneOf(enumClass);
+		names.forEach(n -> {
+			Optional val = Enums.getIfPresent(enumClass, n);
+			if (val.isPresent()) result.add(val.get());
+			else throw new IllegalArgumentException(enumClass + " has no value " + n);
+		});
+		return result;
+	}
 
 	public static EnumSet<?> parseEnumSetUnsafe(Class enumClass, String str) {
 		if (!enumClass.isEnum()) throw new IllegalArgumentException(enumClass + " is not an enum class");
