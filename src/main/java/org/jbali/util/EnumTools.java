@@ -5,9 +5,13 @@ import com.google.common.base.Optional;
 
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.Set;
 
 public class EnumTools {
+
+	public static EnumSet<?> parseEnumSetUnsafe(Class enumClass, String str) {
+		if (!enumClass.isEnum()) throw new IllegalArgumentException(enumClass + " is not an enum class");
+		return parseEnumSet(enumClass, str);
+	}
 
 	public static <E extends Enum<E>> EnumSet<E> parseEnumSet(Class<E> enumClass, String str) {
 		EnumSet<E> rights = EnumSet.noneOf(enumClass);
