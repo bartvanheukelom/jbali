@@ -29,3 +29,26 @@ fun onceFunction(f: () -> Unit): () -> Unit {
 }
 
 fun <A,B> Either<A,B>.any() = fold({it},{it})
+
+val Enum<*>.fullname get() = javaClass.canonicalName + "." + name
+
+fun <T> Iterable<T>.forEachCatching(
+        errorHandler: (Throwable) -> Unit,
+        action: (T) -> Unit
+) {
+    for (x in this) {
+        try {
+            action(x)
+        } catch (e: Throwable) {
+            try {
+                errorHandler(e)
+            } catch (ee: Throwable) {
+                try {
+                    ee.printStackTrace()
+                } catch (eee: Throwable) {
+                    // shrug
+                }
+            }
+        }
+    }
+}
