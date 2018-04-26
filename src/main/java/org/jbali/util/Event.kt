@@ -37,6 +37,9 @@ class Event<P>(
     fun listen(callback: (arg: P) -> Unit) = listen(null, callback)
     operator fun invoke(callback: (arg: P) -> Unit) = listen(null, callback)
 
+    // for easier Java interop
+    fun listenVoid(callback: Runnable) = listen { callback.run() }
+
     fun dispatch(data: P, errCb: ((l: EventListener<P>, e: Throwable) -> Unit)? = null) {
         for (l in listeners.toList()) {
             try {
@@ -56,6 +59,11 @@ class Event<P>(
 
     override fun toString() = "Event[$name]"
 
+}
+
+// empty dispatch variant for Unit (void) events
+fun Event<Unit>.dispatch(errLog: Logger) {
+    dispatch(Unit, { l, e -> errLog.error("Error in $this listener ${l.name}", e) })
 }
 
 class EventListener<P>(
