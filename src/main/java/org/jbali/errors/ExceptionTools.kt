@@ -22,22 +22,28 @@ import kotlin.NoSuchElementException
  * - handler()
  */
 fun Throwable.removeCurrentStack() {
+    // +1 = removeCurrentStack
+    currentStackSignature(1)?.let { removeStackFrom(it) }
+}
 
-    val locTrace = Thread.currentThread().stackTrace
-    // you never know on some VMs
-    if (locTrace.size < 4) return
+data class StackSignature(
+        val thisMethod: StackTraceElement,
+        val caller: StackTraceElement
+)
 
+// using an overload instead of an optional parameter, because the latter would generate
+// a synthetic method $default that would add an extra stack frame
+fun currentStackSignature(): StackSignature? = currentStackSignature(1)
+fun currentStackSignature(extraOffset: Int): StackSignature? {
+    val t = Thread.currentThread().stackTrace
     // 0 = Thread.getStackTrace
-    // 1 = removeCommonStack
-    val thisMethod = locTrace[2]
-    val caller = locTrace[3]
-
-    removeStackFrom(thisMethod, caller)
-
+    // 1 = currentStackSignature
+    return if (t.size <= 3 + extraOffset) null
+    else StackSignature(t[2 + extraOffset], t[3 + extraOffset])
 }
 
 // TODO refactor to variable needle length
-fun Throwable.removeStackFrom(thisMethod: StackTraceElement, caller: StackTraceElement) {
+fun Throwable.removeStackFrom(sig: StackSignature) {
 
     for (toClean in this.causeChain) {
 
@@ -45,13 +51,14 @@ fun Throwable.removeStackFrom(thisMethod: StackTraceElement, caller: StackTraceE
 
         // find the calling method in the exception stack
         if (errTrace.size >= 3) for (i in errTrace.size - 1 downTo 1) {
-            if (errTrace[i] == caller) {
+            if (errTrace[i] == sig.caller) {
                 // check if the calling method did in fact call this method
                 // (line number won't match)
                 val nextCall = errTrace[i - 1]
-                if (nextCall.className == thisMethod.className && nextCall.methodName == thisMethod.methodName) {
-                    // snip!
-                    toClean.stackTrace = Arrays.copyOfRange(errTrace, 0, i)
+                if (nextCall.className  == sig.thisMethod.className &&
+                    nextCall.methodName == sig.thisMethod.methodName) {
+                        // snip!
+                        toClean.stackTrace = Arrays.copyOfRange(errTrace, 0, i)
                     break
                 }
             }

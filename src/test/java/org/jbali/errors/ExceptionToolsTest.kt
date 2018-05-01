@@ -25,10 +25,7 @@ class ExceptionToolsTest {
 
     @Test fun testRemoveCurrentStack() {
 
-        val locTrace = Thread.currentThread().stackTrace
-        // 0 = Thread.getStackTrace
-        val trcs = locTrace[1]
-        val caller = locTrace[2]
+        val sig = currentStackSignature()!!
 
         try {
             alex()
@@ -44,7 +41,7 @@ class ExceptionToolsTest {
             alex()
         } catch (e: Exception) {
             {
-                e.removeStackFrom(trcs, caller)
+                e.removeStackFrom(sig)
                 val sb = e.stackTrace.last()
                 assertEquals(ExceptionToolsTest::class.qualifiedName, sb.className)
                 assertEquals(::testRemoveCurrentStack.name, sb.methodName)
