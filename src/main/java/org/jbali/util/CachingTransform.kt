@@ -21,7 +21,7 @@ class CachingTransform<out I, O>(
 
     operator fun invoke() = cache.updateAndGet { cached ->
         val newIn = input()
-        if (cached.input == newIn) cached
+        if (cached?.input == newIn) cached
         else CachedTransform(newIn, transform(newIn))
     }.output
 
