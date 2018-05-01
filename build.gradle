@@ -1,6 +1,6 @@
 buildscript {
     repositories { mavenCentral() }
-    dependencies { classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.2.31" }
+    dependencies { classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.2.41" }
 }
 
 apply plugin: 'java'
