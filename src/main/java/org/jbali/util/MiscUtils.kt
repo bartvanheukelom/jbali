@@ -2,8 +2,11 @@ package org.jbali.util
 
 import arrow.core.Either
 
-enum class SortOrder {
-    ASCENDING, DESCENDING;
+enum class SortOrder(val multiplier: Int) {
+
+    ASCENDING(1),
+    DESCENDING(-1);
+
     fun <T : Comparable<T>> comparator(): Comparator<T> = when (this) {
         SortOrder.ASCENDING -> naturalOrder()
         SortOrder.DESCENDING -> reverseOrder()
