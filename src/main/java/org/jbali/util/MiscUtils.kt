@@ -30,6 +30,9 @@ fun onceFunction(f: () -> Unit): () -> Unit {
 
 fun <A,B> Either<A,B>.any() = fold({it},{it})
 
+/**
+ * The fully qualified name of this enum constant, e.g. foo.bar.Color.RED
+ */
 val Enum<*>.fullname get() = javaClass.canonicalName + "." + name
 
 fun <T> Iterable<T>.forEachCatching(
