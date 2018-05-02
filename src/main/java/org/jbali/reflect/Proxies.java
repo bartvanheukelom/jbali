@@ -31,7 +31,21 @@ public class Proxies {
 		
 	}
 	
-	public static final InvocationHandler MOCK_HANDLER = (proxy, method, args) -> null;
+	public static final InvocationHandler MOCK_HANDLER = (proxy, method, args) -> {
+		Class<?> rt = method.getReturnType();
+		if (!rt.isPrimitive() || rt == void.class) return null;
+		else {
+			if (rt == char.class)    return '\0';
+			if (rt == byte.class)    return 0;
+			if (rt == short.class)   return 0;
+			if (rt == int.class)     return 0;
+			if (rt == long.class)    return 0L;
+			if (rt == float.class)   return 0.0f;
+			if (rt == double.class)  return 0.0;
+			if (rt == boolean.class) return false;
+			return null; // should not get here
+		}
+	};
 	
 	public static <R> R create(Class<R> type, SimpleInvocationHandler handler) {
 		return create(type, handler.toInvocationHandler());
