@@ -42,7 +42,7 @@ fun <A,B> Either<A,B>.any() = fold({it},{it})
 val Enum<*>.fullname get() = javaClass.canonicalName + "." + name
 
 fun <T> Iterable<T>.forEachCatching(
-        errorHandler: (Throwable) -> Unit,
+        errorHandler: (T, Throwable) -> Unit,
         action: (T) -> Unit
 ) {
     for (x in this) {
@@ -50,7 +50,7 @@ fun <T> Iterable<T>.forEachCatching(
             action(x)
         } catch (e: Throwable) {
             try {
-                errorHandler(e)
+                errorHandler(x, e)
             } catch (ee: Throwable) {
                 try {
                     ee.printStackTrace()
