@@ -2,7 +2,10 @@ package org.jbali.util
 
 import arrow.core.Either
 
-enum class SortOrder(val multiplier: Int) {
+enum class SortOrder(
+        /** 1 for ASCENDING, -1 for DESCENDING */
+        val multiplier: Int
+) {
 
     ASCENDING(1),
     DESCENDING(-1);
