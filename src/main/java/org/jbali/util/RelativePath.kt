@@ -4,6 +4,8 @@ import org.jbali.streams.simpleReduce
 import java.io.File
 import kotlin.streams.toList
 
+object Handled
+
 data class RelativePath(val elements: List<String>) : Iterable<String> {
 
     private val string = elements.joinToString("/")
@@ -30,11 +32,20 @@ data class RelativePath(val elements: List<String>) : Iterable<String> {
     fun subIfStartsWith(vararg pre: String) = subIfStartsWith(RelativePath(*pre))
     fun subIfStartsWith(pre: RelativePath) =  if (startsWith(pre)) subPath(pre.elements.size) else null
 
+    inline fun dispatch(pre: String, then: (RelativePath) -> Handled) = dispatch(RelativePath(pre), then)
+    inline fun dispatch(vararg pre: String, then: (RelativePath) -> Handled) = dispatch(RelativePath(*pre), then)
+    inline fun dispatch(pre: RelativePath, then: (RelativePath) -> Handled) =
+            if (!startsWith(pre)) false else {
+                then(subPath(pre.elements.size))
+                true
+            }
+
     fun subPath(depth: Int) = RelativePath(elements.subList(depth, elements.size))
 
     fun asFileInDir(baseDir: File) =
             elements.stream().simpleReduce(baseDir, { f, p -> File(f, p) })
 
+    fun equalTo(other: String) = equals(RelativePath(other))
     fun equalTo(vararg other: String) = equals(RelativePath(*other))
     override fun toString() = string
     operator fun get(i: Int) = elements[i]
