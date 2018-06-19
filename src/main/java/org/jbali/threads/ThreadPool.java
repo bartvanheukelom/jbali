@@ -14,7 +14,9 @@ import java.util.concurrent.Future;
 public final class ThreadPool {
 	
 	private ThreadPool() {}
-	
+
+	// TODO require explicit init.
+	// TODO delegate executor.
 	public static ExecutorService executor = Executors.newCachedThreadPool();
 
 	/**
