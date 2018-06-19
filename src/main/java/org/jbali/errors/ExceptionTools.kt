@@ -107,3 +107,6 @@ fun <T> independentIterator(start: T, next: (cur: T) -> T?) =
             return r
         }
     }
+
+fun ensureUnchecked(e: Throwable) =
+        e as? RuntimeException ?: RuntimeException(e)
