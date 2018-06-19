@@ -41,6 +41,9 @@ fun <A,B> Either<A,B>.any() = fold({it},{it})
  */
 val Enum<*>.fullname get() = javaClass.canonicalName + "." + name
 
+// now wouldn't it be nice if Kotlin could just inline this as a constexpr?
+inline fun <reified T : Enum<T>> jpaEnum(e: T) = T::class.qualifiedName + "." + e.name
+
 fun <T> Iterable<T>.forEachCatching(
         errorHandler: (T, Throwable) -> Unit,
         action: (T) -> Unit
