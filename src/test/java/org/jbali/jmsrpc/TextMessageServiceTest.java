@@ -2,9 +2,9 @@ package org.jbali.jmsrpc;
 
 import org.jbali.json.JSONArray;
 import org.jbali.threads.ThreadPool;
-import org.joda.time.LocalDate;
 import org.junit.Test;
 
+import java.time.LocalDate;
 import java.util.NoSuchElementException;
 
 import static org.junit.Assert.*;
@@ -243,7 +243,7 @@ public class TextMessageServiceTest {
 		}
 		
 		// success & return
-		LocalDate d = new LocalDate();
+		LocalDate d = LocalDate.now();
 		assertEquals(d, client.echo(d));
 		
 		// too few/many

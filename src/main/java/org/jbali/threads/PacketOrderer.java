@@ -2,10 +2,10 @@ package org.jbali.threads;
 
 import com.google.common.base.Preconditions;
 import org.jbali.collect.Maps;
-import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -25,7 +25,7 @@ public class PacketOrderer<P> {
 	// state
 	private long lastSeq = 0;
 	private final Map<Long, P> waiting = Maps.createHash();
-	private DateTime waitingSince = null;
+	private Instant waitingSince = null;
 	
 	// callbacks
 	private final Function<P, Long> seqGetter;
@@ -38,9 +38,9 @@ public class PacketOrderer<P> {
 	
 	public class Status {
 		public final int waitingCount;
-		public final DateTime waitingSince;
+		public final Instant waitingSince;
 		public final long lastSeq;
-		public Status(int waitingCount, DateTime waitingSince, long lastSeq) {
+		public Status(int waitingCount, Instant waitingSince, long lastSeq) {
 			this.waitingCount = waitingCount;
 			this.waitingSince = waitingSince;
 			this.lastSeq = lastSeq;
@@ -91,7 +91,7 @@ public class PacketOrderer<P> {
 				log.info("inPacket #" + inSeq + " already handled in the past: " + packet);
 			} else {
 				// this packet comes after the expected one, store it for later
-				if (waiting.isEmpty()) waitingSince = DateTime.now();
+				if (waiting.isEmpty()) waitingSince = Instant.now();
 				waiting.put(inSeq, packet);
 			}
 		}

@@ -1,17 +1,16 @@
 package org.jbali.serialize;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import com.google.common.collect.ImmutableList;
+import org.jbali.json.JSONObject;
+import org.junit.Test;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Date;
 
-import org.jbali.json.JSONObject;
-import org.joda.time.DateTime;
-import org.joda.time.LocalDate;
-import org.junit.Test;
-
-import com.google.common.collect.ImmutableList;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 public class JavaJsonSerializerTest {
 
@@ -26,10 +25,10 @@ public class JavaJsonSerializerTest {
 				"Hi",
 				"This is a longer text",
 				"Some bytes  123891238192389".getBytes(),
-				new LocalDate(),
+				LocalDate.now(),
 				new Date(),
-				new DateTime(),
-				ImmutableList.of("12", new LocalDate(), true, 12)
+				Instant.now(),
+				ImmutableList.of("12", LocalDate.now(), true, 12)
 //				Maybe.definitely(12), Maybe.unknown()
 		).forEach(v -> {
 			Object s = JavaJsonSerializer.serialize(v);

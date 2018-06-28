@@ -18,7 +18,6 @@ dependencies {
     compile "org.slf4j:slf4j-api:1.7.10"
     compile "com.google.code.gson:gson:2.3.1"
     compile "org.apache.activemq:activemq-client:5.11.1"
-    compile "joda-time:joda-time:2.3"
     compile "commons-codec:commons-codec:1.10"
 
     testCompile "org.jetbrains.kotlin:kotlin-test"
