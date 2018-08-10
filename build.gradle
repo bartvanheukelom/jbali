@@ -1,6 +1,11 @@
 buildscript {
-    repositories { mavenCentral() }
-    dependencies { classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.2.41" }
+    ext.kotlin_version = System.getProperty("kotlin.version", "1.2.41")
+    ext.kotlin_repo = System.getProperty("kotlin.repository")
+    repositories {
+        mavenCentral()
+        if (kotlin_repo) { maven { url kotlin_repo } }
+    }
+    dependencies { classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version" }
 }
 
 apply plugin: 'java'
@@ -8,11 +13,12 @@ apply plugin: 'kotlin'
 
 repositories {
     mavenCentral()
+    if (kotlin_repo) { maven { url kotlin_repo } }
 }
 
 dependencies {
-    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
-    compile "org.jetbrains.kotlin:kotlin-reflect"
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
     compile "io.arrow-kt:arrow-core:0.6.1"
     compile "com.google.guava:guava:18.0"
     compile "org.slf4j:slf4j-api:1.7.10"
@@ -20,8 +26,8 @@ dependencies {
     compile "org.apache.activemq:activemq-client:5.11.1"
     compile "commons-codec:commons-codec:1.10"
 
-    testCompile "org.jetbrains.kotlin:kotlin-test"
-    testCompile "org.jetbrains.kotlin:kotlin-test-junit"
+    testCompile "org.jetbrains.kotlin:kotlin-test:$kotlin_version"
+    testCompile "org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version"
     testCompile "org.slf4j:jcl-over-slf4j:1.7.10"
     testCompile "ch.qos.logback:logback-classic:1.1.2"
     testCompile "junit:junit:4.12"
