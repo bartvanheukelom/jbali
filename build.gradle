@@ -2,7 +2,7 @@ buildscript {
     ext.kotlin_version = System.getProperty("kotlin.version", "1.2.41")
     ext.kotlin_repo = System.getProperty("kotlin.repository")
     repositories {
-        mavenCentral()
+        jcenter()
         if (kotlin_repo) { maven { url kotlin_repo } }
     }
     dependencies { classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version" }
@@ -12,7 +12,7 @@ apply plugin: 'java'
 apply plugin: 'kotlin'
 
 repositories {
-    mavenCentral()
+    jcenter()
     if (kotlin_repo) { maven { url kotlin_repo } }
 }
 
