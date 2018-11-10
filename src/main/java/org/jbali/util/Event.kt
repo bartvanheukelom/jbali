@@ -5,10 +5,17 @@ import org.slf4j.LoggerFactory
 import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
+import java.util.function.Consumer
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
 private val log = LoggerFactory.getLogger(Event::class.java)!!
+
+typealias ListenerErrorCallback<P> = ((l: EventListener<P>, e: Throwable) -> Unit)
+
+fun loggingErrorCallback(event: Event<*>, log: Logger): ListenerErrorCallback<*> = { l, e ->
+    log.error("Error in $event listener ${l.name}", e)
+}
 
 class EventDelegate<P> {
     private val constructed = AtomicReference<Event<P>>()
@@ -43,30 +50,17 @@ class Event<P>(
     // for easier Java interop
     fun listenVoid(callback: Runnable) = listen { callback.run() }
 
-    fun dispatch(data: P, errCb: ((l: EventListener<P>, e: Throwable) -> Unit)?) {
+    fun dispatch(data: P, errCb: ListenerErrorCallback<P>? = null) {
         for (l in listeners.toList()) {
-            try {
-                l.callback(data)
-            } catch (e: Throwable) {
-                try {
-                    errCb?.invoke(l, e)
-                } catch (ee: Throwable) {
-                    ee.printStackTrace()
-                }
-            }
+            l.call(data, errCb)
         }
     }
-    fun dispatch(data: P, errLog: Logger = log) {
-        dispatch(data, { l, e -> errLog.error("Error in $this listener ${l.name}", e) })
+    fun dispatch(data: P, errLog: Logger) {
+        dispatch(data, loggingErrorCallback(this, errLog))
     }
 
     override fun toString() = "Event[$name]"
 
-}
-
-// empty dispatch variant for Unit (void) events
-fun Event<Unit>.dispatch(errLog: Logger = log) {
-    dispatch(Unit, { l, e -> errLog.error("Error in $this listener ${l.name}", e) })
 }
 
 class EventListener<P>(
@@ -74,8 +68,59 @@ class EventListener<P>(
         val name: String?,
         val callback: (arg: P) -> Unit
 ) {
+
+    private val defaultErrCb: ListenerErrorCallback<P> =
+            loggingErrorCallback(event.get()!!, log)
+
+    @JvmOverloads
+    fun call(data: P, errCb: ListenerErrorCallback<P>? = null) {
+        try {
+            callback(data)
+        } catch (e: Throwable) {
+            try {
+                (errCb ?: defaultErrCb).invoke(this, e)
+            } catch (ee: Throwable) {
+                ee.printStackTrace()
+            }
+        }
+    }
+
     fun detach() {
         event.get()?.listeners?.remove(this)
     }
     override fun toString() = "Event[$name]"
+}
+
+// TODO class ParameterlessEvent
+
+// empty dispatch variant for Unit (void) events
+fun Event<Unit>.dispatch(errCb: ListenerErrorCallback<Unit>? = null) {
+    dispatch(Unit, errCb)
+}
+fun Event<Unit>.dispatch(errLog: Logger = log) {
+    dispatch(Unit, loggingErrorCallback(this, errLog))
+}
+fun EventListener<Unit>.call(errCb: ListenerErrorCallback<Unit>? = null) {
+    call(Unit, errCb)
+}
+
+class Observable<T>(initialValue: T) {
+
+    @Volatile
+    var value = initialValue
+        set(n) {
+            field = n
+            onChange.dispatch(n)
+        }
+
+    val onChange: Event<T> = Event(this::onChange)
+
+    operator fun invoke() = value
+
+    fun bind(handler: (T) -> Unit) =
+            onChange.listen(handler).call(value)
+
+    fun bindj(handler: Consumer<T>) =
+            bind { handler.accept(it) }
+
 }
