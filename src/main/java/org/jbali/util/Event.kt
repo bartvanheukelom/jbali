@@ -104,16 +104,9 @@ fun EventListener<Unit>.call(errCb: ListenerErrorCallback<Unit>? = null) {
     call(Unit, errCb)
 }
 
-class Observable<T>(initialValue: T) {
-
-    @Volatile
-    var value = initialValue
-        set(n) {
-            field = n
-            onChange.dispatch(n)
-        }
-
-    val onChange: Event<T> = Event(this::onChange)
+interface Observable<T> {
+    val value: T
+    val onChange: Event<T>
 
     operator fun invoke() = value
 
@@ -122,5 +115,20 @@ class Observable<T>(initialValue: T) {
 
     fun bindj(handler: Consumer<T>) =
             bind { handler.accept(it) }
+
+}
+
+class MutableObservable<T>(initialValue: T): Observable<T> {
+
+    @Volatile
+    override var value = initialValue
+        set(n) {
+            field = n
+            onChange.dispatch(n)
+        }
+
+    override val onChange: Event<T> = Event(this::onChange)
+
+    fun readOnly(): Observable<T> = this
 
 }
