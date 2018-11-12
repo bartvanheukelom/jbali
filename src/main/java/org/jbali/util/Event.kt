@@ -6,6 +6,7 @@ import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Consumer
+import java.util.function.Supplier
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
@@ -104,14 +105,13 @@ fun EventListener<Unit>.call(errCb: ListenerErrorCallback<Unit>? = null) {
     call(Unit, errCb)
 }
 
-interface Observable<T> {
-    val value: T
+interface Observable<T>: Supplier<T> {
     val onChange: Event<T>
 
-    operator fun invoke() = value
+    operator fun invoke() = get()
 
     fun bind(handler: (T) -> Unit) =
-            onChange.listen(handler).call(value)
+            onChange.listen(handler).call(get())
 
     fun bindj(handler: Consumer<T>) =
             bind { handler.accept(it) }
@@ -124,7 +124,7 @@ interface Observable<T> {
 open class MutableObservable<T>(initialValue: T): Observable<T> {
 
     @Volatile
-    override var value = initialValue
+    var value = initialValue
         set(n) {
             field = n
             onChange.dispatch(n)
@@ -132,6 +132,7 @@ open class MutableObservable<T>(initialValue: T): Observable<T> {
 
     override val onChange: Event<T> = Event(this::onChange)
 
+    override fun get() = value
     fun readOnly(): Observable<T> = this
 
 }
