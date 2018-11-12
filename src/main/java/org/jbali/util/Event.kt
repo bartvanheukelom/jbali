@@ -116,9 +116,12 @@ interface Observable<T> {
     fun bindj(handler: Consumer<T>) =
             bind { handler.accept(it) }
 
+    fun <D> derived(derivation: (T) -> D): Observable<D> =
+            DerivedObservable(this, derivation)
+
 }
 
-class MutableObservable<T>(initialValue: T): Observable<T> {
+open class MutableObservable<T>(initialValue: T): Observable<T> {
 
     @Volatile
     override var value = initialValue
@@ -130,5 +133,18 @@ class MutableObservable<T>(initialValue: T): Observable<T> {
     override val onChange: Event<T> = Event(this::onChange)
 
     fun readOnly(): Observable<T> = this
+
+}
+
+open class DerivedObservable<I, O>(
+        source: Observable<I>,
+        derivation: (I) -> O
+): MutableObservable<O>(derivation(source())) {
+
+    init {
+        source.onChange.listen {
+            value = derivation(it)
+        }
+    }
 
 }
