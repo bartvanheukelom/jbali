@@ -100,6 +100,8 @@ class EventListener<P>(
     override fun toString() = "Event[$name]"
 }
 
+fun Iterable<EventListener<*>>.detach() = this.forEach { it.detach() }
+
 // TODO class ParameterlessEvent
 
 // empty dispatch variant for Unit (void) events
