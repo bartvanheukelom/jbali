@@ -30,9 +30,19 @@ class EventDelegate<P> {
     }
 }
 
+interface Listenable<P> {
+    fun listen(name: String?, callback: (arg: P) -> Unit): EventListener<P>
+
+    fun listen(callback: (arg: P) -> Unit) = listen(null, callback)
+
+    // too ambiguous
+//    operator fun invoke(callback: (arg: P) -> Unit) = listen(null, callback)
+
+}
+
 class Event<P>(
         val name: String? = null
-){
+): Listenable<P> {
 
     constructor(dispatcher: String, prop: KProperty<*>): this("$dispatcher.${prop.name}")
     constructor(dispatcher: KClass<*>, prop: KProperty<*>): this("${dispatcher.qualifiedName}.${prop.name}")
@@ -40,15 +50,13 @@ class Event<P>(
 
     val listeners: MutableSet<EventListener<P>> = ConcurrentHashMap.newKeySet()
 
-    fun listen(name: String?, callback: (arg: P) -> Unit): EventListener<P> {
+    override fun listen(name: String?, callback: (arg: P) -> Unit): EventListener<P> {
         val l = EventListener(WeakReference(this), name ?: callback.toString(), callback)
         listeners.add(l)
         return l
     }
-    fun listen(callback: (arg: P) -> Unit) = listen(null, callback)
-    operator fun invoke(callback: (arg: P) -> Unit) = listen(null, callback)
 
-    // for easier Java interop
+    // TODO move to Listenable with @JvmDefault
     fun listenVoid(callback: Runnable) = listen { callback.run() }
 
     fun dispatch(data: P, errCb: ListenerErrorCallback<P>? = null) {
@@ -105,10 +113,13 @@ fun EventListener<Unit>.call(errCb: ListenerErrorCallback<Unit>? = null) {
     call(Unit, errCb)
 }
 
-interface Observable<T>: Supplier<T> {
+interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T> {
     val onChange: Event<T>
 
-    operator fun invoke() = get()
+    override fun listen(name: String?, callback: (arg: T) -> Unit) =
+            onChange.listen(name, callback)
+
+    override operator fun invoke() = get()
 
     fun bind(handler: (T) -> Unit) =
             onChange.listen(handler).call(get())
@@ -119,6 +130,9 @@ interface Observable<T>: Supplier<T> {
     fun <D> derived(derivation: (T) -> D): Observable<D> =
             DerivedObservable(this, derivation)
 
+    fun <D> sub(getter: (T) -> D): Observable<D> =
+            ObservableSub(this, getter)
+
 }
 
 open class MutableObservable<T>(initialValue: T): Observable<T> {
@@ -126,8 +140,10 @@ open class MutableObservable<T>(initialValue: T): Observable<T> {
     @Volatile
     var value = initialValue
         set(n) {
-            field = n
-            onChange.dispatch(n)
+            if (field != n) {
+                field = n
+                onChange.dispatch(n)
+            }
         }
 
     override val onChange: Event<T> = Event(this::onChange)
@@ -137,13 +153,30 @@ open class MutableObservable<T>(initialValue: T): Observable<T> {
 
 }
 
+open class ObservableSub<I, O>(
+        val source: Observable<I>,
+        val getter: (I) -> O
+): Observable<O> {
+
+    override val onChange: Event<O> = Event(this::onChange)
+
+    override fun get() = getter(source())
+
+    init {
+        source.listen {
+            onChange.dispatch(getter(it))
+        }
+    }
+
+}
+
 open class DerivedObservable<I, O>(
         source: Observable<I>,
         derivation: (I) -> O
 ): MutableObservable<O>(derivation(source())) {
 
     init {
-        source.onChange.listen {
+        source.listen {
             value = derivation(it)
         }
     }

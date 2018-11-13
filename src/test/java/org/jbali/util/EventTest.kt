@@ -37,11 +37,11 @@ class EventTest {
 
         var x = ""
         var y = ""
-        val lstX = onFoo { x = it }
-        onFoo { y = "B$it" }
+        val lstX = onFoo.listen { x = it }
+        onFoo.listen { y = "B$it" }
 
-        val lstThatThrows = onFoo(::throwing)
-        for (i in 0..100) onFoo {}
+        val lstThatThrows = onFoo.listen(::throwing)
+        for (i in 0..100) onFoo.listen {}
 
         assertEquals("AmazingTestListener", onFoo.listen("AmazingTestListener", {}).name)
 
