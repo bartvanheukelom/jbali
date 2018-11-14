@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Consumer
 import java.util.function.Supplier
+import javax.annotation.PreDestroy
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
@@ -115,6 +116,8 @@ fun EventListener<Unit>.call(errCb: ListenerErrorCallback<Unit>? = null) {
     call(Unit, errCb)
 }
 
+// Ovservables TODO move to own file and I guess rename because of java.util.Observable
+
 interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T> {
     val onChange: Event<T>
 
@@ -160,14 +163,17 @@ open class ObservableSub<I, O>(
         val getter: (I) -> O
 ): Observable<O> {
 
+    @Suppress("LeakingThis")
     override val onChange: Event<O> = Event(this::onChange)
 
     override fun get() = getter(source())
 
-    init {
-        source.listen {
-            onChange.dispatch(getter(it))
-        }
+    val listener = source.listen {
+        onChange.dispatch(getter(it))
+    }
+
+    @PreDestroy fun destroy() {
+        listener.detach()
     }
 
 }
@@ -177,10 +183,12 @@ open class DerivedObservable<I, O>(
         derivation: (I) -> O
 ): MutableObservable<O>(derivation(source())) {
 
-    init {
-        source.listen {
-            value = derivation(it)
-        }
+    val listener = source.listen {
+        value = derivation(it)
+    }
+
+    @PreDestroy fun destroy() {
+        listener.detach()
     }
 
 }
