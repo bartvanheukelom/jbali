@@ -3,11 +3,14 @@ package org.jbali.util
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.lang.ref.WeakReference
+import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.locks.ReentrantLock
 import java.util.function.Consumer
 import java.util.function.Supplier
 import javax.annotation.PreDestroy
+import kotlin.concurrent.withLock
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
@@ -19,12 +22,34 @@ fun loggingErrorCallback(event: Event<*>, log: Logger): ListenerErrorCallback<*>
     log.error("Error in $event listener ${l.name}", e)
 }
 
+/**
+ * Allows an event property to be declared like:
+ * val onChange by EventDelegate<ChangeInfo>()
+ */
 class EventDelegate<P> {
     private val constructed = AtomicReference<Event<P>>()
     operator fun getValue(thisRef: Any?, property: KProperty<*>): Event<P> {
         val c = constructed.get()
         return if (c != null) c else {
-            val newc = Event<P>(property)
+            // cannot use Lazy because this constructor requires the property
+            val newc = Event<P>(thisRef, property)
+            constructed.compareAndSet(null, newc)
+            constructed.get()
+        }
+    }
+}
+
+/**
+ * Allows an event property to be declared like:
+ * val onChange by OnceEventDelegate<ChangeInfo>()
+ */
+class OnceEventDelegate<P> {
+    private val constructed = AtomicReference<OnceEvent<P>>()
+    operator fun getValue(thisRef: Any?, property: KProperty<*>): OnceEvent<P> {
+        val c = constructed.get()
+        return if (c != null) c else {
+            // cannot use Lazy because this constructor requires the property
+            val newc = OnceEvent<P>(thisRef, property)
             constructed.compareAndSet(null, newc)
             constructed.get()
         }
@@ -33,23 +58,24 @@ class EventDelegate<P> {
 
 interface Listenable<P> {
     fun listen(name: String?, callback: (arg: P) -> Unit): EventListener<P>
-
     fun listen(callback: (arg: P) -> Unit) = listen(null, callback)
-
-    // too ambiguous
-//    operator fun invoke(callback: (arg: P) -> Unit) = listen(null, callback)
-
 }
 
-class Event<P>(
+open class Event<P>(
         val name: String? = null
 ): Listenable<P> {
 
-    constructor(dispatcher: String, prop: KProperty<*>): this("$dispatcher.${prop.name}")
-    constructor(dispatcher: KClass<*>, prop: KProperty<*>): this("${dispatcher.qualifiedName}.${prop.name}")
-    constructor(prop: KProperty<*>): this(prop.toString().removePrefix("val ").removePrefix("var ").replaceAfter(':', "").dropLast(1))
+    companion object {
+        @JvmStatic protected fun cname(dispatcher: Any?, prop: KProperty<*>) = "[$dispatcher].${prop.name}"
+        @JvmStatic protected fun cname(dispatcher: KClass<*>, prop: KProperty<*>) = "${dispatcher.qualifiedName}.${prop.name}"
+        @JvmStatic protected fun cname(prop: KProperty<*>) =  prop.toString().removePrefix("val ").removePrefix("var ").replaceAfter(':', "").dropLast(1)
+    }
 
-    val listeners: MutableSet<EventListener<P>> = ConcurrentHashMap.newKeySet()
+    constructor(dispatcher: Any?, prop: KProperty<*>): this(cname(dispatcher, prop))
+    constructor(dispatcher: KClass<*>, prop: KProperty<*>): this(cname(dispatcher, prop))
+    constructor(prop: KProperty<*>): this(cname(prop))
+
+    internal val listeners: MutableSet<EventListener<P>> = ConcurrentHashMap.newKeySet()
 
     override fun listen(name: String?, callback: (arg: P) -> Unit): EventListener<P> {
         val l = EventListener(WeakReference(this), name ?: callback.toString(), callback)
@@ -57,19 +83,58 @@ class Event<P>(
         return l
     }
 
-    // TODO move to Listenable with @JvmDefault
-    fun listenVoid(callback: Runnable) = listen { callback.run() }
-
-    fun dispatch(data: P, errCb: ListenerErrorCallback<P>? = null) {
+    open fun dispatch(data: P, errCb: ListenerErrorCallback<P>? = null) {
         for (l in listeners.toList()) {
             l.call(data, errCb)
         }
     }
+
+    // TODO move to Listenable with @JvmDefault
+    fun listenVoid(callback: Runnable) = listen { callback.run() }
+
     fun dispatch(data: P, errLog: Logger) {
         dispatch(data, loggingErrorCallback(this, errLog))
     }
 
     override fun toString() = "Event[$name]"
+
+}
+
+/**
+ * An Event that can be dispatched only once.
+ * Afterwards, all listeners will be automatically detached.
+ * During and after this single dispatch, it will disallow adding new listeners.
+ */
+class OnceEvent<P>(
+        name: String? = null
+): Event<P>(name) {
+
+    constructor(dispatcher: Any?, prop: KProperty<*>): this(cname(dispatcher, prop))
+    constructor(dispatcher: KClass<*>, prop: KProperty<*>): this(cname(dispatcher, prop))
+    constructor(prop: KProperty<*>): this(cname(prop))
+
+    val lock = ReentrantLock()
+    private var dispatchState: String? = null
+
+    override fun listen(name: String?, callback: (arg: P) -> Unit) =
+            lock.withLock {
+                if (dispatchState != null)
+                    throw IllegalStateException("Cannot listen to $this, it $dispatchState")
+                super.listen(name, callback)
+            }
+
+    override fun dispatch(data: P, errCb: ListenerErrorCallback<P>?) {
+        lock.withLock {
+            if (dispatchState != null)
+                throw IllegalStateException("Cannot dispatch $this, it $dispatchState")
+            dispatchState = "is being dispatched right now"
+            super.dispatch(data, errCb)
+            dispatchState = "was already dispatched at ${Instant.now()}"
+            listeners.forEach { it.detach() }
+        }
+    }
+
+    override fun toString() = "OnceEvent[$name]"
 
 }
 
@@ -96,8 +161,14 @@ class EventListener<P>(
     }
 
     fun detach() {
-        event.get()?.listeners?.remove(this)
+        if (event.get()?.listeners?.remove(this) == false) {
+            log.warn("")
+        }
     }
+
+    val attached get() =
+        event.get()?.listeners?.contains(this) ?: false
+
     override fun toString() = "Event[$name]"
 }
 
@@ -151,6 +222,7 @@ open class MutableObservable<T>(initialValue: T): Observable<T> {
             }
         }
 
+    @Suppress("LeakingThis")
     override val onChange: Event<T> = Event(this::onChange)
 
     override fun get() = value
