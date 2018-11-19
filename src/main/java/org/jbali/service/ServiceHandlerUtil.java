@@ -22,9 +22,11 @@ public class ServiceHandlerUtil {
 	public static <C> ImmutableMap<String, OperationHandler<C>> createCallableMethodsMap(Object impl) {
 		Class<?> clazz = impl.getClass();
 		Map<String, OperationHandler<C>> handlers = new HashMap<>();
-		Method[] methods = clazz.getDeclaredMethods();
+		Method[] methods = clazz.getMethods();
 		for (Method method : methods) {			
 			if (method.getName().contains("lambda"))
+				continue;
+			if (method.getDeclaringClass() == Object.class)
 				continue;
 			AutomaticOperationHandler<C> operationHandler = new AutomaticOperationHandler<C>(clazz, impl, method);
 			handlers.put(method.getName(), operationHandler);
