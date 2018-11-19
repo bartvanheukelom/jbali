@@ -1,6 +1,9 @@
 package org.jbali.util
 
 import arrow.core.Either
+import java.security.SecureRandom
+
+val globalSecureRandom = SecureRandom()
 
 enum class SortOrder(
         /** 1 for ASCENDING, -1 for DESCENDING */
