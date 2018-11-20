@@ -76,6 +76,7 @@ open class Event<P>(
     constructor(prop: KProperty<*>): this(cname(prop))
 
     internal val listeners: MutableSet<EventListener<P>> = ConcurrentHashMap.newKeySet()
+    fun hasListeners() = listeners.isNotEmpty()
 
     override fun listen(name: String?, callback: (arg: P) -> Unit): EventListener<P> {
         val l = EventListener(WeakReference(this), name ?: callback.toString(), callback)
@@ -95,6 +96,18 @@ open class Event<P>(
 
     fun dispatch(data: P, errLog: Logger) {
         dispatch(data, loggingErrorCallback(this, errLog))
+    }
+
+    @JvmOverloads
+    inline fun dispatch(noinline errCb: ListenerErrorCallback<P>? = null, lazyData: () -> P) {
+        if (hasListeners()) {
+            dispatch(lazyData(), errCb)
+        }
+    }
+
+    @PreDestroy
+    fun detachListeners() {
+        listeners.forEach { it.detach() }
     }
 
     override fun toString() = "Event[$name]"
@@ -131,7 +144,7 @@ class OnceEvent<P>(
             dispatchState = "is being dispatched right now"
             super.dispatch(data, errCb)
             dispatchState = "was already dispatched at ${Instant.now()}"
-            listeners.forEach { it.detach() }
+            detachListeners()
         }
     }
 
@@ -161,6 +174,7 @@ class EventListener<P>(
         }
     }
 
+    @PreDestroy
     fun detach() {
         if (event.get()?.listeners?.remove(this) == false) {
             log.warn("")
@@ -191,62 +205,112 @@ fun EventListener<Unit>.call(errCb: ListenerErrorCallback<Unit>? = null) {
 // Ovservables TODO move to own file and I guess rename because of java.util.Observable
 
 interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T> {
-    val onChange: Event<T>
+    val onChange: Event<Change<T>>
+    val onNewValue: Event<T>
 
     override fun listen(name: String?, callback: (arg: T) -> Unit) =
-            onChange.listen(name, callback)
+            onNewValue.listen(name, callback)
 
     override operator fun invoke() = get()
 
-    fun bind(handler: (T) -> Unit) =
-            onChange.listen(handler).call(get())
+    /**
+     * Register a handler that will be called immediately with the current value,
+     * and whenever the value changes.
+     */
+    fun bind(handler: (T) -> Unit): EventListener<T> =
+            onNewValue.listen(handler).apply { call(get()) }
 
-    fun bindj(handler: Consumer<T>) =
+    fun bindChange(handler: (before: T?, after: T) -> Unit): EventListener<Change<T>> {
+        handler(null, get())
+        return onChange.listen {
+            handler(it.before, it.after)
+        }
+    }
+
+    fun bindj(handler: Consumer<T>): EventListener<T> =
             bind { handler.accept(it) }
 
+    /**
+     * Create a derived observable that applies the derivation function to the source value,
+     * and caches the result.
+     */
     fun <D> derived(derivation: (T) -> D): Observable<D> =
             DerivedObservable(this, derivation)
 
+    /**
+     * Create a derived observable that applies the getter function to the source value
+     * every time it is accessed (so it should be cheap).
+     */
     fun <D> sub(getter: (T) -> D): Observable<D> =
             ObservableSub(this, getter)
 
 }
 
-open class MutableObservable<T>(initialValue: T): Observable<T> {
+data class Change<T>(val before: T, val after: T)
 
-    @Volatile
-    var value = initialValue
+open class MutableObservable<T>(initialValue: T, name: String? = null): Observable<T> {
+
+    val ref = AtomicReference<T>(initialValue)
+
+    /**
+     * Setter: update the value, and if it is not equal to the current value,
+     * will dispatch the onChange event with the new value.
+     */
+    var value: T
+        get() = ref.get()
         set(n) {
-            if (field != n) {
-                field = n
-                onChange.dispatch(n)
+            val o = ref.getAndSet(n)
+            if (n != o) {
+                onChange.dispatch(Change(o, n))
             }
         }
 
-    @Suppress("LeakingThis")
-    override val onChange: Event<T> = Event(this::onChange)
+    final override val onChange: Event<Change<T>> = Event("${name ?: "MutableObservable"}.onChange")
+    final override val onNewValue: Event<T> = Event("${name ?: "MutableObservable"}.onNewValue")
+
+    init {
+        onChange.listen { onNewValue.dispatch(it.after) }
+    }
 
     override fun get() = value
     fun readOnly(): Observable<T> = this
 
+    @PreDestroy
+    open fun destroy() {
+        onChange.detachListeners()
+        onNewValue.detachListeners()
+    }
+
 }
 
-open class ObservableSub<I, O>(
+class ObservableSub<I, O>(
         val source: Observable<I>,
         val getter: (I) -> O
 ): Observable<O> {
 
-    @Suppress("LeakingThis")
-    override val onChange: Event<O> = Event(this::onChange)
+    override val onChange: Event<Change<O>> = Event(this::onChange)
+    override val onNewValue: Event<O> = Event(this::onNewValue)
 
     override fun get() = getter(source())
 
-    val listener = source.listen {
-        onChange.dispatch(getter(it))
-    }
+    val listeners =
+            listOf(
+                    source.onChange.listen {
+                        onChange.dispatch {
+                            Change(getter(it.before), getter(it.after))
+                        }
+                    },
+                    source.onNewValue.listen {
+                        onNewValue.dispatch {
+                            getter(it)
+                        }
+                    }
+            )
 
     @PreDestroy fun destroy() {
-        listener.detach()
+        listeners.detach()
+        onChange.detachListeners()
+        onNewValue.detachListeners()
     }
 
 }
@@ -260,8 +324,10 @@ open class DerivedObservable<I, O>(
         value = derivation(it)
     }
 
-    @PreDestroy fun destroy() {
+    @PreDestroy
+    override fun destroy() {
         listener.detach()
+        super.destroy()
     }
 
 }
