@@ -1,8 +1,11 @@
 package org.jbali.errors
 
+import org.jbali.threads.withValue
 import java.lang.Integer.min
 import java.util.*
 import kotlin.NoSuchElementException
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
 /**
  * Remove the bottom part of e's stack that matches with
@@ -64,6 +67,22 @@ fun Throwable.removeStackFrom(sig: StackSignature) {
             }
         }
     }
+}
+
+/**
+ * Don't use directly, use stackRoot()
+ */
+val currentStackBase = ThreadLocal<StackSignature?>()
+// TODO @InlineOnly
+inline fun <T> stackRoot(body: () -> T): T {
+    contract {
+        callsInPlace(body, InvocationKind.EXACTLY_ONCE)
+    }
+    return currentStackBase.withValue(currentStackSignature(), body)
+}
+
+fun Throwable.removeStackRoot() {
+    currentStackBase.get()?.let { removeStackFrom(it) }
 }
 
 fun Throwable.removeCommonStack() {
