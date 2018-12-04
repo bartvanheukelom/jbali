@@ -8,6 +8,7 @@ data class Payload(val v: String) {
         val e = Payload("")
         val hello = Payload("hello")
         val goodbye = Payload("goodbye")
+        val noyouhangup = Payload("noyouhangup")
     }
 }
 
@@ -52,29 +53,41 @@ class EventTestChild : EventTest() {
         var x = Payload.e
         var y = Payload.e
         val lstX = evDelegate.listen { x = it }
-        evDelegate.listen { y = Payload("B$it") }
+        evDelegate.listen { y = Payload("B${it.v}") }
 
         val lstThatThrows = evDelegate.listen(::throwing)
         for (i in 0..100) evDelegate.listen {}
 
         assertEquals("AmazingTestListener", evDelegate.listen("AmazingTestListener") {}.name)
 
+        // set up error tracking
         var caughtError: Pair<EventListener<Payload>, Throwable>? = null
-        evDelegate.dispatch(Payload.hello) { l, e ->
+        val errCb: ListenerErrorCallback<Payload> = { l, e ->
             println("Error in listener ${l.name}")
             caughtError = Pair(l, e)
         }
 
+        // 1. hello
+        evDelegate.dispatch(Payload.hello, errCb)
+
+        // test receival
         assertEquals(Payload.hello, x)
         assertEquals(Payload("B${Payload.hello.v}"), y)
 
+        // throwing listener should not affect the rest
         assertEquals(lstThatThrows, caughtError!!.first)
         assertTrue(caughtError!!.second is IllegalStateException)
 
-        lstX.detach()
+        // 2. goodbye
         evDelegate.dispatch(Payload.goodbye)
         assertEquals(Payload.goodbye, x)
-        assertEquals(Payload("B${Payload.hello.v}"), y)
+        assertEquals(Payload("B${Payload.goodbye.v}"), y)
+
+        // 3. hanged up
+        lstX.detach()
+        evDelegate.dispatch(Payload.noyouhangup)
+        assertEquals(Payload.goodbye, x) // unchanged
+        assertEquals(Payload("B${Payload.noyouhangup.v}"), y) // this was not detached
 
     }
 
