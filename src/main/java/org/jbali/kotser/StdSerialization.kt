@@ -10,5 +10,6 @@ object StdJSON {
 
     private fun JSON.fix() = apply {
         install(dateTimeSerModule)
+        install(inetAddressSerModule)
     }
 }
