@@ -1,5 +1,6 @@
 package org.jbali.threads
 
+import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import kotlin.reflect.KMutableProperty0
@@ -17,6 +18,7 @@ inline fun <R, P> withPropAs(getter: () -> P, setter: (P) -> Unit, v: P, block: 
 /**
  * Call body while this threadlocal has value v.
  */
+@UseExperimental(ExperimentalContracts::class)
 inline fun <L, T> ThreadLocal<L?>.withValue(v: L, body: () -> T): T {
     contract {
         callsInPlace(body, InvocationKind.EXACTLY_ONCE)
