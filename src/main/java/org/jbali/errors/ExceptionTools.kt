@@ -4,6 +4,7 @@ import org.jbali.threads.withValue
 import java.lang.Integer.min
 import java.util.*
 import kotlin.NoSuchElementException
+import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
@@ -74,6 +75,7 @@ fun Throwable.removeStackFrom(sig: StackSignature) {
  */
 val currentStackBase = ThreadLocal<StackSignature?>()
 // TODO @InlineOnly
+@UseExperimental(ExperimentalContracts::class)
 inline fun <T> stackRoot(body: () -> T): T {
     contract {
         callsInPlace(body, InvocationKind.EXACTLY_ONCE)
