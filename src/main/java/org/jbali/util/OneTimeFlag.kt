@@ -4,6 +4,9 @@ import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.reflect.KProperty
 
+// for some reason I keep searching for Once, so whatever
+typealias OnceFlagIsNamedOneTimeFlag = OneTimeFlag
+
 /**
  * A flag that can go from unflagged (false) to flagged (true) exactly once, in an atomic way.
  * Can be used as a delegate for a Boolean property.
@@ -23,7 +26,6 @@ class OneTimeFlag {
      * @throws IllegalStateException if already flagged (with time in message).
      */
     fun flag() {
-        lazy {  }
         if (!flagIfUnflagged()) throw IllegalStateException("Already flagged @ ${a.get()}")
     }
 
