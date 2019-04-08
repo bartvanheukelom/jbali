@@ -79,7 +79,12 @@ open class Event<P>(
     fun hasListeners() = listeners.isNotEmpty()
 
     override fun listen(name: String?, callback: (arg: P) -> Unit): EventListener<P> {
-        val l = EventListener(WeakReference(this), name ?: callback.toString(), callback)
+        val l = EventListener(WeakReference(this), name ?: try {
+            callback.toString()
+        } catch (e: Throwable) {
+            log.warn("Error getting name for callback", e)
+            "???"
+        }, callback)
         listeners.add(l)
         return l
     }
