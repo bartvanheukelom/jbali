@@ -203,6 +203,9 @@ fun Event<Unit>.dispatch(errCb: ListenerErrorCallback<Unit>? = null) {
 fun Event<Unit>.dispatch(errLog: Logger = log) {
     dispatch(Unit, loggingErrorCallback(this, errLog))
 }
+fun Event<Unit>.dispatch() {
+    dispatch(log)
+}
 fun EventListener<Unit>.call(errCb: ListenerErrorCallback<Unit>? = null) {
     call(Unit, errCb)
 }

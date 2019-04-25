@@ -1,5 +1,5 @@
 package org.jbali
 
 object JBaliLib {
-    const val VERSION_6 = true
+    const val VERSION_6PLUS = true
 }
