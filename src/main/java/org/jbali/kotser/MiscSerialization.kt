@@ -1,7 +1,7 @@
 package org.jbali.kotser
 
 import kotlinx.serialization.*
-import kotlinx.serialization.context.SimpleModule
+import kotlinx.serialization.modules.serializersModuleOf
 import java.net.InetAddress
 
 abstract class StringBasedSerializer<T> : KSerializer<T> {
@@ -30,4 +30,4 @@ object InetAddressSerializer : StringBasedSerializer<InetAddress>() {
 
 object InetAddressSetSerializer : KSerializer<Set<InetAddress>> by InetAddressSerializer.set
 
-val inetAddressSerModule = SimpleModule(InetAddress::class, InetAddressSerializer)
+val inetAddressSerModule = serializersModuleOf(InetAddress::class, InetAddressSerializer)

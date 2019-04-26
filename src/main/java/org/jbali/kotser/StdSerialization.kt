@@ -1,15 +1,17 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.json.JSON
+import kotlinx.serialization.UnstableDefault
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonConfiguration
+import kotlinx.serialization.modules.SerializersModule
 
+val stdSerializationContext = SerializersModule {
+    include(dateTimeSerModule)
+    include(inetAddressSerModule)
+}
+
+@UnstableDefault
 object StdJSON {
-    val plain = JSON().fix()
-    val unquoted = JSON(unquoted = true).fix()
-    val indented = JSON(indented = true).fix()
-    val nonstrict = JSON(strictMode = false).fix()
-
-    private fun JSON.fix() = apply {
-        install(dateTimeSerModule)
-        install(inetAddressSerModule)
-    }
+    val plain = Json(JsonConfiguration(useArrayPolymorphism=true), stdSerializationContext)
+    val indented = Json(JsonConfiguration(useArrayPolymorphism=true, prettyPrint = true), stdSerializationContext)
 }

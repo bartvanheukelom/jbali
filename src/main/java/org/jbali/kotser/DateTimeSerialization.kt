@@ -1,7 +1,7 @@
 package org.jbali.kotser
 
 import kotlinx.serialization.Serializer
-import kotlinx.serialization.context.SimpleModule
+import kotlinx.serialization.modules.serializersModuleOf
 import java.time.Instant
 import java.time.format.DateTimeParseException
 
@@ -15,4 +15,4 @@ object InstantSerializer : StringBasedSerializer<Instant>() {
             }
 }
 
-val dateTimeSerModule = SimpleModule(Instant::class, InstantSerializer)
+val dateTimeSerModule = serializersModuleOf(Instant::class, InstantSerializer)
