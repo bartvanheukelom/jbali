@@ -1,33 +1,36 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.*
+import com.google.common.net.InetAddresses
+import kotlinx.serialization.Decoder
+import kotlinx.serialization.Encoder
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializer
 import kotlinx.serialization.modules.serializersModuleOf
+import java.net.Inet4Address
+import java.net.Inet6Address
 import java.net.InetAddress
 
 abstract class StringBasedSerializer<T> : KSerializer<T> {
-    final override fun deserialize(input: Decoder): T =
-            input.decodeString().let {
-                fromString(it)
-            }
+    final override fun deserialize(decoder: Decoder): T =
+            fromString(decoder.decodeString())
 
-    final override fun serialize(output: Encoder, obj: T) =
-            output.encodeString(toString(obj))
+    final override fun serialize(encoder: Encoder, obj: T) =
+            encoder.encodeString(toString(obj))
 
     abstract fun fromString(s: String): T
     open fun toString(o: T): String = o.toString()
 
 }
 
+@Suppress("UnstableApiUsage") // InetAddresses
 @Serializer(forClass = InetAddress::class)
 object InetAddressSerializer : StringBasedSerializer<InetAddress>() {
-//    // TODO if this class doesnt explicitly implement these, the compiler will generate an ov
-//    override fun serialize(output: Encoder, obj: InetAddress) = xserialize(output, obj)
-//    override fun deserialize(input: Decoder): InetAddress = deserialize(input)
-
-    override fun fromString(s: String) = InetAddress.getByName(s)!!
-    override fun toString(o: InetAddress) = o.hostAddress!!
+    override fun fromString(s: String): InetAddress = InetAddresses.forString(s)
+    override fun toString(o: InetAddress): String = InetAddresses.toAddrString(o)
 }
 
-object InetAddressSetSerializer : KSerializer<Set<InetAddress>> by InetAddressSerializer.set
-
-val inetAddressSerModule = serializersModuleOf(InetAddress::class, InetAddressSerializer)
+val inetAddressSerModule = serializersModuleOf(mapOf(
+        InetAddress::class  to InetAddressSerializer,
+        Inet4Address::class to InetAddressSerializer,
+        Inet6Address::class to InetAddressSerializer
+))
