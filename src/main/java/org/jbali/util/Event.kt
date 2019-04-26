@@ -3,14 +3,14 @@ package org.jbali.util
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.lang.ref.WeakReference
-import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.locks.ReentrantReadWriteLock
 import java.util.function.Consumer
 import java.util.function.Supplier
 import javax.annotation.PreDestroy
-import kotlin.concurrent.withLock
+import kotlin.concurrent.read
+import kotlin.concurrent.write
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
@@ -128,28 +128,42 @@ class OnceEvent<P>(
         name: String? = null
 ): Event<P>(name) {
 
+    enum class State {
+        WAITING,
+        IN_DISPATCH,
+        DONE
+    }
+
     constructor(dispatcher: Any?, prop: KProperty<*>): this(cname(dispatcher, prop))
     constructor(dispatcher: KClass<*>, prop: KProperty<*>): this(cname(dispatcher, prop))
     constructor(prop: KProperty<*>): this(cname(prop))
 
-    val lock = ReentrantLock()
-    private var dispatchState: String? = null
+    // mutable state with their lock
+    private val lock = ReentrantReadWriteLock()
+    private var pState = State.WAITING
+
+    val state get() = lock.read { pState }
 
     override fun listen(name: String?, callback: (arg: P) -> Unit) =
-            lock.withLock {
-                if (dispatchState != null)
-                    throw IllegalStateException("Cannot listen to $this, it $dispatchState")
+            lock.read {
+                if (pState != State.WAITING)
+                    throw IllegalStateException("Cannot listen to $this, it's $pState")
                 super.listen(name, callback)
             }
 
     override fun dispatch(data: P, errCb: ListenerErrorCallback<P>?) {
-        lock.withLock {
-            if (dispatchState != null)
-                throw IllegalStateException("Cannot dispatch $this, it $dispatchState")
-            dispatchState = "is being dispatched right now"
-            super.dispatch(data, errCb)
-            dispatchState = "was already dispatched at ${Instant.now()}"
-            detachListeners()
+        lock.write {
+            if (pState != State.WAITING)
+                throw IllegalStateException("Cannot dispatch $this, it's $pState")
+
+            pState = State.IN_DISPATCH
+            try { // no exceptions should be thrown, but eh
+                super.dispatch(data, errCb)
+                detachListeners()
+            } finally {
+                pState = State.DONE
+            }
+
         }
     }
 
