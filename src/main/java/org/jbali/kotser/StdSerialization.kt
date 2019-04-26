@@ -10,7 +10,7 @@ val stdSerializationContext = SerializersModule {
     include(inetAddressSerModule)
 }
 
-@UnstableDefault
+@UseExperimental(UnstableDefault::class)
 object StdJSON {
     val plain = Json(JsonConfiguration(useArrayPolymorphism=true), stdSerializationContext)
     val indented = Json(JsonConfiguration(useArrayPolymorphism=true, prettyPrint = true), stdSerializationContext)
