@@ -58,6 +58,7 @@ class OnceEventDelegate<P> {
 
 interface Listenable<P> {
     fun listen(name: String?, callback: (arg: P) -> Unit): EventListener<P>
+    // TODO @JvmDefault but require JVM 1.8
     fun listen(callback: (arg: P) -> Unit) = listen(null, callback)
 }
 
