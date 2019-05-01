@@ -89,8 +89,11 @@ open class Event<P>(
         return l
     }
 
-    @JvmOverloads
-    open fun dispatch(data: P, errCb: ListenerErrorCallback<P>? = null) {
+    fun dispatch(data: P) {
+        dispatch(data, null)
+    }
+
+    open fun dispatch(data: P, errCb: ListenerErrorCallback<P>?) {
         for (l in listeners.toList()) {
             l.call(data, errCb)
         }
