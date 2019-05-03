@@ -62,6 +62,37 @@ interface Listenable<P> {
     fun listen(callback: (arg: P) -> Unit) = listen(null, callback)
 }
 
+sealed class SmartListenerResult
+object KeepListening : SmartListenerResult()
+object StopListening : SmartListenerResult()
+
+/**
+ * Listen to this event with a callback that can choose to detach itself by returning StopListening.
+ */
+fun <P> Listenable<P>.smartListen(name: String, callback: (arg: P) -> SmartListenerResult): EventListener<P> {
+
+    val lock = Any()
+
+    val sureListener: EventListener<P>
+    synchronized(lock) {
+        var listener: EventListener<P>? = null
+        sureListener = listen(name) {
+            synchronized(lock) {
+                if (listener != null) {
+                    val res = callback(it)
+                    if (res == StopListening) {
+                        listener!!.detach()
+                        listener = null
+                    }
+                }
+            }
+        }
+        listener = sureListener
+    }
+
+    return sureListener
+}
+
 open class Event<P>(
         val name: String? = null
 ): Listenable<P> {
@@ -118,6 +149,8 @@ open class Event<P>(
     fun detachListeners() {
         listeners.forEach { it.detach() }
     }
+
+    // TODO function to detach all and prevent new listeners from being added
 
     override fun toString() = "Event[$name]"
 
@@ -189,6 +222,7 @@ class EventListener<P>(
         try {
             callback(data)
         } catch (e: Throwable) {
+            if (e is AssertionError) throw AssertionError("AssertionError in ${event.get()!!} listener $name: $e", e)
             try {
                 (errCb ?: defaultErrCb).invoke(this, e)
             } catch (ee: Throwable) {
