@@ -201,4 +201,15 @@ class WebSocket(
     private fun checkNotClosed() {
         if (closeData != null) throw ClosedException(closeData!!)
     }
+
+    companion object {
+        fun handleIncomingClient(sock: Socket,
+                                 maxInSize: Int = 2_000_000,
+                                 requestFilter: (WebSockets.Request) -> Int? = { null },
+                                 handshakeInputStream: InputStream = sock.getInputStream()): WebSocket {
+            val req = WebSockets.serverHandshake(handshakeInputStream, sock.getOutputStream(), requestFilter)
+            return WebSocket(true, req.forwardedFor ?: sock.inetAddress, sock, sock.getInputStream(), sock.getOutputStream(), maxInSize)
+        }
+    }
+
 }

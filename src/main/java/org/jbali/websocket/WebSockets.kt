@@ -146,83 +146,77 @@ object WebSockets {
     @JvmOverloads
     fun serverHandshake(ins: InputStream, ous: OutputStream, requestFilter: (Request) -> Int? = { null }): Request {
 
-        // prepare for input
-        val input = SessionInputBufferImpl(HttpTransportMetricsImpl(), 8 * 1024)
-        input.bind(ins)
+        // prepare for output
+        val output = SessionOutputBufferImpl(HttpTransportMetricsImpl(), 8 * 1024)
+        output.bind(ous)
+        val writer = DefaultHttpResponseWriterFactory.INSTANCE.create(output)
 
-        // parse the request
-        val parser = DefaultHttpRequestParserFactory.INSTANCE.create(input, null)
-        val req = parser.parse()
+        fun respond(status: Int, code: String, message: String) {
+            val resp = BasicHttpResponse(HttpVersion.HTTP_1_1, status, code)
+            resp.entity = StringEntity(message, StandardCharsets.UTF_8)
+            // this will add content-length response header
+            // TODO was found by searching code. find documentation on how to properly implement this
+            ResponseContent().process(resp, null)
+
+            writer.write(resp)
+            output.flush()
+
+            resp.entity.writeTo(ous)
+            ous.flush()
+        }
 
         try {
 
-            // prepare for output
-            val output = SessionOutputBufferImpl(HttpTransportMetricsImpl(), 8 * 1024)
-            output.bind(ous)
-            val writer = DefaultHttpResponseWriterFactory.INSTANCE.create(output)
+            // prepare for input
+            val input = SessionInputBufferImpl(HttpTransportMetricsImpl(), 8 * 1024)
+            input.bind(ins)
 
-            fun respond(status: Int, code: String, message: String) {
-                val resp = BasicHttpResponse(HttpVersion.HTTP_1_1, status, code)
-                resp.entity = StringEntity(message, StandardCharsets.UTF_8)
-                // this will add content-length response header
-                // TODO was found by searching code. find documentation on how to properly implement this
-                ResponseContent().process(resp, null)
+            // parse the request
+            val parser = DefaultHttpRequestParserFactory.INSTANCE.create(input, null)
+            val req = parser.parse()
 
-                writer.write(resp)
-                output.flush()
 
-                resp.entity.writeTo(ous)
-                ous.flush()
+            // TODO should require Connection: Upgrade, and Sec-WebSocket-Version: 13
+
+            val upgradeHeader = req.getFirstHeader(HttpHeaders.UPGRADE)
+            Preconditions.checkNotNull(upgradeHeader, "Required 'Upgrade: websocket'. Upgrade header missing.")
+            val upgradeHeaderVal = upgradeHeader.value
+            if (!upgradeHeaderVal.equals(UPGRADE_WEBSOCKET, ignoreCase = true))
+                throw IllegalArgumentException("Required 'Upgrade: websocket'. Given: $upgradeHeaderVal")
+
+            // determine the real remote address from headers
+            var remoteAddress: InetAddress? = null
+            for (fwdHeader in HEADERS_FORWARDED_FOR) {
+                val xff = req.getFirstHeader(fwdHeader)
+                if (xff != null) {
+                    remoteAddress = InetAddress.getByName(xff.value.split(",".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()[0].trim { it <= ' ' })
+                    break
+                }
             }
 
-            try {
+            val wrappedRequest = Request(req, remoteAddress)
+            val rejectStatus: Int? = requestFilter(wrappedRequest)
+            if (rejectStatus != null) {
+                respond(rejectStatus, "Reason TODO", "Rejected this connection")
+                throw RuntimeException("Request rejected by filter")
+            } else {
 
-                // TODO should require Connection: Upgrade, and Sec-WebSocket-Version: 13
+                val acceptKey = calcAcceptKey(req.getFirstHeader(HEADER_SEC_WEB_SOCKET_KEY).value)
 
-                val upgradeHeader = req.getFirstHeader(HttpHeaders.UPGRADE)
-                Preconditions.checkNotNull(upgradeHeader, "Required 'Upgrade: websocket'. Upgrade header missing.")
-                val upgradeHeaderVal = upgradeHeader.value
-                if (!upgradeHeaderVal.equals(UPGRADE_WEBSOCKET, ignoreCase = true))
-                    throw IllegalArgumentException("Required 'Upgrade: websocket'. Given: $upgradeHeaderVal")
+                val resp = BasicHttpResponse(HttpVersion.HTTP_1_1, HttpStatus.SC_SWITCHING_PROTOCOLS, "Switching Protocols")
+                resp.addHeader(HttpHeaders.CONNECTION, CON_UPGRADE)
+                resp.addHeader(HttpHeaders.UPGRADE, UPGRADE_WEBSOCKET)
+                resp.addHeader(HEADER_SEC_WEB_SOCKET_ACCEPT, acceptKey)
+                writer.write(resp)
+                output.flush()
+                ous.flush()
 
-                // determine the real remote address from headers
-                var remoteAddress: InetAddress? = null
-                for (fwdHeader in HEADERS_FORWARDED_FOR) {
-                    val xff = req.getFirstHeader(fwdHeader)
-                    if (xff != null) {
-                        remoteAddress = InetAddress.getByName(xff.value.split(",".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()[0].trim { it <= ' ' })
-                        break
-                    }
-                }
-
-                val wrappedRequest = Request(req, remoteAddress)
-                val rejectStatus: Int? = requestFilter(wrappedRequest)
-                if (rejectStatus != null) {
-                    respond(rejectStatus, "Reason TODO", "Rejected this connection")
-                    throw RuntimeException("Request rejected by filter")
-                } else {
-
-                    val acceptKey = calcAcceptKey(req.getFirstHeader(HEADER_SEC_WEB_SOCKET_KEY).value)
-
-                    val resp = BasicHttpResponse(HttpVersion.HTTP_1_1, HttpStatus.SC_SWITCHING_PROTOCOLS, "Switching Protocols")
-                    resp.addHeader(HttpHeaders.CONNECTION, CON_UPGRADE)
-                    resp.addHeader(HttpHeaders.UPGRADE, UPGRADE_WEBSOCKET)
-                    resp.addHeader(HEADER_SEC_WEB_SOCKET_ACCEPT, acceptKey)
-                    writer.write(resp)
-                    output.flush()
-                    ous.flush()
-
-                    return wrappedRequest
-                }
-
-            } catch (e: Throwable) {
-                respond(HttpStatus.SC_BAD_REQUEST, "Bad Request", e.toString())
-                throw RuntimeException("Websocket handshake error: $e", e)
+                return wrappedRequest
             }
 
         } catch (e: Throwable) {
-            log.warn("WebSocket request that resulted in exception was:\n$req")
-            throw e
+            respond(HttpStatus.SC_BAD_REQUEST, "Bad Request", e.toString())
+            throw RuntimeException("Websocket handshake error: $e", e)
         }
 
     }
