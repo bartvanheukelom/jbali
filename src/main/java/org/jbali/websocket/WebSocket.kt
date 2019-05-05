@@ -21,6 +21,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
+import kotlin.math.min
 import kotlin.random.Random
 
 @UseExperimental(ExperimentalUnsignedTypes::class)
@@ -58,7 +59,7 @@ object WebSocket {
         // the following are generated because that's required for bytearray apparently
 
         override fun toString() =
-                "Frame(fin=$fin, opcode=$opcode, payload=${payload.size} mask=$mask)"
+                "Frame(fin=$fin, opcode=$opcode, payload=${payload.size}(${payload.copyOfRange(0, min(payload.size, 16)).toString(StandardCharsets.UTF_8)}) mask=$mask)"
 
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
