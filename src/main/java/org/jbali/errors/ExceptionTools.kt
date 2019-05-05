@@ -109,6 +109,9 @@ fun commonTailLength(a: List<*>, b: List<*>): Int {
     return i
 }
 
+/**
+ * Iterates this exception and all its causes
+ */
 val Throwable.causeChain: Iterable<Throwable> get() =
     independentIterable(this, Throwable::cause)
 
