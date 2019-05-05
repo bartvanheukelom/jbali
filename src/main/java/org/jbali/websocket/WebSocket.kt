@@ -3,14 +3,13 @@ package org.jbali.websocket
 import com.google.common.base.Charsets
 import com.google.common.base.Preconditions
 import org.apache.commons.codec.binary.Base64
-import org.apache.http.HttpException
-import org.apache.http.HttpHeaders
-import org.apache.http.HttpStatus
-import org.apache.http.HttpVersion
+import org.apache.http.*
+import org.apache.http.client.HttpResponseException
 import org.apache.http.entity.StringEntity
 import org.apache.http.impl.DefaultHttpRequestFactory
 import org.apache.http.impl.io.*
 import org.apache.http.message.BasicHttpResponse
+import org.apache.http.protocol.ResponseContent
 import org.jbali.bytes.xor
 import org.jbali.bytes.xor4
 import org.jbali.bytes.xor4ip
@@ -117,7 +116,7 @@ object WebSocket {
 
             // check basic response info
             if (resp.statusLine.statusCode != HttpStatus.SC_SWITCHING_PROTOCOLS)
-                throw RuntimeException("Server not switching protocols")
+                throw HttpResponseException(resp.statusLine.statusCode, "${resp.statusLine.statusCode} ${resp.statusLine.reasonPhrase}")
             if (!resp.getFirstHeader(HttpHeaders.CONNECTION).value.equals(CON_UPGRADE, ignoreCase = true))
                 throw RuntimeException("Server doesn't upgrade")
             if (!resp.getFirstHeader(HttpHeaders.UPGRADE).value.equals(UPGRADE_WEBSOCKET, ignoreCase = true))
@@ -137,24 +136,23 @@ object WebSocket {
 
     }
 
+    data class Request(
+            val http: HttpRequest,
+            val forwardedFor: InetAddress?
+    )
+
     @Throws(IOException::class, HttpException::class)
     @JvmStatic
-    fun serverHandshake(ins: InputStream, ous: OutputStream, remoteAddr: InetAddress): InetAddress {
-
-        //		log.info("Doing WS handshake with " + remoteAddr);
+    @JvmOverloads
+    fun serverHandshake(ins: InputStream, ous: OutputStream, requestFilter: (Request) -> Int? = { null }): Request {
 
         // prepare for input
-        //		log.info("Prepare input");
         val input = SessionInputBufferImpl(HttpTransportMetricsImpl(), 8 * 1024)
         input.bind(ins)
 
         // parse the request
-        //		log.info("Create parser");
         val parser = DefaultHttpRequestParserFactory.INSTANCE.create(input, null)
-        //		log.info("Parsing request");
         val req = parser.parse()
-        //		log.info("Request: " + req.toString());
-        //		System.out.println(req.toString());
 
         try {
 
@@ -162,6 +160,20 @@ object WebSocket {
             val output = SessionOutputBufferImpl(HttpTransportMetricsImpl(), 8 * 1024)
             output.bind(ous)
             val writer = DefaultHttpResponseWriterFactory.INSTANCE.create(output)
+
+            fun respond(status: Int, code: String, message: String) {
+                val resp = BasicHttpResponse(HttpVersion.HTTP_1_1, status, code)
+                resp.entity = StringEntity(message, StandardCharsets.UTF_8)
+                // this will add content-length response header
+                // TODO was found by searching code. find documentation on how to properly implement this
+                ResponseContent().process(resp, null)
+
+                writer.write(resp)
+                output.flush()
+
+                resp.entity.writeTo(ous)
+                ous.flush()
+            }
 
             try {
 
@@ -173,9 +185,8 @@ object WebSocket {
                 if (!upgradeHeaderVal.equals(UPGRADE_WEBSOCKET, ignoreCase = true))
                     throw IllegalArgumentException("Required 'Upgrade: websocket'. Given: $upgradeHeaderVal")
 
-                // determine the real remote address
-                // TODO should be a setting whether to trust this
-                var remoteAddress = remoteAddr
+                // determine the real remote address from headers
+                var remoteAddress: InetAddress? = null
                 for (fwdHeader in HEADERS_FORWARDED_FOR) {
                     val xff = req.getFirstHeader(fwdHeader)
                     if (xff != null) {
@@ -184,26 +195,28 @@ object WebSocket {
                     }
                 }
 
-                val acceptKey = calcAcceptKey(req.getFirstHeader(HEADER_SEC_WEB_SOCKET_KEY).value)
+                val wrappedRequest = Request(req, remoteAddress)
+                val rejectStatus: Int? = requestFilter(wrappedRequest)
+                if (rejectStatus != null) {
+                    respond(rejectStatus, "Reason TODO", "Rejected this connection")
+                    throw RuntimeException("Request rejected by filter")
+                } else {
 
-                val resp = BasicHttpResponse(HttpVersion.HTTP_1_1, HttpStatus.SC_SWITCHING_PROTOCOLS, "Switching Protocols")
-                resp.addHeader(HttpHeaders.CONNECTION, CON_UPGRADE)
-                resp.addHeader(HttpHeaders.UPGRADE, UPGRADE_WEBSOCKET)
-                resp.addHeader(HEADER_SEC_WEB_SOCKET_ACCEPT, acceptKey)
-                writer.write(resp)
-                output.flush()
-                ous.flush()
+                    val acceptKey = calcAcceptKey(req.getFirstHeader(HEADER_SEC_WEB_SOCKET_KEY).value)
 
-                return remoteAddress
+                    val resp = BasicHttpResponse(HttpVersion.HTTP_1_1, HttpStatus.SC_SWITCHING_PROTOCOLS, "Switching Protocols")
+                    resp.addHeader(HttpHeaders.CONNECTION, CON_UPGRADE)
+                    resp.addHeader(HttpHeaders.UPGRADE, UPGRADE_WEBSOCKET)
+                    resp.addHeader(HEADER_SEC_WEB_SOCKET_ACCEPT, acceptKey)
+                    writer.write(resp)
+                    output.flush()
+                    ous.flush()
+
+                    return wrappedRequest
+                }
 
             } catch (e: Throwable) {
-                val resp = BasicHttpResponse(HttpVersion.HTTP_1_1, HttpStatus.SC_BAD_REQUEST, "Bad Request")
-                resp.entity = StringEntity(e.toString())
-                writer.write(resp)
-                output.flush()
-                // TODO this is sent (as seen with netcat) but browser/curl doesn't accept it. Content-length is not sent, may be the issue?
-                resp.entity.writeTo(ous)
-                ous.flush()
+                respond(HttpStatus.SC_BAD_REQUEST, "Bad Request", e.toString())
                 throw RuntimeException("Websocket handshake error: $e", e)
             }
 
