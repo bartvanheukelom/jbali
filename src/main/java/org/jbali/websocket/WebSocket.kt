@@ -9,6 +9,7 @@ import java.net.SocketException
 import java.net.URI
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import javax.net.ssl.SSLSocketFactory
 
 private val log = LoggerFactory.getLogger(WebSocket::class.java)
 
@@ -205,7 +206,12 @@ class WebSocket(
 
     companion object {
         fun connectToServer(uri: URI, maxInSize: Int = 2_000_000): WebSocket {
-            val sock = Socket(uri.host, uri.port)
+            val sock =
+                    when (uri.scheme) {
+                        "ws" -> Socket(uri.host, if (uri.port == -1) 80 else uri.port)
+                        "wss" -> SSLSocketFactory.getDefault().createSocket(uri.host, if (uri.port == -1) 443 else uri.port)
+                        else -> throw IllegalArgumentException("Cannot connect websocket to $uri due to scheme ${uri.scheme}")
+                    }
             WebSockets.clientHandshake(
                     sock.getInputStream(), sock.getOutputStream(),
                     uri.host, uri.path
