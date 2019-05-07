@@ -6,9 +6,7 @@ package org.jbali.collect
  */
 class ListSplitter<T>(val source: List<T>) {
 
-    val split = source.spliterator()
-
-    var takenFront = 0
+    private var takenFront = 0
     val sizeLeft get() = source.size - takenFront
 
     fun takeHead(n: Int): List<T> {
