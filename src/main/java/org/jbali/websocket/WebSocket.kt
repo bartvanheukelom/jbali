@@ -6,6 +6,7 @@ import java.io.*
 import java.net.InetAddress
 import java.net.Socket
 import java.net.SocketException
+import java.net.URI
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -16,11 +17,11 @@ private val log = LoggerFactory.getLogger(WebSocket::class.java)
  * @author Bart van Heukelom
  */
 class WebSocket(
-        val serverMode: Boolean,
-        val remoteAddress: InetAddress,
         val backend: Socket,
-        inss: InputStream,
-        ouss: OutputStream,
+        val serverMode: Boolean = false,
+        val remoteAddress: InetAddress = backend.inetAddress,
+        inss: InputStream = backend.getInputStream(),
+        ouss: OutputStream = backend.getOutputStream(),
         val maxInSize: Int = Integer.MAX_VALUE
 ) {
 
@@ -203,12 +204,29 @@ class WebSocket(
     }
 
     companion object {
+        fun connectToServer(uri: URI, maxInSize: Int = 2_000_000): WebSocket {
+            val sock = Socket(uri.host, uri.port)
+            WebSockets.clientHandshake(
+                    sock.getInputStream(), sock.getOutputStream(),
+                    uri.host, uri.path
+            )
+            return WebSocket(
+                    backend = sock,
+                    serverMode = false,
+                    maxInSize = maxInSize
+            )
+        }
         fun handleIncomingClient(sock: Socket,
                                  maxInSize: Int = 2_000_000,
                                  requestFilter: (WebSockets.Request) -> Int? = { null },
                                  handshakeInputStream: InputStream = sock.getInputStream()): WebSocket {
             val req = WebSockets.serverHandshake(handshakeInputStream, sock.getOutputStream(), requestFilter)
-            return WebSocket(true, req.forwardedFor ?: sock.inetAddress, sock, sock.getInputStream(), sock.getOutputStream(), maxInSize)
+            return WebSocket(
+                    backend = sock,
+                    serverMode = true,
+                    remoteAddress = req.forwardedFor ?: sock.inetAddress,
+                    maxInSize = maxInSize
+            )
         }
     }
 
