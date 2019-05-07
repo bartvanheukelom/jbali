@@ -204,7 +204,10 @@ class WebSocket(
         if (closeData != null) throw ClosedException(closeData!!)
     }
 
+    object ClientSupportsSSL
+
     companion object {
+
         fun connectToServer(uri: URI, maxInSize: Int = 2_000_000): WebSocket {
             val sock =
                     when (uri.scheme) {
