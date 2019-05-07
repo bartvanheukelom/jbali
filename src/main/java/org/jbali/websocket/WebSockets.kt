@@ -241,23 +241,39 @@ object WebSockets {
 
     // ====================================================== FRAMES ================================================= //
 
+    /**
+     * https://tools.ietf.org/html/rfc6455#section-5.2
+     */
     @JvmStatic
     fun writeFrame(ous: DataOutput, frame: Frame) {
 
         val (fin, opcode, payload, mask) = frame
         val payloadSize = payload.size
 
+//        0                   1                   2                   3
+//        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+//        +-+-+-+-+-------+-+-------------+-------------------------------+
+//        |F|R|R|R| opcode|M| Payload len |    Extended payload length    |
+//        |I|S|S|S|  (4)  |A|     (7)     |             (16/64)           |
+//        |N|V|V|V|       |S|             |   (if payload len==126/127)   |
+//        | |1|2|3|       |K|             |                               |
+//        +-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +
+//        |     Extended payload length continued, if payload len == 127  |
+//        + - - - - - - - - - - - - - - - +-------------------------------+
+//        |                               |Masking-key, if MASK set to 1  |
+//        +-------------------------------+-------------------------------+
+//        | Masking-key (continued)       |          Payload Data         |
+//        +-------------------------------- - - - - - - - - - - - - - - - +
+//        :                     Payload Data continued ...                :
+//        + - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +
+//        |                     Payload Data continued ...                |
+//        +---------------------------------------------------------------+
+
+
         // --- write FIN and opcode
-
-        var h1 = 0
-
-        // check if opcode is valid
-        Preconditions.checkArgument(opcode and 15 == opcode)
-
-        if (fin) h1 = h1 or 128
-        h1 = h1 or opcode
-
-        ous.writeByte(h1)
+        require(opcode and 0b0000_1111 == opcode)
+        val finB = if (fin) 0b1000_0000 else 0b0000_0000
+        ous.writeByte(finB or opcode)
 
         // --- write length
 
@@ -274,7 +290,7 @@ object WebSockets {
             }
         }
         var h2 = len1
-        if (mask) h2 = h2 or 128
+        if (mask) h2 = h2 or 0b1000_0000
         ous.writeByte(h2)
 
         if (len1 >= 126) {
