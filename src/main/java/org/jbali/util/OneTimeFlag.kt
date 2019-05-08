@@ -8,12 +8,13 @@ import kotlin.reflect.KProperty
 typealias OnceFlagIsNamedOneTimeFlag = OneTimeFlag
 
 /**
- * A flag that can go from unflagged (false) to flagged (true) exactly once, in an atomic way.
- * Can be used as a delegate for a Boolean property.
+ * A flag that can change its binary state exactly once, in an atomic way.
+ * Can be used as a delegate for a Boolean property, in which case it will start as false.
  */
 class OneTimeFlag {
     private val a = AtomicReference<Instant>()
 
+    /** Whether it was flagged */
     operator fun invoke() = a.get() != null
 
     /**
