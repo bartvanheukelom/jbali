@@ -437,20 +437,22 @@ object WebSockets {
                     onPong: () -> Unit = {},
                     strictMode: Boolean = true, maxInSize: Int = 2_000_000): ReadMessageResult {
 
+        val mustReceiveMasked = serverMode && strictMode
+        val sendMasked = !serverMode
         val pack = ByteArrayOutputStream()
         var rp = ReadingPack.NONE
 
         // receive a packet, which can consist of multiple frames
         loop@ while (true) {
 
-            val (fin, opcode, data, wasMasked) = readFrame(ins, maxInSize)
+            val f = readFrame(ins, maxInSize)
 
-            if (serverMode && strictMode && wasMasked) {
-                sendReply(createCloseFrame(1002u, "must use masking", !serverMode))
+            if (mustReceiveMasked && !f.mask) {
+                sendReply(createCloseFrame(1002u, "must use masking", sendMasked))
                 throw IllegalArgumentException("Received unmasked frame in server mode")
             }
 
-            when (opcode) {
+            when (f.opcode) {
 
                 OPCODE_CLOSE -> {
 
@@ -462,8 +464,8 @@ object WebSockets {
                     val closeCodeOut: UShort
                     val closeMessageOut: String
                     try {
-                        if (data.size >= 2) {
-                            val b = ByteBuffer.wrap(data)
+                        if (f.payload.size >= 2) {
+                            val b = ByteBuffer.wrap(f.payload)
                             closeCodeIn = b.short.toUShort()
                             closeMsgIn = StandardCharsets.UTF_8.decode(b.slice()).toString()
                             closeCodeOut = closeCodeIn
@@ -479,32 +481,32 @@ object WebSockets {
                     }
 
                     // write an echo close frame, as required
-                    sendReply(createCloseFrame(closeCodeOut, closeMessageOut, serverMode))
+                    sendReply(createCloseFrame(closeCodeOut, closeMessageOut, sendMasked))
                     return ReadMessageResult.Close(closeCodeIn, closeMsgIn)
                 }
 
-                OPCODE_PING -> sendReply(Frame(false, OPCODE_PONG, data, !serverMode))
+                OPCODE_PING -> sendReply(Frame(false, OPCODE_PONG, f.payload, sendMasked))
                 OPCODE_PONG -> onPong()
 
                 OPCODE_CONTINUATION -> {
                     if (rp == ReadingPack.NONE) {
-                        sendReply(createCloseFrame(1002u, "unexpected continuation", !serverMode))
+                        sendReply(createCloseFrame(1002u, "unexpected continuation", sendMasked))
                         throw IllegalStateException("Got continuation frame while expecting opening frame")
                     }
-                    pack.write(data)
-                    if (fin) break@loop
+                    pack.write(f.payload)
+                    if (f.fin) break@loop
                 }
                 OPCODE_TEXT, OPCODE_BINARY -> {
                     if (rp != ReadingPack.NONE) {
-                        sendReply(createCloseFrame(1002u, "unexpected new message", !serverMode))
-                        throw IllegalStateException("Got frame with opcode $opcode while expecting continuations")
+                        sendReply(createCloseFrame(1002u, "unexpected new message", sendMasked))
+                        throw IllegalStateException("Got frame with opcode ${f.opcode} while expecting continuations")
                     }
-                    rp = if (opcode == OPCODE_BINARY) ReadingPack.BINARY else ReadingPack.TEXT
-                    pack.write(data)
-                    if (fin) break@loop
+                    rp = if (f.opcode == OPCODE_BINARY) ReadingPack.BINARY else ReadingPack.TEXT
+                    pack.write(f.payload)
+                    if (f.fin) break@loop
                 }
 
-                else -> throw IllegalStateException("Received frame with unknown opcode 0x" + Integer.toHexString(opcode))
+                else -> throw IllegalStateException("Received frame with unknown opcode 0x" + Integer.toHexString(f.opcode))
             }
 
         }
@@ -518,18 +520,18 @@ object WebSockets {
     }
 
     @JvmStatic
-    fun createCloseFrame(closeMessageOut: String, serverMode: Boolean) =
-            createCloseFrame(1000u, closeMessageOut, serverMode)
+    fun createCloseFrame(closeMessageOut: String, mask: Boolean) =
+            createCloseFrame(1000u, closeMessageOut, mask)
 
     /**
      * See https://tools.ietf.org/html/rfc6455#section-7.4 for codes
      */
-    fun createCloseFrame(closeCodeOut: UShort = 1000u, closeMessageOut: String, serverMode: Boolean): Frame {
+    fun createCloseFrame(closeCodeOut: UShort = 1000u, closeMessageOut: String, mask: Boolean): Frame {
         val cout = ByteArrayOutputStream()
         val dout = DataOutputStream(cout)
         dout.writeShort(closeCodeOut.toInt())
         dout.write(closeMessageOut.toByteArray(StandardCharsets.UTF_8))
-        return Frame(true, OPCODE_CLOSE, cout.toByteArray(), !serverMode)
+        return Frame(true, OPCODE_CLOSE, cout.toByteArray(), mask)
     }
 
 }

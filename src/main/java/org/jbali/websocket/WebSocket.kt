@@ -20,6 +20,7 @@ private val log = LoggerFactory.getLogger(WebSocket::class.java)
 class WebSocket(
         val backend: Socket,
         val serverMode: Boolean = false,
+        val strictMode: Boolean = false,
         val remoteAddress: InetAddress = backend.inetAddress,
         inss: InputStream = backend.getInputStream(),
         ouss: OutputStream = backend.getOutputStream(),
@@ -104,8 +105,8 @@ class WebSocket(
                                     pongsReceived.incrementAndGet()
                                     Unit
                                 },
-                                strictMode = true,
-                                maxInSize = maxInSize
+                                maxInSize = maxInSize,
+                                strictMode = strictMode
                         )
                     }
 
@@ -178,7 +179,7 @@ class WebSocket(
 
         if (closeFrameSent.compareAndSet(false, true)) {
             try {
-                sendFrame(WebSockets.createCloseFrame(extra.toString(), serverMode))
+                sendFrame(WebSockets.createCloseFrame(extra.toString(), !serverMode))
             } catch (e: Throwable) {
                 log.warn("Error while sending close frame", e)
             }
@@ -227,6 +228,7 @@ class WebSocket(
         }
         fun handleIncomingClient(sock: Socket,
                                  maxInSize: Int = 2_000_000,
+                                 strictMode: Boolean = false,
                                  requestFilter: (WebSockets.Request) -> Int? = { null },
                                  handshakeInputStream: InputStream = sock.getInputStream()): WebSocket {
             val req = WebSockets.serverHandshake(handshakeInputStream, sock.getOutputStream(), requestFilter)
@@ -234,6 +236,7 @@ class WebSocket(
                     backend = sock,
                     serverMode = true,
                     remoteAddress = req.forwardedFor ?: sock.inetAddress,
+                    strictMode = strictMode,
                     maxInSize = maxInSize
             )
         }
