@@ -6,13 +6,20 @@ package org.jbali.collect
  */
 class ListSplitter<T>(val source: List<T>) {
 
-    private var takenFront = 0
-    val sizeLeft get() = source.size - takenFront
+    private var front = 0
+    private var end = source.size
+    val sizeLeft get() = end - front
 
     fun takeHead(n: Int): List<T> {
         require(n <= sizeLeft)
-        takenFront += n
-        return source.subList(takenFront - n, takenFront)
+        front += n
+        return source.subList(front - n, front)
+    }
+
+    fun takeTail(n: Int): List<T> {
+        require(n <= sizeLeft)
+        end -= n
+        return source.subList(end, end + n)
     }
 
     fun takeRest(): List<T> =
