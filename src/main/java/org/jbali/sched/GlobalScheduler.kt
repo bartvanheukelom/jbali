@@ -42,7 +42,7 @@ object GlobalScheduler : Scheduler() {
         }
     }
 
-    override fun schedule(t: TaskToSchedule) =
+    override fun scheduleReal(t: TaskToSchedule) =
             object : ScheduledTask {
 
                 override var state = ScheduledTask.State.SCHEDULED

@@ -6,8 +6,8 @@ import java.util.*
 
 class TestScheduler(name: String) : Scheduler() {
 
-    var seqqer = 0
-    val log = LoggerFactory.getLogger("${TestScheduler::class.java}[$name]")
+    private var seqqer = 0
+    private val log = LoggerFactory.getLogger("${TestScheduler::class.java}[$name]")
 
     inner class PT(
             val task: TaskToSchedule,
@@ -21,7 +21,7 @@ class TestScheduler(name: String) : Scheduler() {
             val min = d.toMinutes()
             val sec = d.seconds - (min * 60)
             val ms = d.nano / 1_000_000L
-            String.format("T+%03d:%02d:%04d (%s)", min, sec, ms, (time - currentTime).toString().padStart(6))
+            String.format("#${seq.toString().padStart(5)}  T+%03d:%02d:%04d (%s)", min, sec, ms, (time - currentTime).toString().padStart(6))
         }
 
         override fun toString() = "$timeStr = ${task.name}"
@@ -64,8 +64,9 @@ class TestScheduler(name: String) : Scheduler() {
     var currentTime = 0L
         private set
     private val tasks = TreeSet<PT>()
+    val queueEmpty get() = tasks.isEmpty()
 
-    override fun schedule(t: TaskToSchedule): ScheduledTask {
+    override fun scheduleReal(t: TaskToSchedule): ScheduledTask {
         val st = PT(t, currentTime + t.delay.toMillis())
         log.info("Schedule $st")
         tasks.add(st)
@@ -76,9 +77,9 @@ class TestScheduler(name: String) : Scheduler() {
         val t = tasks.pollFirst()
         return if (t != null) {
             currentTime += t.task.delay.toMillis()
-            log.info("""Step:
-                |  ${t.timeStr} =
-                |   ${t.task.name}
+            log.info("""
+                |
+                |   Step: $t
                 |""".trimMargin())
             t.run()
             true
@@ -88,9 +89,9 @@ class TestScheduler(name: String) : Scheduler() {
     }
 
     fun logQueue() {
-        log.info("Current queue:\n" +
+        log.info("\n\tCurrent queue:\n" +
             tasks.joinToString(separator = "\n") {
-                "\t$it"
+                "\t\t$it"
             })
     }
 
