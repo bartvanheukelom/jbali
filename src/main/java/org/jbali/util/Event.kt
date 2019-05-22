@@ -22,6 +22,10 @@ fun loggingErrorCallback(event: Event<*>, log: Logger): ListenerErrorCallback<*>
     log.error("Error in $event listener ${l.name}", e)
 }
 
+val rethrowEventErrorAsAssert: ListenerErrorCallback<*> = { l, e ->
+    throw AssertionError("Error in $l: $e", e)
+}
+
 /**
  * Allows an event property to be declared like:
  * val onChange by EventDelegate<ChangeInfo>()
@@ -226,6 +230,7 @@ class EventListener<P>(
             try {
                 (errCb ?: defaultErrCb).invoke(this, e)
             } catch (ee: Throwable) {
+                if (ee is AssertionError) throw AssertionError("AssertionError in ${event.get()!!} listener $name: $e", e)
                 ee.printStackTrace()
             }
         }
@@ -241,7 +246,7 @@ class EventListener<P>(
     val attached get() =
         event.get()?.listeners?.contains(this) ?: false
 
-    override fun toString() = "Event[$name]"
+    override fun toString() = "${event.get()}.listener($name)"
 }
 
 fun Iterable<EventListener<*>>.detach() = this.forEach { it.detach() }
