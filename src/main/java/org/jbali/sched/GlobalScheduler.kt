@@ -3,6 +3,7 @@ package org.jbali.sched
 import org.jbali.threads.ThreadPool
 import org.jbali.threads.withThreadName
 import org.slf4j.LoggerFactory
+import java.time.Instant
 import java.util.concurrent.Future
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -15,14 +16,14 @@ object GlobalScheduler : Scheduler() {
     private val log = LoggerFactory.getLogger(GlobalScheduler::class.java)
 
     private val exLock = ReentrantLock()
-    private var shuttedDown = false
+    private var shutDownStack: Throwable? = null
     private var ex: ScheduledThreadPoolExecutor? = null
 
     val inited get() = exLock.withLock { ex != null }
 
     private fun ex(): ScheduledThreadPoolExecutor =
         exLock.withLock {
-            if (shuttedDown) throw IllegalStateException("GlobalScheduler was shut down")
+            if (shutDownStack != null) throw IllegalStateException("GlobalScheduler was shut down", shutDownStack)
             if (ex == null) {
                 // reading CPU cores is a safety net, but actually 1 thread should be enough
                 // because no long-running tasks should run in the executor
@@ -35,9 +36,9 @@ object GlobalScheduler : Scheduler() {
 
     fun shutdownNow(): Boolean {
         exLock.withLock {
-            if (shuttedDown) throw IllegalStateException("GlobalScheduler was shut down")
+            if (shutDownStack != null) throw IllegalStateException("GlobalScheduler was shut down")
             ex?.shutdownNow()
-            shuttedDown = true
+            shutDownStack = RuntimeException("Shutdown happened at ${Instant.now()} with stack")
             return ex != null
         }
     }
