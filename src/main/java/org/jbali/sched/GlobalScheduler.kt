@@ -36,10 +36,22 @@ object GlobalScheduler : Scheduler() {
 
     fun shutdownNow(): Boolean {
         exLock.withLock {
-            if (shutDownStack != null) throw IllegalStateException("GlobalScheduler was shut down")
-            ex?.shutdownNow()
+            if (shutDownStack != null) throw IllegalStateException("GlobalScheduler was shut down", shutDownStack)
+            val cex = ex
+            cex?.shutdownNow()
+            ex = null
             shutDownStack = RuntimeException("Shutdown happened at ${Instant.now()} with stack")
-            return ex != null
+            return cex != null
+        }
+    }
+
+    /**
+     * For testing
+     */
+    fun resetShutdownState() {
+        exLock.withLock {
+            check(ex == null)
+            shutDownStack = null
         }
     }
 
