@@ -48,6 +48,26 @@ val Enum<*>.jpql get() = fullname
 // now wouldn't it be nice if Kotlin could just inline this as a constexpr?
 inline fun <reified T : Enum<T>> jpaEnum(e: T) = T::class.qualifiedName + "." + e.name
 
+/**
+ * Run action on each item in this iterable. If an exception occurs while processing an item,
+ * wrap it in an exception that has the item's toString in the message.
+ */
+fun <T> Iterable<T>.forEachWrappingExceptions(action: (T) -> Unit) {
+    for (x in this) {
+        try {
+            action(x)
+        } catch (e: Throwable) {
+            val xs =
+                    try {
+                        x.toString()
+                    } catch (tse: Throwable) {
+                        "{!{toString error: $tse}!}"
+                    }
+            throw RuntimeException("Exception while processing item $xs: $e", e)
+        }
+    }
+}
+
 fun <T> Iterable<T>.forEachCatching(
         errorHandler: (T, Throwable) -> Unit,
         action: (T) -> Unit

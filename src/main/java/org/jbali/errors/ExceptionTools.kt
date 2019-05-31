@@ -83,6 +83,7 @@ inline fun <T> stackRoot(body: () -> T): T {
     return currentStackBase.withValue(currentStackSignature(), body)
 }
 
+// TODO use receiver context
 fun Throwable.removeStackRoot() {
     currentStackBase.get()?.let { removeStackFrom(it) }
 }
