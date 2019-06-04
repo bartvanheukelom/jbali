@@ -46,7 +46,7 @@ public class Proxies {
 			return null; // should not get here
 		}
 	};
-	
+
 	public static <R> R create(Class<R> type, SimpleInvocationHandler handler) {
 		return create(type, handler.toInvocationHandler());
 	}
@@ -56,7 +56,14 @@ public class Proxies {
 	}
 	
 	public static <R> R createMock(Class<R> type) {
-		return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, MOCK_HANDLER));
+		return createMock(type, null);
+	}
+
+	public static <R> R createMock(Class<R> type, String printName) {
+		return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, printName == null ? MOCK_HANDLER : (proxy, method, args) -> {
+			System.out.println(printName + ": " + invocationToString(method, args));
+			return MOCK_HANDLER.invoke(proxy, method, args);
+		}));
 	}
 	
 	public static String invocationToString(Method method, Object[] args) {
