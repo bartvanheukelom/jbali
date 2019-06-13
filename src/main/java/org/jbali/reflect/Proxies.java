@@ -1,6 +1,7 @@
 package org.jbali.reflect;
 
 import com.google.common.base.Preconditions;
+import org.jbali.serialize.JavaSerializer;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
@@ -63,6 +64,21 @@ public class Proxies {
 		return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, printName == null ? MOCK_HANDLER : (proxy, method, args) -> {
 			System.out.println(printName + ": " + invocationToString(method, args));
 			return MOCK_HANDLER.invoke(proxy, method, args);
+		}));
+	}
+
+	/**
+	 * Copies all arguments using Java serialization before passing invocations to `real`.
+	 * Useful for e.g. testing remote interfaces that use this serialization.
+	 */
+	public static <R> R createSerializing(Class<R> type, R real) {
+		return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, (proxy, method, args) -> {
+			if (args != null) {
+				for (int i = 0; i < args.length; i++) {
+					args[i] = JavaSerializer.copy(args[i]);
+				}
+			}
+			return method.invoke(real, args);
 		}));
 	}
 	

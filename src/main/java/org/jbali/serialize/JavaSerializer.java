@@ -29,6 +29,15 @@ public class JavaSerializer {//implements Serializer {
 			throw new RuntimeException(e);
 		}
 	}
+
+
+	/**
+	 * @return A copy of the given object created using Java serialization
+	 */
+	public static <T> T copy(T obj) {
+		//noinspection unchecked
+		return (T) read(write(obj));
+	}
 	
 //	@Override
 //	public byte[] serialize(Object message) {
