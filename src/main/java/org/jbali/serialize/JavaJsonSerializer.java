@@ -1,12 +1,13 @@
 package org.jbali.serialize;
 
-import java.util.Arrays;
-import java.util.Map;
-
 import org.apache.commons.codec.binary.Base64;
 import org.jbali.collect.Maps;
 import org.jbali.json.JSONArray;
 import org.jbali.json.JSONObject;
+
+import java.io.Serializable;
+import java.util.Arrays;
+import java.util.Map;
 
 /**
  * <p>Provides serialization of Java values from/to JSON, without loss of data or type information. Exceptions:</p>
@@ -71,7 +72,8 @@ public class JavaJsonSerializer {
 			if (val instanceof Integer) return complex(ValType.INT, vn.doubleValue());
 			if (val instanceof Long) return complex(ValType.LONG, String.valueOf(vn));
 		}
-		return complex(ValType.JAVA_OBJECT, Base64.encodeBase64String(JavaSerializer.write(val)));
+		if (val instanceof Serializable) return complex(ValType.JAVA_OBJECT, Base64.encodeBase64String(JavaSerializer.write((Serializable) val)));
+		throw new IllegalArgumentException("Cannot serialize value " + val + " of type " + val.getClass());
 	}
 	
 	public static Object unserialize(Object json) {

@@ -3,6 +3,7 @@ package org.jbali.reflect;
 import com.google.common.base.Preconditions;
 import org.jbali.serialize.JavaSerializer;
 
+import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -75,7 +76,7 @@ public class Proxies {
 		return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, (proxy, method, args) -> {
 			if (args != null) {
 				for (int i = 0; i < args.length; i++) {
-					args[i] = JavaSerializer.copy(args[i]);
+					args[i] = JavaSerializer.copy((Serializable) args[i]);
 				}
 			}
 			return method.invoke(real, args);

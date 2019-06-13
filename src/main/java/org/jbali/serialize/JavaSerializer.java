@@ -1,14 +1,10 @@
 package org.jbali.serialize;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 
-public class JavaSerializer {//implements Serializer {
+public class JavaSerializer {
 
-	public static byte[] write(Object message) {
+	public static byte[] write(Serializable message) {
 		try {
 			ByteArrayOutputStream b = new ByteArrayOutputStream();
 			ObjectOutputStream out = new ObjectOutputStream(b);
@@ -34,19 +30,9 @@ public class JavaSerializer {//implements Serializer {
 	/**
 	 * @return A copy of the given object created using Java serialization
 	 */
-	public static <T> T copy(T obj) {
+	public static <T extends Serializable> T copy(T obj) {
 		//noinspection unchecked
 		return (T) read(write(obj));
 	}
-	
-//	@Override
-//	public byte[] serialize(Object message) {
-//		return write(message);
-//	}
-//
-//	@Override
-//	public Object unserialize(byte[] data) {
-//		return read(data);
-//	}
 
 }
