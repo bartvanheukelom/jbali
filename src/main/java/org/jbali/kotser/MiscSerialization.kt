@@ -2,9 +2,14 @@ package org.jbali.kotser
 
 import kotlinx.serialization.*
 import kotlinx.serialization.context.SimpleModule
+import kotlinx.serialization.internal.StringDescriptor
+import java.math.BigDecimal
 import java.net.InetAddress
 
 abstract class StringBasedSerializer<T> : KSerializer<T> {
+
+    override val descriptor = StringDescriptor
+
     final override fun deserialize(input: Decoder): T =
             input.decodeString().let {
                 fromString(it)
@@ -31,3 +36,8 @@ object InetAddressSerializer : StringBasedSerializer<InetAddress>() {
 object InetAddressSetSerializer : KSerializer<Set<InetAddress>> by InetAddressSerializer.set
 
 val inetAddressSerModule = SimpleModule(InetAddress::class, InetAddressSerializer)
+
+@Serializer(forClass = BigDecimal::class)
+object BigDecimalSerializer : StringBasedSerializer<BigDecimal>() {
+    override fun fromString(s: String) = BigDecimal(s)
+}
