@@ -14,6 +14,12 @@ import java.net.InetAddress
 
 abstract class StringBasedSerializer<T> : KSerializer<T> {
 
+    /**
+     * If you get an error of the form:
+     *    class WhateverSerializer overrides final method getDescriptor
+     * You should not apply @Serializer(forClass=Whatever) to that class.
+     * TODO removed final, what do?
+     */
     override val descriptor = StringDescriptor
 
     final override fun deserialize(decoder: Decoder): T =
@@ -25,6 +31,29 @@ abstract class StringBasedSerializer<T> : KSerializer<T> {
     abstract fun fromString(s: String): T
     open fun toString(o: T): String = o.toString()
 
+}
+
+abstract class TransformingSerializer<T, F>(
+        val backend: KSerializer<F>
+) : KSerializer<T> {
+
+    /**
+     * If you get an error of the form:
+     *    class WhateverSerializer overrides final method getDescriptor
+     * You should not apply @Serializer(forClass=Whatever) to that class.
+     */
+    final override val descriptor get() = backend.descriptor
+
+    final override fun serialize(encoder: Encoder, obj: T) {
+        backend.serialize(encoder, transform(obj))
+    }
+
+    final override fun deserialize(decoder: Decoder): T {
+        return detransform(backend.deserialize(decoder))
+    }
+
+    abstract fun transform(obj: T): F
+    abstract fun detransform(tf: F): T
 }
 
 // --- InetAddress
@@ -45,7 +74,6 @@ val inetAddressSerModule = serializersModuleOf(mapOf(
 
 // --- BigDecimal
 
-@Serializer(forClass = BigDecimal::class)
 object BigDecimalSerializer : StringBasedSerializer<BigDecimal>() {
     override fun fromString(s: String) = BigDecimal(s)
 }
