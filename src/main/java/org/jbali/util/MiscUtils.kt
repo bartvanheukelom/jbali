@@ -139,3 +139,4 @@ data class ExplainedBool @JvmOverloads constructor(
 }
 
 infix fun Boolean.because(explanation: String) = ExplainedBool(this, explanation)
+fun Boolean.byDefault() = ExplainedBool(this)
