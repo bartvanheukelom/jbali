@@ -3,12 +3,14 @@ package org.jbali.sched
 import org.jbali.threads.ThreadPool
 import org.jbali.threads.withThreadName
 import org.slf4j.LoggerFactory
+import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.Future
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
+import kotlin.math.max
 
 object GlobalScheduler : Scheduler() {
 
@@ -60,10 +62,26 @@ object GlobalScheduler : Scheduler() {
 
                 override var state = ScheduledTask.State.SCHEDULED
                     private set
+                    get() = lock.withLock {
+                        field
+                    }
                 private val lock = ReentrantLock()
+
+                private val scheduledTime = System.currentTimeMillis() + t.delay.toMillis()
 
                 private var runningTask: Future<*>? = null
                 private val firer = ex().schedule(::runNowInOtherThread, t.delay.toMillis(), TimeUnit.MILLISECONDS)
+
+                override val currentDelay: Duration?
+                    get() = lock.withLock {
+                        when (state) {
+                            ScheduledTask.State.SCHEDULED -> Duration.ofMillis(max(0, scheduledTime - System.currentTimeMillis()))
+                            ScheduledTask.State.RUNNING,
+                            ScheduledTask.State.COMPLETED,
+                            ScheduledTask.State.ERRORED -> Duration.ZERO
+                            ScheduledTask.State.CANCELLED -> null
+                        }
+                    }
 
                 private fun runNowInOtherThread() {
                     withThreadName("GS.fire[${t.name}]") {

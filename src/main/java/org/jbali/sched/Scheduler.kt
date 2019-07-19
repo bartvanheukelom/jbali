@@ -5,6 +5,15 @@ import java.util.concurrent.ConcurrentHashMap
 
 interface ScheduledTask {
     val state: State
+
+    /**
+     * The time left until the task will run.
+     * Can return 0 if the task is about to start or overdue,
+     * will certainly return 0 if running/completed/errored,
+     * null if it is cancelled.
+     */
+    val currentDelay: Duration?
+
     fun cancel(interrupt: Boolean = false): Boolean
 
     enum class State(

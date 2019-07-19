@@ -2,6 +2,7 @@ package org.jbali.util
 
 import arrow.core.Either
 import java.security.SecureRandom
+import java.time.Duration
 
 val globalSecureRandom = SecureRandom()
 
@@ -140,3 +141,6 @@ data class ExplainedBool @JvmOverloads constructor(
 
 infix fun Boolean.because(explanation: String) = ExplainedBool(this, explanation)
 fun Boolean.byDefault() = ExplainedBool(this)
+
+/** The length of this duration in seconds, as double, with millisecond precision. */
+val Duration.secondsDouble get() = toMillis().toDouble() / 1000.0

@@ -3,6 +3,7 @@ package org.jbali.sched
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.util.*
+import kotlin.math.max
 
 class TestScheduler(name: String) : Scheduler() {
 
@@ -23,6 +24,15 @@ class TestScheduler(name: String) : Scheduler() {
             val ms = d.nano / 1_000_000L
             String.format("#${seq.toString().padStart(5)}  T+%03d:%02d:%04d (%s)", min, sec, ms, (time - currentTime).toString().padStart(6))
         }
+
+        override val currentDelay: Duration?
+            get() = when (state) {
+                ScheduledTask.State.SCHEDULED -> Duration.ofMillis(max(0, time - currentTime))
+                ScheduledTask.State.RUNNING,
+                ScheduledTask.State.COMPLETED,
+                ScheduledTask.State.ERRORED -> Duration.ZERO
+                ScheduledTask.State.CANCELLED -> null
+            }
 
         override fun toString() = "$timeStr = ${task.name}"
 
@@ -77,6 +87,10 @@ class TestScheduler(name: String) : Scheduler() {
         val t = tasks.pollFirst()
         return if (t != null) {
             currentTime += t.task.delay.toMillis()
+
+            //QQQQ
+            Thread.currentThread().name = "|${Duration.ofMillis(currentTime).toString()}|"
+
             log.info("""
                 |
                 |   Step: $t
