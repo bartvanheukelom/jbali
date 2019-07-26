@@ -10,11 +10,12 @@ class TestScheduler(name: String) : Scheduler() {
     private var seqqer = 0
     private val log = LoggerFactory.getLogger("${TestScheduler::class.java}[$name]")
 
-    inner class PT(
+    inner class PlannedTask(
             val task: TaskToSchedule,
             val time: Long
-    ) : ScheduledTask, Comparable<PT> {
+    ) : ScheduledTask, Comparable<PlannedTask> {
 
+        val stack = RuntimeException()
         val seq = seqqer++
 
         val timeStr = run {
@@ -36,7 +37,7 @@ class TestScheduler(name: String) : Scheduler() {
 
         override fun toString() = "$timeStr = ${task.name}"
 
-        override fun compareTo(other: PT) =
+        override fun compareTo(other: PlannedTask) =
                 if (time == other.time) seq.compareTo(other.seq)
                 else time.compareTo(other.time)
 
@@ -51,6 +52,7 @@ class TestScheduler(name: String) : Scheduler() {
                 state = ScheduledTask.State.COMPLETED
             } catch (e: Throwable) {
                 state = ScheduledTask.State.ERRORED
+                log.warn("${task.name} was scheduled at:", stack)
                 throw AssertionError("Error in TestScheduler task ${task.name}: $e", e)
             }
         }
@@ -73,11 +75,11 @@ class TestScheduler(name: String) : Scheduler() {
 
     var currentTime = 0L
         private set
-    private val tasks = TreeSet<PT>()
+    private val tasks = TreeSet<PlannedTask>()
     val queueEmpty get() = tasks.isEmpty()
 
     override fun scheduleReal(t: TaskToSchedule): ScheduledTask {
-        val st = PT(t, currentTime + t.delay.toMillis())
+        val st = PlannedTask(t, currentTime + t.delay.toMillis())
         log.info("Schedule $st")
         tasks.add(st)
         return st
