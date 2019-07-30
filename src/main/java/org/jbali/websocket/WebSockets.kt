@@ -7,6 +7,7 @@ import org.apache.http.*
 import org.apache.http.client.HttpResponseException
 import org.apache.http.entity.StringEntity
 import org.apache.http.impl.DefaultHttpRequestFactory
+import org.apache.http.impl.EnglishReasonPhraseCatalog
 import org.apache.http.impl.io.*
 import org.apache.http.message.BasicHttpResponse
 import org.apache.http.protocol.ResponseContent
@@ -130,8 +131,7 @@ object WebSockets {
 
             // the socket is now a websocket
         } catch (e: Throwable) {
-            log.warn("WebSocket response that resulted in exception was:\n$resp")
-            throw e
+            throw RuntimeException("WebSocket clientHandshake failed, was reading response $resp: $e", e)
         }
 
     }
@@ -151,8 +151,8 @@ object WebSockets {
         output.bind(ous)
         val writer = DefaultHttpResponseWriterFactory.INSTANCE.create(output)
 
-        fun respond(status: Int, code: String, message: String) {
-            val resp = BasicHttpResponse(HttpVersion.HTTP_1_1, status, code)
+        fun respond(status: Int, reason: String, message: String) {
+            val resp = BasicHttpResponse(HttpVersion.HTTP_1_1, status, reason)
             resp.entity = StringEntity(message, StandardCharsets.UTF_8)
             // this will add content-length response header
             // TODO was found by searching code. find documentation on how to properly implement this
@@ -197,8 +197,18 @@ object WebSockets {
             val wrappedRequest = Request(req, remoteAddress)
             val rejectStatus: Int? = requestFilter(wrappedRequest)
             if (rejectStatus != null) {
-                respond(rejectStatus, "Reason TODO", "Rejected this connection")
-                throw RuntimeException("Request rejected by filter")
+                val reason = EnglishReasonPhraseCatalog.INSTANCE.getReason(rejectStatus, null) ?: "Some Kind Of Booboo"
+                respond(
+                        status = rejectStatus,
+                        reason = reason,
+                        message = """
+                            |$rejectStatus $reason
+                            |--------------------------------------------------
+                            |${req.requestLine}
+                            |
+                            """.trimMargin()
+                )
+                throw RuntimeException("Request $wrappedRequest rejected by filter")
             } else {
 
                 val acceptKey = calcAcceptKey(req.getFirstHeader(HEADER_SEC_WEB_SOCKET_KEY).value)
