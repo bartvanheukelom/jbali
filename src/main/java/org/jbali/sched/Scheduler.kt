@@ -1,6 +1,7 @@
 package org.jbali.sched
 
 import java.time.Duration
+import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 
 interface ScheduledTask {
@@ -31,6 +32,8 @@ abstract class Scheduler {
     private val tasks: MutableSet<ScheduledTask> = ConcurrentHashMap.newKeySet()
 
     protected abstract fun scheduleReal(t: TaskToSchedule): ScheduledTask
+
+    abstract val currentTime: Instant
 
     private fun taskMaintenance() {
         tasks.removeIf { t -> t.state.willNotRun }
@@ -91,6 +94,7 @@ abstract class Scheduler {
     fun withTaskMapper(map: (TaskToSchedule) -> TaskToSchedule): Scheduler {
         val be = this
         return object : Scheduler() {
+            override val currentTime get() = be.currentTime
             override fun scheduleReal(t: TaskToSchedule) =
                     be.schedule(map(t))
         }

@@ -2,7 +2,9 @@ package org.jbali.sched
 
 import org.slf4j.LoggerFactory
 import java.time.Duration
+import java.time.Instant
 import java.util.*
+import java.util.concurrent.TimeUnit
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
@@ -35,11 +37,11 @@ class TestScheduler(
         val stack = RuntimeException()
         val seq = seqqer++
 
-        private val timeStr get() = "#${seq.toString().padStart(5)}  ${formatTime(time)} (-${(time - currentTime).toString().padStart(6)})"
+        private val timeStr get() = "#${seq.toString().padStart(5)}  ${formatTime(time)} (-${(time - currentTimeLocal).toString().padStart(6)})"
 
         override val currentDelay: Duration?
             get() = when (state) {
-                ScheduledTask.State.SCHEDULED -> Duration.ofMillis(max(0, time - currentTime))
+                ScheduledTask.State.SCHEDULED -> Duration.ofMillis(max(0, time - currentTimeLocal))
                 ScheduledTask.State.RUNNING,
                 ScheduledTask.State.COMPLETED,
                 ScheduledTask.State.ERRORED -> Duration.ZERO
@@ -86,15 +88,17 @@ class TestScheduler(
     }
 
     /** Simulated time in ms */
-    var currentTime = 0L
+    var currentTimeLocal = 0L
         private set
+
+    override val currentTime: Instant get() = Instant.ofEpochMilli(TimeUnit.DAYS.toMillis(1) + currentTimeLocal)
 
     private val tasks = TreeSet<PlannedTask>()
     val queueEmpty get() = tasks.isEmpty()
 
     override fun scheduleReal(t: TaskToSchedule): ScheduledTask {
 
-        var targetTime = currentTime + t.delay.toMillis()
+        var targetTime = currentTimeLocal + t.delay.toMillis()
         if (t.roundToSecond) targetTime = ceil(targetTime / 1000.0).toLong() * 1000
 
         val st = PlannedTask(t, targetTime)
@@ -115,18 +119,18 @@ class TestScheduler(
         return if (t == null) false else {
 
             // advance to that time in simulated 1-second intervals
-            while (currentTime < t.time) {
+            while (currentTimeLocal < t.time) {
                 if (actualSleepFactor != 0.0) Thread.sleep((1000.0 * actualSleepFactor).toLong())
 
-                val left = t.time - currentTime
-                System.err.println("... ${formatTime(currentTime)} (-${left / 1000.0}) ...")
+                val left = t.time - currentTimeLocal
+                System.err.println("... ${formatTime(currentTimeLocal)} (-${left / 1000.0}) ...")
 
-                currentTime += min(1000, left)
-                if (currentTime != t.time) currentTime = floor(currentTime / 1000.0).toLong() * 1000
+                currentTimeLocal += min(1000, left)
+                if (currentTimeLocal != t.time) currentTimeLocal = floor(currentTimeLocal / 1000.0).toLong() * 1000
             }
 
             if (putTimeInThreadName)
-                Thread.currentThread().name = "|${Duration.ofMillis(currentTime)}|"
+                Thread.currentThread().name = "|${Duration.ofMillis(currentTimeLocal)}|"
 
             // GO!
             log.info("""

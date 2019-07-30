@@ -23,6 +23,8 @@ object GlobalScheduler : Scheduler() {
 
     val inited get() = exLock.withLock { ex != null }
 
+    override val currentTime: Instant get() = Instant.now()
+
     private fun ex(): ScheduledThreadPoolExecutor =
         exLock.withLock {
             if (shutDownStack != null) throw IllegalStateException("GlobalScheduler was shut down", shutDownStack)
