@@ -5,7 +5,12 @@ import java.time.Duration
 import java.util.*
 import kotlin.math.max
 
-class TestScheduler(name: String) : Scheduler() {
+class TestScheduler(
+        name: String,
+        /** When running tasks, set the thread name to the current simulated time.
+         * A hacky but easy way to get current time printed in logs. */
+        val putTimeInThreadName: Boolean = false
+) : Scheduler() {
 
     private var seqqer = 0
     private val log = LoggerFactory.getLogger("${TestScheduler::class.java}[$name]")
@@ -60,6 +65,7 @@ class TestScheduler(name: String) : Scheduler() {
         override fun cancel(interrupt: Boolean) =
                 when (state) {
                     ScheduledTask.State.SCHEDULED -> {
+                        log.info("-Cancel  $this")
                         state = ScheduledTask.State.CANCELLED
                         tasks.remove(this)
                         true
@@ -90,8 +96,8 @@ class TestScheduler(name: String) : Scheduler() {
         return if (t != null) {
             currentTime += t.task.delay.toMillis()
 
-            //QQQQ
-            Thread.currentThread().name = "|${Duration.ofMillis(currentTime).toString()}|"
+            if (putTimeInThreadName)
+                Thread.currentThread().name = "|${Duration.ofMillis(currentTime)}|"
 
             log.info("""
                 |
