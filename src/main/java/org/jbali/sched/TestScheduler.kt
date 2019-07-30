@@ -3,17 +3,29 @@ package org.jbali.sched
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.util.*
+import kotlin.math.ceil
+import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.min
 
 class TestScheduler(
         name: String,
         /** When running tasks, set the thread name to the current simulated time.
          * A hacky but easy way to get current time printed in logs. */
-        val putTimeInThreadName: Boolean = false
+        val putTimeInThreadName: Boolean = false,
+        val actualSleepFactor: Double = 0.0
 ) : Scheduler() {
 
     private var seqqer = 0
-    private val log = LoggerFactory.getLogger("${TestScheduler::class.java}[$name]")
+    private val log = LoggerFactory.getLogger("${TestScheduler::class.java.name}[$name]")
+
+    fun formatTime(time: Long): String {
+        val d = Duration.ofMillis(time)
+        val min = d.toMinutes()
+        val sec = d.seconds - (min * 60)
+        val ms = d.nano / 1_000_000L
+        return String.format("T+%03d:%02d:%04d", min, sec, ms)
+    }
 
     inner class PlannedTask(
             val task: TaskToSchedule,
@@ -23,13 +35,7 @@ class TestScheduler(
         val stack = RuntimeException()
         val seq = seqqer++
 
-        val timeStr = run {
-            val d = Duration.ofMillis(time)
-            val min = d.toMinutes()
-            val sec = d.seconds - (min * 60)
-            val ms = d.nano / 1_000_000L
-            String.format("#${seq.toString().padStart(5)}  T+%03d:%02d:%04d (%s)", min, sec, ms, (time - currentTime).toString().padStart(6))
-        }
+        private val timeStr get() = "#${seq.toString().padStart(5)}  ${formatTime(time)} (-${(time - currentTime).toString().padStart(6)})"
 
         override val currentDelay: Duration?
             get() = when (state) {
@@ -79,34 +85,57 @@ class TestScheduler(
                 }
     }
 
+    /** Simulated time in ms */
     var currentTime = 0L
         private set
+
     private val tasks = TreeSet<PlannedTask>()
     val queueEmpty get() = tasks.isEmpty()
 
     override fun scheduleReal(t: TaskToSchedule): ScheduledTask {
-        val st = PlannedTask(t, currentTime + t.delay.toMillis())
+
+        var targetTime = currentTime + t.delay.toMillis()
+        if (t.roundToSecond) targetTime = ceil(targetTime / 1000.0).toLong() * 1000
+
+        val st = PlannedTask(t, targetTime)
+
         log.info("Schedule $st")
         tasks.add(st)
+
         return st
     }
 
+    /**
+     * Advance to, and run, the next scheduled task.
+     * @return false if there are no more tasks in the queue.
+     */
     fun step(): Boolean {
+        // get the next upcoming task
         val t = tasks.pollFirst()
-        return if (t != null) {
-            currentTime += t.task.delay.toMillis()
+        return if (t == null) false else {
+
+            // advance to that time in simulated 1-second intervals
+            while (currentTime < t.time) {
+                if (actualSleepFactor != 0.0) Thread.sleep((1000.0 * actualSleepFactor).toLong())
+
+                val left = t.time - currentTime
+                System.err.println("... ${formatTime(currentTime)} (-${left / 1000.0}) ...")
+
+                currentTime += min(1000, left)
+                if (currentTime != t.time) currentTime = floor(currentTime / 1000.0).toLong() * 1000
+            }
 
             if (putTimeInThreadName)
                 Thread.currentThread().name = "|${Duration.ofMillis(currentTime)}|"
 
+            // GO!
             log.info("""
                 |
                 |   Step: $t
                 |""".trimMargin())
             t.run()
+
             true
-        } else {
-            false
         }
     }
 

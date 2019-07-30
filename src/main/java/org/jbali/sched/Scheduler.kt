@@ -52,16 +52,19 @@ abstract class Scheduler {
     val uncompletedTasks get() = tasksWith { !it.state.willNotRun }
 
     inner class After(
-            val delay: Duration
+            val delay: Duration,
+            /** Will try to run tasks on round seconds on some timeline, mostly useful for testing. */
+            val roundToSecond: Boolean = false
     ) {
         fun run(name: String = "<unnamed>", body: TaskBody): ScheduledTask =
-                schedule(TaskToSchedule(delay, body, name))
+                schedule(TaskToSchedule(delay, body, name, roundToSecond = roundToSecond))
     }
 
     data class TaskToSchedule(
             val delay: Duration,
             val body: TaskBody,
-            val name: String
+            val name: String,
+            val roundToSecond: Boolean = false
     )
 
     fun after(delay: Duration) = After(delay)
@@ -71,6 +74,11 @@ abstract class Scheduler {
 
     fun afterSeconds(s: Int) = After(Duration.ofSeconds(s.toLong()))
     fun afterSeconds(s: Long) = After(Duration.ofSeconds(s))
+
+    /** Will try to run tasks on round seconds on some timeline, mostly useful for testing. */
+    fun afterSecondsRounded(s: Int) = After(Duration.ofSeconds(s.toLong()), roundToSecond = true)
+    /** Will try to run tasks on round seconds on some timeline, mostly useful for testing. */
+    fun afterSecondsRounded(s: Long) = After(Duration.ofSeconds(s), roundToSecond = true)
 
     fun afterMs(ms: Int) = After(Duration.ofMillis(ms.toLong()))
     fun afterMs(ms: Long) = After(Duration.ofMillis(ms))
