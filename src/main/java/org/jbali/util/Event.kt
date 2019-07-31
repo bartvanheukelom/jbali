@@ -18,14 +18,6 @@ private val log = LoggerFactory.getLogger(Event::class.java)!!
 
 typealias ListenerErrorCallback<P> = ((l: EventListener<P>, e: Throwable) -> Unit)
 
-fun loggingErrorCallback(event: Event<*>, log: Logger): ListenerErrorCallback<*> = { l, e ->
-    log.error("Error in $event listener ${l.name}", e)
-}
-
-val rethrowEventErrorAsAssert: ListenerErrorCallback<*> = { l, e ->
-    throw AssertionError("Error in $l: $e", e)
-}
-
 /**
  * Allows an event property to be declared like:
  * val onChange by EventDelegate<ChangeInfo>()
@@ -64,6 +56,24 @@ interface Listenable<P> {
     fun listen(name: String?, callback: (arg: P) -> Unit): EventListener<P>
     // TODO @JvmDefault but require JVM 1.8
     fun listen(callback: (arg: P) -> Unit) = listen(null, callback)
+
+    companion object {
+
+        fun loggingErrorCallback(log: Logger): ListenerErrorCallback<*> = { l, e ->
+            log.error("Error in $l", e)
+        }
+
+        val defaultLogErrorCallback = loggingErrorCallback(log)
+
+        val rethrowEventErrorAsAssert: ListenerErrorCallback<*> = { l: EventListener<*>, e: Throwable ->
+            throw AssertionError("FATAL $e", e)
+        }
+
+        fun errorCallback(throwAsAssert: Boolean = false) =
+                if (throwAsAssert) rethrowEventErrorAsAssert
+                else defaultLogErrorCallback
+
+    }
 }
 
 sealed class SmartListenerResult
@@ -125,11 +135,20 @@ open class Event<P>(
         return l
     }
 
+    // TODO why does this exist and doesn't the real dispatch have @JvmOverloads?
     fun dispatch(data: P) {
-        dispatch(data, null)
+        dispatch(data, Listenable.defaultLogErrorCallback)
     }
 
-    open fun dispatch(data: P, errCb: ListenerErrorCallback<P>?) {
+    /**
+     * Invoke all listeners in the current thread.
+     * If a listener throws an exception, it is passed to errCb.
+     * If that throws too, both exceptions are simply printed to stderr.
+     *
+     * An exception to the above is that any AssertionError is rethrown wrapped in an AssertionError with a message.
+     * In that case, any remaining listeners will not be invoked.
+     */
+    open fun dispatch(data: P, errCb: ListenerErrorCallback<in P> = Listenable.defaultLogErrorCallback) {
         for (l in listeners.toList()) {
             l.call(data, errCb)
         }
@@ -139,11 +158,15 @@ open class Event<P>(
     fun listenVoid(callback: Runnable) = listen { callback.run() }
 
     fun dispatch(data: P, errLog: Logger) {
-        dispatch(data, loggingErrorCallback(this, errLog))
+        dispatch(data, Listenable.loggingErrorCallback(errLog))
+    }
+
+    fun dispatch(data: P, throwAsAssert: Boolean) {
+        dispatch(data, Listenable.errorCallback(throwAsAssert))
     }
 
     @JvmOverloads
-    inline fun dispatch(noinline errCb: ListenerErrorCallback<P>? = null, lazyData: () -> P) {
+    inline fun dispatch(noinline errCb: ListenerErrorCallback<in P> = Listenable.defaultLogErrorCallback, lazyData: () -> P) {
         if (hasListeners()) {
             dispatch(lazyData(), errCb)
         }
@@ -192,7 +215,7 @@ class OnceEvent<P>(
                 super.listen(name, callback)
             }
 
-    override fun dispatch(data: P, errCb: ListenerErrorCallback<P>?) {
+    override fun dispatch(data: P, errCb: ListenerErrorCallback<in P>) {
         lock.write {
             if (pState != State.WAITING)
                 throw IllegalStateException("Cannot dispatch $this, it's $pState")
@@ -218,20 +241,21 @@ class EventListener<P>(
         val callback: (arg: P) -> Unit
 ) {
 
-    private val defaultErrCb: ListenerErrorCallback<P> =
-            loggingErrorCallback(event.get()!!, log)
-
     @JvmOverloads
-    fun call(data: P, errCb: ListenerErrorCallback<P>? = null) {
+    fun call(data: P, errCb: ListenerErrorCallback<P> = Listenable.defaultLogErrorCallback) {
         try {
             callback(data)
+        } catch (ae: AssertionError) {
+            throw AssertionError("In $this: $ae", ae)
         } catch (e: Throwable) {
-            if (e is AssertionError) throw AssertionError("AssertionError in ${event.get()!!} listener $name: $e", e)
             try {
-                (errCb ?: defaultErrCb).invoke(this, e)
-            } catch (ee: Throwable) {
-                if (ee is AssertionError) throw AssertionError("AssertionError in ${event.get()!!} listener $name: $e", e)
-                ee.printStackTrace()
+                errCb.invoke(this, e)
+            } catch (cbAe: AssertionError) {
+                throw AssertionError("In $this's ERROR CALLBACK: $cbAe", cbAe)
+                        .apply { addSuppressed(e) }
+            } catch (cbE: Throwable) {
+                e.printStackTrace()
+                cbE.printStackTrace()
             }
         }
     }
@@ -254,16 +278,16 @@ fun Iterable<EventListener<*>>.detach() = this.forEach { it.detach() }
 // TODO class ParameterlessEvent
 
 // empty dispatch variant for Unit (void) events
-fun Event<Unit>.dispatch(errCb: ListenerErrorCallback<Unit>? = null) {
+fun Event<Unit>.dispatch(errCb: ListenerErrorCallback<in Unit> = Listenable.defaultLogErrorCallback) {
     dispatch(Unit, errCb)
 }
 fun Event<Unit>.dispatch(errLog: Logger = log) {
-    dispatch(Unit, loggingErrorCallback(this, errLog))
+    dispatch(Unit, if (errLog == log) Listenable.defaultLogErrorCallback else Listenable.loggingErrorCallback(errLog))
 }
 fun Event<Unit>.dispatch() {
     dispatch(log)
 }
-fun EventListener<Unit>.call(errCb: ListenerErrorCallback<Unit>? = null) {
+fun EventListener<Unit>.call(errCb: ListenerErrorCallback<Unit> = Listenable.defaultLogErrorCallback) {
     call(Unit, errCb)
 }
 
