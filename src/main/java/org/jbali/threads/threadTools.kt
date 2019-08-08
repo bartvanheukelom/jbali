@@ -3,7 +3,18 @@ package org.jbali.threads
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
+import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KMutableProperty0
+import kotlin.reflect.KProperty
+
+// TODO initial
+class ThreadLocalProperty<T : Any> : ReadWriteProperty<Any, T?> {
+    private val v = ThreadLocal<T?>()
+    override fun getValue(thisRef: Any, property: KProperty<*>): T? = v.get()
+    override fun setValue(thisRef: Any, property: KProperty<*>, value: T?) {
+        v.set(value)
+    }
+}
 
 inline fun <R, P> withPropAs(getter: () -> P, setter: (P) -> Unit, v: P, block: (P) -> R): R {
     val pre = getter()
@@ -52,13 +63,32 @@ inline fun <T> withThreadName(name: String, block: (String) -> T) =
             )
         }
 
-inline fun <T> reentrant(entered: ThreadLocal<Boolean>, inner: () -> T, enter: () -> T) =
-        if (entered.get()) inner()
-        else {
-            try {
-                entered.set(true)
-                enter()
-            } finally {
-                entered.set(false)
+/**
+ * If entered is true, returns inner()
+ * if it's false, calls enter, which must invoke its argument (which is a wrapper around inner) and return that result.
+ */
+inline fun <T> reentrant(entered: ThreadLocal<Boolean>, noinline inner: () -> T, wrapper: (inner: () -> T) -> T): T {
+    contract {
+        callsInPlace(inner, InvocationKind.EXACTLY_ONCE)
+    }
+
+    return if (entered.get()) inner()
+    else {
+        try {
+            val thread = Thread.currentThread()
+
+            entered.set(true)
+            var innerCalled = false
+            val res = wrapper {
+                check(Thread.currentThread() == thread)
+                check(!innerCalled)
+                innerCalled = true
+                inner()
             }
+            check(innerCalled)
+            res
+        } finally {
+            entered.set(false)
         }
+    }
+}
