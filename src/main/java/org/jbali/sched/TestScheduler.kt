@@ -14,8 +14,8 @@ class TestScheduler(
         name: String,
         /** When running tasks, set the thread name to the current simulated time.
          * A hacky but easy way to get current time printed in logs. */
-        val putTimeInThreadName: Boolean = false,
-        val actualSleepFactor: Double = 0.0
+        private val putTimeInThreadName: Boolean = false,
+        private val actualSleepFactor: Double = 0.0
 ) : Scheduler() {
 
     private var seqqer = 0
@@ -30,12 +30,15 @@ class TestScheduler(
     }
 
     inner class PlannedTask(
-            val task: TaskToSchedule,
+            task: TaskToSchedule,
             val time: Long
     ) : ScheduledTask, Comparable<PlannedTask> {
 
         val stack = RuntimeException()
         val seq = seqqer++
+
+        private val name = task.name
+        private var body: TaskBody? = task.body
 
         private val timeStr get() = "#${seq.toString().padStart(5)}  ${formatTime(time)} (-${(time - currentTimeLocal).toString().padStart(6)})"
 
@@ -48,7 +51,7 @@ class TestScheduler(
                 ScheduledTask.State.CANCELLED -> null
             }
 
-        override fun toString() = "$timeStr = ${task.name}"
+        override fun toString() = "$timeStr = $name"
 
         override fun compareTo(other: PlannedTask) =
                 if (time == other.time) seq.compareTo(other.seq)
@@ -61,12 +64,15 @@ class TestScheduler(
             check(state == ScheduledTask.State.SCHEDULED)
             state = ScheduledTask.State.RUNNING
             try {
-                task.body()
+                body!!()
                 state = ScheduledTask.State.COMPLETED
             } catch (e: Throwable) {
                 state = ScheduledTask.State.ERRORED
-                log.warn("${task.name} was scheduled at:", stack)
-                throw AssertionError("Error in TestScheduler task ${task.name}: $e", e)
+                log.warn("$name was scheduled at:", stack)
+                throw AssertionError("Error in TestScheduler task $name: $e", e)
+            } finally {
+                // release memory for body that is never run again
+                body = null
             }
         }
 
@@ -76,6 +82,10 @@ class TestScheduler(
                         log.info("-Cancel  $this")
                         state = ScheduledTask.State.CANCELLED
                         tasks.remove(this)
+
+                        // release memory for body that won't ever run
+                        body = null
+
                         true
                     }
 

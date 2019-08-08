@@ -62,6 +62,11 @@ object GlobalScheduler : Scheduler() {
     override fun scheduleReal(t: TaskToSchedule) =
             object : ScheduledTask {
 
+                // please ensure t is not captured by not referring to it in any code that does not run at init time
+
+                private val name = t.name
+                private var body: TaskBody? = t.body
+
                 override var state = ScheduledTask.State.SCHEDULED
                     private set
                     get() = lock.withLock {
@@ -86,7 +91,7 @@ object GlobalScheduler : Scheduler() {
                     }
 
                 private fun runNowInOtherThread() {
-                    withThreadName("GS.fire[${t.name}]") {
+                    withThreadName("GS.fire[$name]") {
                         lock.withLock {
                             if (state != ScheduledTask.State.SCHEDULED) {
                                 assert(state == ScheduledTask.State.CANCELLED)
@@ -99,7 +104,7 @@ object GlobalScheduler : Scheduler() {
                 }
 
                 private fun runInCurrentThread() {
-                    withThreadName("GS.runr[${t.name}]") {
+                    withThreadName("GS.runr[$name]") {
                         val shouldRun =
                                 lock.withLock {
                                     if (state != ScheduledTask.State.SCHEDULED) {
@@ -114,11 +119,14 @@ object GlobalScheduler : Scheduler() {
                         if (shouldRun) {
 
                             val ns = try {
-                                t.body()
+                                body!!()
                                 ScheduledTask.State.COMPLETED
                             } catch (e: Throwable) {
-                                log.error("Uncaught error in scheduled task ${t.name}", e)
+                                log.error("Uncaught error in scheduled task $name", e)
                                 ScheduledTask.State.ERRORED
+                            } finally {
+                                // release memory for body that is never run again
+                                body = null
                             }
 
                             lock.withLock {
@@ -141,6 +149,10 @@ object GlobalScheduler : Scheduler() {
                             ScheduledTask.State.CANCELLED -> false
                         }
                         if (cancelled) state = ScheduledTask.State.CANCELLED
+
+                        // release memory for body that won't ever run
+                        body = null
+
                         cancelled
                     }
 
