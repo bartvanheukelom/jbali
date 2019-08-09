@@ -16,7 +16,7 @@ import kotlin.reflect.KProperty
 
 private val log = LoggerFactory.getLogger(Event::class.java)!!
 
-typealias ListenerErrorCallback<P> = ((l: EventListener<P>, e: Throwable) -> Unit)
+typealias ListenerErrorCallback<P> = ((l: EventListener<out P>, e: Throwable) -> Unit)
 
 /**
  * Allows an event property to be declared like:
@@ -148,7 +148,7 @@ open class Event<P>(
      * An exception to the above is that any AssertionError is rethrown wrapped in an AssertionError with a message.
      * In that case, any remaining listeners will not be invoked.
      */
-    open fun dispatch(data: P, errCb: ListenerErrorCallback<in P> = Listenable.defaultLogErrorCallback) {
+    open fun dispatch(data: P, errCb: ListenerErrorCallback<P> = Listenable.defaultLogErrorCallback) {
         for (l in listeners.toList()) {
             l.call(data, errCb)
         }
@@ -166,7 +166,7 @@ open class Event<P>(
     }
 
     @JvmOverloads
-    inline fun dispatch(noinline errCb: ListenerErrorCallback<in P> = Listenable.defaultLogErrorCallback, lazyData: () -> P) {
+    inline fun dispatch(noinline errCb: ListenerErrorCallback<P> = Listenable.defaultLogErrorCallback, lazyData: () -> P) {
         if (hasListeners()) {
             dispatch(lazyData(), errCb)
         }
@@ -215,7 +215,7 @@ class OnceEvent<P>(
                 super.listen(name, callback)
             }
 
-    override fun dispatch(data: P, errCb: ListenerErrorCallback<in P>) {
+    override fun dispatch(data: P, errCb: ListenerErrorCallback<P>) {
         lock.write {
             if (pState != State.WAITING)
                 throw IllegalStateException("Cannot dispatch $this, it's $pState")
@@ -278,7 +278,7 @@ fun Iterable<EventListener<*>>.detach() = this.forEach { it.detach() }
 // TODO class ParameterlessEvent
 
 // empty dispatch variant for Unit (void) events
-fun Event<Unit>.dispatch(errCb: ListenerErrorCallback<in Unit> = Listenable.defaultLogErrorCallback) {
+fun Event<Unit>.dispatch(errCb: ListenerErrorCallback<Unit> = Listenable.defaultLogErrorCallback) {
     dispatch(Unit, errCb)
 }
 fun Event<Unit>.dispatch(errLog: Logger = log) {

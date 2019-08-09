@@ -61,7 +61,7 @@ class EventTestChild : EventTest() {
         assertEquals("AmazingTestListener", evDelegate.listen("AmazingTestListener") {}.name)
 
         // set up error tracking
-        var caughtError: Pair<EventListener<Payload>, Throwable>? = null
+        var caughtError: Pair<EventListener<out Payload>, Throwable>? = null
         val errCb: ListenerErrorCallback<Payload> = { l, e ->
             println("Error in listener ${l.name}")
             caughtError = Pair(l, e)
