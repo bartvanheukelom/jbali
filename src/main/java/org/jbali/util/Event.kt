@@ -57,6 +57,8 @@ interface Listenable<P> {
     // TODO @JvmDefault but require JVM 1.8
     fun listen(callback: (arg: P) -> Unit) = listen(null, callback)
 
+    class FatalEventError(e: Throwable) : AssertionError("FATAL $e", e)
+
     companion object {
 
         fun loggingErrorCallback(log: Logger): ListenerErrorCallback<*> = { l, e ->
@@ -66,7 +68,7 @@ interface Listenable<P> {
         val defaultLogErrorCallback = loggingErrorCallback(log)
 
         val rethrowEventErrorAsAssert: ListenerErrorCallback<*> = { l: EventListener<*>, e: Throwable ->
-            throw AssertionError("FATAL $e", e)
+            throw FatalEventError(e)
         }
 
         fun errorCallback(throwAsAssert: Boolean = false) =
@@ -241,18 +243,26 @@ class EventListener<P>(
         val callback: (arg: P) -> Unit
 ) {
 
+    class EventAssertionError(m: String, c: Throwable) : AssertionError(m, c)
+
     @JvmOverloads
     fun call(data: P, errCb: ListenerErrorCallback<P> = Listenable.defaultLogErrorCallback) {
         try {
             callback(data)
         } catch (ae: AssertionError) {
-            throw AssertionError("In $this: $ae", ae)
+            throw EventAssertionError("In $this: $ae", ae)
         } catch (e: Throwable) {
+
+            // shortcut!
+            if (errCb == Listenable.rethrowEventErrorAsAssert) {
+                throw Listenable.FatalEventError(e)
+            }
+
             try {
                 errCb.invoke(this, e)
-            } catch (cbAe: AssertionError) {
-                throw AssertionError("In $this's ERROR CALLBACK: $cbAe", cbAe)
-                        .apply { addSuppressed(e) }
+            } catch (fee: Listenable.FatalEventError) {
+                // fee will have e as cause and can be rethrown
+                throw fee
             } catch (cbE: Throwable) {
                 e.printStackTrace()
                 cbE.printStackTrace()
