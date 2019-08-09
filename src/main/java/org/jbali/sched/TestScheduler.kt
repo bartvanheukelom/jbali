@@ -9,14 +9,32 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.random.Random
 
+/**
+ * Scheduler that can simulate time in a step-by-step fashion without any actual delays.
+ * For this to work properly, tested code must always get the "current time" from the scheduler
+ * and not from System.currentTime*, Instant.now or anything that uses the system clock.
+ */
 class TestScheduler(
         name: String,
+
+        private val firstTime: Instant = Instant.ofEpochMilli(TimeUnit.DAYS.toMillis(1)),
+
         /** When running tasks, set the thread name to the current simulated time.
          * A hacky but easy way to get current time printed in logs. */
         private val putTimeInThreadName: Boolean = false,
-        private val actualSleepFactor: Double = 0.0
+
+        private val actualSleepFactor: Double = 0.0,
+
+        /**
+         * Will log the schedule-time stack when a scheduled task has an error.
+         * However, just putting a breakpoint on TaskBodyException is preferred.
+         * */
+        private val logScheduleStack: Boolean = false
 ) : Scheduler() {
+
+    class TaskBodyException(m: String, e: Throwable) : RuntimeException(m, e)
 
     private var seqqer = 0
     private val log = LoggerFactory.getLogger("${TestScheduler::class.java.name}[$name]")
@@ -34,11 +52,14 @@ class TestScheduler(
             val time: Long
     ) : ScheduledTask, Comparable<PlannedTask> {
 
-        val stack = RuntimeException()
         val seq = seqqer++
 
         private val name = task.name
         private var body: TaskBody? = task.body
+
+        // these are eagerly converted to readable text to help with debugger inspection
+        private val schedTime = formatTime(currentTimeLocal)
+        private val stack = Thread.currentThread().stackTrace.joinToString("\n")
 
         private val timeStr get() = "#${seq.toString().padStart(5)}  ${formatTime(time)} (-${(time - currentTimeLocal).toString().padStart(6)})"
 
@@ -68,8 +89,14 @@ class TestScheduler(
                 state = ScheduledTask.State.COMPLETED
             } catch (e: Throwable) {
                 state = ScheduledTask.State.ERRORED
-                log.warn("$name was scheduled at:", stack)
-                throw AssertionError("Error in TestScheduler task $name: $e", e)
+                val ref: String
+                if (logScheduleStack) {
+                    ref = "[ref ${Random.nextInt(10000, 100000)}] "
+                    log.warn("${ref}Task was scheduled from:\n${stack.prependIndent()}")
+                } else {
+                    ref = ""
+                }
+                throw TaskBodyException("${ref}Error in task $name that was scheduled at $schedTime: $e", e)
             } finally {
                 // release memory for body that is never run again
                 body = null
@@ -101,7 +128,7 @@ class TestScheduler(
     var currentTimeLocal = 0L
         private set
 
-    override val currentTime: Instant get() = Instant.ofEpochMilli(TimeUnit.DAYS.toMillis(1) + currentTimeLocal)
+    override val currentTime: Instant get() = firstTime.plusMillis(currentTimeLocal)
 
     private val tasks = TreeSet<PlannedTask>()
     val queueEmpty get() = tasks.isEmpty()
@@ -122,6 +149,7 @@ class TestScheduler(
     /**
      * Advance to, and run, the next scheduled task.
      * @return false if there are no more tasks in the queue.
+     * @throws TaskBodyException if the next task throws an exception.
      */
     fun step(): Boolean {
         // get the next upcoming task
@@ -140,7 +168,7 @@ class TestScheduler(
             }
 
             if (putTimeInThreadName)
-                Thread.currentThread().name = "|${Duration.ofMillis(currentTimeLocal)}|"
+                Thread.currentThread().name = formatTime(currentTimeLocal)
 
             // GO!
             log.info("""

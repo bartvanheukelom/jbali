@@ -12,13 +12,15 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.math.max
 
+class StackRecording(m: String) : RuntimeException(m)
+
 object GlobalScheduler : Scheduler() {
 
     // TODO LoggerDelegate
     private val log = LoggerFactory.getLogger(GlobalScheduler::class.java)
 
     private val exLock = ReentrantLock()
-    private var shutDownStack: Throwable? = null
+    private var shutDownStack: StackRecording? = null
     private var ex: ScheduledThreadPoolExecutor? = null
 
     val inited get() = exLock.withLock { ex != null }
@@ -44,7 +46,7 @@ object GlobalScheduler : Scheduler() {
             val cex = ex
             cex?.shutdownNow()
             ex = null
-            shutDownStack = RuntimeException("Shutdown happened at ${Instant.now()} with stack")
+            shutDownStack = StackRecording("Shutdown happened at ${Instant.now()} with stack")
             return cex != null
         }
     }
