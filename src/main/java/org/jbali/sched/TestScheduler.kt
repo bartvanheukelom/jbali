@@ -103,7 +103,7 @@ class TestScheduler(
             }
         }
 
-        override fun cancel(interrupt: Boolean) =
+        override fun cancel(interrupt: Boolean, allowWhileRunning: Boolean) =
                 when (state) {
                     ScheduledTask.State.SCHEDULED -> {
                         log.info("-Cancel  $this")
@@ -116,7 +116,9 @@ class TestScheduler(
                         true
                     }
 
-                    ScheduledTask.State.RUNNING -> throw AssertionError("Cancel while running? Are you using TestScheduler from multiple threads?")
+                    ScheduledTask.State.RUNNING -> if (!allowWhileRunning) {
+                        throw AssertionError("Cancel while running? Are you using TestScheduler from multiple threads?")
+                    } else true
 
                     ScheduledTask.State.COMPLETED,
                     ScheduledTask.State.ERRORED,

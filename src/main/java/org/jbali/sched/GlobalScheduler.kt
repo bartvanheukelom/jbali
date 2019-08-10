@@ -95,6 +95,7 @@ object GlobalScheduler : Scheduler() {
                 private fun runNowInOtherThread() {
                     runWithThreadName("GS.fire[$name]") {
                         lock.withLock {
+                            // TODO allow specifying an external lock that should be synced too
                             if (state != ScheduledTask.State.SCHEDULED) {
                                 assert(state == ScheduledTask.State.CANCELLED)
                             } else {
@@ -140,7 +141,8 @@ object GlobalScheduler : Scheduler() {
                     }
                 }
 
-                override fun cancel(interrupt: Boolean) =
+                // TODO do something with allowWhileRunning
+                override fun cancel(interrupt: Boolean, allowWhileRunning: Boolean) =
                     lock.withLock {
                         val cancelled = when (state) {
                             ScheduledTask.State.SCHEDULED,

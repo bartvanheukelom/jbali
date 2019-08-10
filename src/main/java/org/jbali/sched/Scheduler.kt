@@ -15,7 +15,7 @@ interface ScheduledTask {
      */
     val currentDelay: Duration?
 
-    fun cancel(interrupt: Boolean = false): Boolean
+    fun cancel(interrupt: Boolean = false, allowWhileRunning: Boolean = false): Boolean
 
     enum class State(
             /** True for completed, errored and cancelled */
