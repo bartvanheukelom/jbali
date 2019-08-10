@@ -53,14 +53,15 @@ inline fun <R, P> withPropAs(p: KMutableProperty0<P>, v: P, block: (P) -> R): R 
     }
 }
 
-inline fun <T> withThreadName(name: String, block: (String) -> T) =
-        Thread.currentThread().let {
-            withPropAs(
-                    it::getName,
-                    it::setName,
-                    name,
-                    block
-            )
+inline fun <T> runWithThreadName(name: String, appendWithSeparator: String? = null, block: (String) -> T): T =
+        Thread.currentThread().let { t ->
+            val pre = t.name
+            try {
+                t.name = if (appendWithSeparator != null) "$pre$appendWithSeparator$name" else name
+                return block(pre)
+            } finally {
+                t.name = pre
+            }
         }
 
 /**

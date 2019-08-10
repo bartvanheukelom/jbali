@@ -1,7 +1,7 @@
 package org.jbali.sched
 
 import org.jbali.threads.ThreadPool
-import org.jbali.threads.withThreadName
+import org.jbali.threads.runWithThreadName
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
@@ -93,7 +93,7 @@ object GlobalScheduler : Scheduler() {
                     }
 
                 private fun runNowInOtherThread() {
-                    withThreadName("GS.fire[$name]") {
+                    runWithThreadName("GS.fire[$name]") {
                         lock.withLock {
                             if (state != ScheduledTask.State.SCHEDULED) {
                                 assert(state == ScheduledTask.State.CANCELLED)
@@ -106,7 +106,7 @@ object GlobalScheduler : Scheduler() {
                 }
 
                 private fun runInCurrentThread() {
-                    withThreadName("GS.runr[$name]") {
+                    runWithThreadName("GS.runr[$name]") {
                         val shouldRun =
                                 lock.withLock {
                                     if (state != ScheduledTask.State.SCHEDULED) {
