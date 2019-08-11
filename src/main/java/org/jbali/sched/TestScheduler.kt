@@ -1,5 +1,6 @@
 package org.jbali.sched
 
+import org.jbali.threads.runWithThreadName
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
@@ -169,15 +170,19 @@ class TestScheduler(
                 if (currentTimeLocal != t.time) currentTimeLocal = floor(currentTimeLocal / 1000.0).toLong() * 1000
             }
 
-            if (putTimeInThreadName)
-                Thread.currentThread().name = formatTime(currentTimeLocal)
+            runWithThreadName(
+                    if (putTimeInThreadName) "${formatTime(currentTimeLocal)} = ${t.seq.toString().padStart(5)}"
+                    else null
+            ) {
 
-            // GO!
-            log.info("""
-                |
-                |   Step: $t
-                |""".trimMargin())
-            t.run()
+                // GO!
+                log.info("""
+                    |
+                    |   Step: $t
+                    |""".trimMargin())
+                t.run()
+
+            }
 
             true
         }
