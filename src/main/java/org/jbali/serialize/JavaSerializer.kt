@@ -40,6 +40,18 @@ object JavaSerializer {
         }
     }
 
+    @JvmStatic
+    fun verifySerializable(obj: Any, paramName: String) {
+        if (obj !is Serializable) {
+            throw IllegalArgumentException("$paramName implementation ${obj.javaClass.name} is not Serializable")
+        }
+
+        try {
+            copy(obj)
+        } catch (e: Throwable) {
+            throw IllegalArgumentException("verifySerializable failed for $paramName: $e")
+        }
+    }
 
     @JvmStatic
     /**
