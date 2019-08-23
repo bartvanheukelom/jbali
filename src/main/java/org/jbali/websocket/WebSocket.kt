@@ -226,12 +226,22 @@ class WebSocket(
                     maxInSize = maxInSize
             )
         }
-        fun handleIncomingClient(sock: Socket,
-                                 maxInSize: Int = 2_000_000,
-                                 strictMode: Boolean = false,
-                                 requestFilter: (WebSockets.Request) -> Int? = { null },
-                                 handshakeInputStream: InputStream = sock.getInputStream()): WebSocket {
-            val req = WebSockets.serverHandshake(handshakeInputStream, sock.getOutputStream(), requestFilter)
+        fun handleIncomingClient(
+                sock: Socket,
+                maxInSize: Int = 2_000_000,
+                strictMode: Boolean = false,
+                requestFilter: (WebSockets.Request) -> Int? = { null },
+                handshakeInputStream: InputStream = sock.getInputStream(),
+                responseHeaders: Map<String, String> = mapOf()
+        ): WebSocket {
+
+            val req = WebSockets.serverHandshake(
+                    ins = handshakeInputStream,
+                    ous = sock.getOutputStream(),
+                    requestFilter = requestFilter,
+                    responseHeaders = responseHeaders
+            )
+
             return WebSocket(
                     backend = sock,
                     serverMode = true,

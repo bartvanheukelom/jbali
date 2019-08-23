@@ -144,19 +144,27 @@ object WebSockets {
     @Throws(IOException::class, HttpException::class)
     @JvmStatic
     @JvmOverloads
-    fun serverHandshake(ins: InputStream, ous: OutputStream, requestFilter: (Request) -> Int? = { null }): Request {
+    fun serverHandshake(
+            ins: InputStream,
+            ous: OutputStream,
+            requestFilter: (Request) -> Int? = { null },
+            responseHeaders: Map<String, String> = mapOf()
+    ): Request {
 
         // prepare for output
         val output = SessionOutputBufferImpl(HttpTransportMetricsImpl(), 8 * 1024)
         output.bind(ous)
         val writer = DefaultHttpResponseWriterFactory.INSTANCE.create(output)
 
-        fun respond(status: Int, reason: String, message: String) {
+        fun respondMessageNoUpgrade(status: Int, reason: String, message: String) {
             val resp = BasicHttpResponse(HttpVersion.HTTP_1_1, status, reason)
             resp.entity = StringEntity(message, StandardCharsets.UTF_8)
+
             // this will add content-length response header
             // TODO was found by searching code. find documentation on how to properly implement this
             ResponseContent().process(resp, null)
+
+            responseHeaders.forEach { (k, v) -> resp.addHeader(k, v) }
 
             writer.write(resp)
             output.flush()
@@ -198,7 +206,7 @@ object WebSockets {
             val rejectStatus: Int? = requestFilter(wrappedRequest)
             if (rejectStatus != null) {
                 val reason = EnglishReasonPhraseCatalog.INSTANCE.getReason(rejectStatus, null) ?: "Some Kind Of Booboo"
-                respond(
+                respondMessageNoUpgrade(
                         status = rejectStatus,
                         reason = reason,
                         message = """
@@ -217,6 +225,7 @@ object WebSockets {
                 resp.addHeader(HttpHeaders.CONNECTION, CON_UPGRADE)
                 resp.addHeader(HttpHeaders.UPGRADE, UPGRADE_WEBSOCKET)
                 resp.addHeader(HEADER_SEC_WEB_SOCKET_ACCEPT, acceptKey)
+                responseHeaders.forEach { (k, v) -> resp.addHeader(k, v) }
                 writer.write(resp)
                 output.flush()
                 ous.flush()
@@ -225,7 +234,7 @@ object WebSockets {
             }
 
         } catch (e: Throwable) {
-            respond(HttpStatus.SC_BAD_REQUEST, "Bad Request", e.toString())
+            respondMessageNoUpgrade(HttpStatus.SC_BAD_REQUEST, "Bad Request", e.toString())
             throw RuntimeException("Websocket handshake error: $e", e)
         }
 
