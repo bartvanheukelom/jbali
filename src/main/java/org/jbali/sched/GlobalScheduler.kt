@@ -14,6 +14,12 @@ import kotlin.math.max
 
 class StackRecording(m: String) : RuntimeException(m)
 
+/**
+ * A scheduler that uses a global executor to fire the starting of tasks it is assigned,
+ * in real time.
+ * Each task is run in an unspecified thread, which it may occupy for as long as it wishes
+ * without affecting other tasks.
+ */
 object GlobalScheduler : Scheduler() {
 
     // TODO LoggerDelegate
@@ -27,7 +33,7 @@ object GlobalScheduler : Scheduler() {
 
     override val currentTime: Instant get() = Instant.now()
 
-    private fun ex(): ScheduledThreadPoolExecutor =
+    private fun getOrStartExecutor(): ScheduledThreadPoolExecutor =
         exLock.withLock {
             if (shutDownStack != null) throw IllegalStateException("GlobalScheduler was shut down", shutDownStack)
             if (ex == null) {
@@ -40,23 +46,38 @@ object GlobalScheduler : Scheduler() {
             ex!!
         }
 
-    fun shutdownNow(): Boolean {
+    /**
+     * Shut down the global scheduler thread pool if it's running.
+     * @throws IllegalStateException if shutdown was called before and idempotent == false. if idempotent == true it will log instead.
+     * @return whether the thread pool was running.
+     */
+    fun shutdownNow(idempotent: Boolean = false) =
         exLock.withLock {
-            if (shutDownStack != null) throw IllegalStateException("GlobalScheduler was shut down", shutDownStack)
-            val cex = ex
-            cex?.shutdownNow()
-            ex = null
-            shutDownStack = StackRecording("Shutdown happened at ${Instant.now()} with stack")
-            return cex != null
+            if (shutDownStack != null) {
+                if (!idempotent) throw IllegalStateException("GlobalScheduler was shut down earlier", shutDownStack)
+                else log.warn("GlobalScheduler was shut down earlier", shutDownStack)
+                false
+            } else {
+                val hadEx = ex != null
+                ex?.shutdownNow()
+                ex = null
+                shutDownStack = StackRecording("Shutdown happened at ${Instant.now()} with stack")
+                hadEx
+            }
         }
-    }
 
     /**
      * For testing
      */
     fun resetShutdownState() {
         exLock.withLock {
-            check(ex == null)
+            // shutdown if running
+            if (shutDownStack == null) {
+                log.warn("resetShutDownState: was not shut down!")
+                shutdownNow()
+            }
+
+            // allow restart
             shutDownStack = null
         }
     }
@@ -79,7 +100,7 @@ object GlobalScheduler : Scheduler() {
                 private val scheduledTime = System.currentTimeMillis() + t.delay.toMillis()
 
                 private var runningTask: Future<*>? = null
-                private val firer = ex().schedule(::runNowInOtherThread, t.delay.toMillis(), TimeUnit.MILLISECONDS)
+                private val firer = getOrStartExecutor().schedule(::runNowInOtherThread, t.delay.toMillis(), TimeUnit.MILLISECONDS)
 
                 override val currentDelay: Duration?
                     get() = lock.withLock {
