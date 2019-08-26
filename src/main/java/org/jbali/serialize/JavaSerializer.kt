@@ -53,6 +53,7 @@ object JavaSerializer {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     @JvmStatic
     /**
      * @return A copy of the given object created using Java serialization

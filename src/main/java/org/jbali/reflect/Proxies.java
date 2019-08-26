@@ -2,6 +2,8 @@ package org.jbali.reflect;
 
 import com.google.common.base.Preconditions;
 import org.jbali.serialize.JavaSerializer;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
@@ -22,11 +24,15 @@ public class Proxies {
 	 */
 	public interface SimpleInvocationHandler {
 		
-		void invoke(Method method, Object[] args) throws Throwable;
+		void invoke(Method method, @NotNull Object[] args) throws Throwable;
+
+		default void invokeNullableArgs(Method method, @Nullable Object[] args) throws Throwable {
+			invoke(method, args == null ? new Object[0] : args);
+		}
 		
 		default InvocationHandler toInvocationHandler() {
 			return (proxy, method, args) -> {
-				invoke(method, args != null ? args : new Object[0]);
+				invokeNullableArgs(method, args);
 				return null;
 			};
 		}
@@ -79,11 +85,11 @@ public class Proxies {
 					args[i] = JavaSerializer.copy((Serializable) args[i]);
 				}
 			}
-			return method.invoke(real, args);
+			return invokeTransparent(method, real, args);
 		}));
 	}
 	
-	public static String invocationToString(Method method, Object[] args) {
+	public static @NotNull String invocationToString(Method method, Object[] args) {
 		String argsStr = null;
 		try {
 			argsStr = (args == null) ? "" : Arrays.toString(args);
@@ -108,7 +114,19 @@ public class Proxies {
 //	}
 	
 //	public static <R> R createDecorator(Class<R> type, R target, Runnable pre, Runnable post)
-	
+
+	/**
+	 * Invoke method on obj, and if it throws an exception, throw that without the surrounding InvocationTargetException.
+	 */
+	public static Object invokeTransparent(Method method, Object obj, Object[] args) throws Throwable {
+		try {
+			return method.invoke(obj, args);
+		} catch (InvocationTargetException e) {
+			// TODO may also strip stack trace
+			throw e.getCause();
+		}
+	}
+
 	/**
 	 * Take the exception from a Method.invoke call and make it suitable for rethrowing from a proxy,
 	 * making the presence of the proxy invisible. Meaning:<ul>
@@ -117,7 +135,7 @@ public class Proxies {
 	 * <li>Any other exception is returned as-is. This should usually only include the likes of {@link OutOfMemoryError}.</li>
 	 */
 	public static Throwable transformInvokeError(Throwable e) {
-		if (e instanceof InvocationTargetException || e instanceof ExceptionInInitializerError) return e.getCause();
+		if (e instanceof InvocationTargetException) return e.getCause();
 		if (e instanceof IllegalAccessException || e instanceof IllegalArgumentException || e instanceof NullPointerException)
 			return new AssertionError(e);
 		return e;

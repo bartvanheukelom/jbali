@@ -1,8 +1,10 @@
 package org.jbali.util
 
 import arrow.core.Either
+import org.slf4j.Logger
 import java.security.SecureRandom
 import java.time.Duration
+import kotlin.reflect.KCallable
 
 val globalSecureRandom = SecureRandom()
 
@@ -144,3 +146,18 @@ fun Boolean.byDefault() = ExplainedBool(this)
 
 /** The length of this duration in seconds, as double, with millisecond precision. */
 val Duration.secondsDouble get() = toMillis().toDouble() / 1000.0
+
+fun Logger.invocation(func: KCallable<*>, vararg args: Any?) {
+    info(invocationToString(func, *args))
+}
+
+fun invocationToString(func: KCallable<*>, vararg args: Any?): String {
+    val argsStringed = args.mapIndexed { i, v ->
+        func.parameters.getOrNull(i)?.name + " = " + v.toString()
+    }
+    val argsJoined =
+            if (argsStringed.sumBy { it.length } >= 120) argsStringed.joinToString(separator = "\n\t", prefix = "\n\t", postfix = "\n")
+            else argsStringed.joinToString()
+    val s = "${func.name}($argsJoined)"
+    return s
+}
