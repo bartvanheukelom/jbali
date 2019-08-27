@@ -3,6 +3,7 @@ package org.jbali.serialize
 import org.jbali.reflect.Proxies
 
 import java.io.*
+import java.lang.reflect.Method
 
 object JavaSerializer {
 
@@ -51,6 +52,19 @@ object JavaSerializer {
         } catch (e: Throwable) {
             throw IllegalArgumentException("verifySerializable failed for $paramName: $e")
         }
+    }
+
+    private val ObjectStreamClass_hasReadResolveMethod: Method =
+            ObjectStreamClass::class.java.getDeclaredMethod("hasReadResolveMethod")
+                .apply { isAccessible = true }
+
+    fun assertReadResolve(clazz: Class<*>): ObjectStreamClass {
+        val osc = ObjectStreamClass.lookup(clazz)
+        val hasReRe = ObjectStreamClass_hasReadResolveMethod.invoke(osc) as Boolean
+        if (!hasReRe) {
+            throw AssertionError("$clazz does not have a correct readResolve method")
+        }
+        return osc
     }
 
     @Suppress("UNCHECKED_CAST")
