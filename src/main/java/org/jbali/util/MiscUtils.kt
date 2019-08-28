@@ -5,6 +5,7 @@ import org.slf4j.Logger
 import java.security.SecureRandom
 import java.time.Duration
 import kotlin.reflect.KCallable
+import kotlin.reflect.full.valueParameters
 
 val globalSecureRandom = SecureRandom()
 
@@ -153,7 +154,7 @@ fun Logger.invocation(func: KCallable<*>, vararg args: Any?) {
 
 fun invocationToString(func: KCallable<*>, vararg args: Any?): String {
     val argsStringed = args.mapIndexed { i, v ->
-        func.parameters.getOrNull(i)?.name + " = " + v.toString()
+        func.valueParameters.getOrNull(i)?.name + " = " + v.toString()
     }
     val argsJoined =
             if (argsStringed.sumBy { it.length } >= 120) argsStringed.joinToString(separator = "\n\t", prefix = "\n\t", postfix = "\n")
