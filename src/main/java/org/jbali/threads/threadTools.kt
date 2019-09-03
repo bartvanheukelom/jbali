@@ -97,3 +97,46 @@ inline fun <T> reentrant(entered: ThreadLocal<Boolean>, noinline inner: () -> T,
         }
     }
 }
+
+fun currentThreadList(atomic: Boolean = false): List<ThreadInfo> =
+    Thread.getAllStackTraces().map { (thread, stack) ->
+        if (atomic && thread != Thread.currentThread()) {
+            thread.suspend()
+            try {
+                ThreadInfo(
+                        id = thread.id,
+                        name = thread.name,
+                        state = thread.state,
+                        stack = thread.stackTrace.toList()
+                )
+            } finally {
+                thread.resume()
+            }
+        } else {
+            ThreadInfo(
+                    id = thread.id,
+                    name = thread.name,
+                    state = thread.state,
+                    stack = stack.toList()
+            )
+        }
+    }
+
+val Thread.State?.letter: Char get() =
+    when (this) {
+        Thread.State.NEW -> 'N'
+        Thread.State.RUNNABLE -> 'R'
+        Thread.State.BLOCKED -> 'B'
+        Thread.State.WAITING -> 'W'
+        Thread.State.TIMED_WAITING -> 'w'
+        Thread.State.TERMINATED -> 'T'
+        null       -> '?'
+    }
+
+data class ThreadInfo(
+        val id: Long,
+        val state: Thread.State,
+        val name: String,
+        val stack: List<StackTraceElement>
+)
+
