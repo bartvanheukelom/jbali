@@ -11,6 +11,7 @@ import java.util.function.Supplier
 import javax.annotation.PreDestroy
 import kotlin.concurrent.read
 import kotlin.concurrent.write
+import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
@@ -22,9 +23,9 @@ typealias ListenerErrorCallback<P> = ((l: EventListener<out P>, e: Throwable) ->
  * Allows an event property to be declared like:
  * val onChange by EventDelegate<ChangeInfo>()
  */
-class EventDelegate<P> {
+class EventDelegate<P> : ReadOnlyProperty<Any?, Event<P>> {
     private val constructed = AtomicReference<Event<P>>()
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): Event<P> {
+    override operator fun getValue(thisRef: Any?, property: KProperty<*>): Event<P> {
         val c = constructed.get()
         return if (c != null) c else {
             // cannot use Lazy because this constructor requires the property
@@ -81,6 +82,8 @@ interface Listenable<P> {
 sealed class SmartListenerResult
 object KeepListening : SmartListenerResult()
 object StopListening : SmartListenerResult()
+class StopListeningDespiteException(val e: Throwable) : SmartListenerResult()
+@Suppress("FunctionName")
 fun SmartListenerResult(keepListening: Boolean) =
         if (keepListening) KeepListening
         else StopListening
@@ -99,9 +102,12 @@ fun <P> Listenable<P>.smartListen(name: String, callback: (arg: P) -> SmartListe
             synchronized(lock) {
                 if (listener != null) {
                     val res = callback(it)
-                    if (res == StopListening) {
+                    if (res is StopListeningDespiteException || res == StopListening) {
                         listener!!.detach()
                         listener = null
+                    }
+                    if (res is StopListeningDespiteException) {
+                        throw res.e
                     }
                 }
             }
@@ -111,6 +117,19 @@ fun <P> Listenable<P>.smartListen(name: String, callback: (arg: P) -> SmartListe
 
     return sureListener
 }
+
+/**
+ * Listen to this event once, even if that listener throws an exception.
+ */
+fun <P> Listenable<P>.listenOnce(name: String, callback: (arg: P) -> Unit) =
+        smartListen(name) {
+            try {
+                callback(it)
+                StopListening
+            } catch (e: Throwable) {
+                StopListeningDespiteException(e)
+            }
+        }
 
 open class Event<P>(
         val name: String? = null
@@ -191,11 +210,13 @@ open class Event<P>(
 /**
  * An Event that can be dispatched only once.
  * Afterwards, all listeners will be automatically detached.
- * During and after this single dispatch, it will disallow adding new listeners.
+ * During and after this single dispatch, it will disallow adding new listeners by throwing NotWaitingException.
  */
 class OnceEvent<P>(
         name: String? = null
 ): Event<P>(name) {
+
+    class NotWaitingException(m: String) : IllegalStateException(m)
 
     enum class State {
         WAITING,
@@ -216,7 +237,7 @@ class OnceEvent<P>(
     override fun listen(name: String?, callback: (arg: P) -> Unit) =
             lock.read {
                 if (pState != State.WAITING)
-                    throw IllegalStateException("Cannot listen to $this, it's $pState")
+                    throw NotWaitingException("Cannot listen to $this, it's $pState")
                 super.listen(name, callback)
             }
 
