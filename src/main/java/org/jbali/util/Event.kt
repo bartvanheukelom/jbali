@@ -81,6 +81,9 @@ interface Listenable<P> {
 sealed class SmartListenerResult
 object KeepListening : SmartListenerResult()
 object StopListening : SmartListenerResult()
+fun SmartListenerResult(keepListening: Boolean) =
+        if (keepListening) KeepListening
+        else StopListening
 
 /**
  * Listen to this event with a callback that can choose to detach itself by returning StopListening.
@@ -357,12 +360,14 @@ open class MutableObservable<T>(initialValue: T, name: String? = null): Observab
      */
     var value: T
         get() = ref.get()
-        set(n) {
-            val o = ref.getAndSet(n)
-            if (n != o) {
-                onChange.dispatch(Change(o, n))
-            }
+        set(n) { updateValue(n) }
+
+    fun updateValue(n: T, throwAsAssert: Boolean = false) {
+        val o = ref.getAndSet(n)
+        if (n != o) {
+            onChange.dispatch(Change(o, n), throwAsAssert)
         }
+    }
 
     final override val onChange: Event<Change<T>> = Event("${name ?: "MutableObservable"}.onChange")
     final override val onNewValue: Event<T> = Event("${name ?: "MutableObservable"}.onNewValue")
