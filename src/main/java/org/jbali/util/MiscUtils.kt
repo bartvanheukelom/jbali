@@ -162,3 +162,15 @@ fun invocationToString(func: KCallable<*>, vararg args: Any?): String {
     val s = "${func.name}($argsJoined)"
     return s
 }
+
+/** Format millis to MMM:SS:mmm */
+fun formatMsTime(time: Long): String {
+    val d = Duration.ofMillis(time)
+    val min = d.toMinutes()
+    val sec = d.seconds - (min * 60)
+    val ms = d.nano / 1_000_000L
+    return String.format("%03d:%02d:%03d", min, sec, ms)
+}
+
+// TODO support T-
+fun formatTTime(time: Long): String = "T+${formatMsTime(time)}"

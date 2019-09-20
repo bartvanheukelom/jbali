@@ -1,6 +1,8 @@
 package org.jbali.sched
 
 import org.jbali.threads.runWithThreadName
+import org.jbali.util.formatMsTime
+import org.jbali.util.formatTTime
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
@@ -40,14 +42,6 @@ class TestScheduler(
     private var seqqer = 0
     private val log = LoggerFactory.getLogger("${TestScheduler::class.java.name}[$name]")
 
-    fun formatTime(time: Long): String {
-        val d = Duration.ofMillis(time)
-        val min = d.toMinutes()
-        val sec = d.seconds - (min * 60)
-        val ms = d.nano / 1_000_000L
-        return String.format("T+%03d:%02d:%04d", min, sec, ms)
-    }
-
     inner class PlannedTask(
             task: TaskToSchedule,
             val time: Long
@@ -59,10 +53,10 @@ class TestScheduler(
         private var body: TaskBody? = task.body
 
         // these are eagerly converted to readable text to help with debugger inspection
-        private val schedTime = formatTime(currentTimeLocal)
+        private val schedTime = formatMsTime(currentTimeLocal)
         private val stack = Thread.currentThread().stackTrace.joinToString("\n")
 
-        private val timeStr get() = "#${seq.toString().padStart(5)}  ${formatTime(time)} (-${(time - currentTimeLocal).toString().padStart(6)})"
+        private val timeStr get() = "#${seq.toString().padStart(5)}  ${formatMsTime(time)} (-${(time - currentTimeLocal).toString().padStart(6)})"
 
         override val currentDelay: Duration?
             get() = when (state) {
@@ -164,14 +158,14 @@ class TestScheduler(
                 if (actualSleepFactor != 0.0) Thread.sleep((1000.0 * actualSleepFactor).toLong())
 
                 val left = t.time - currentTimeLocal
-                System.err.println("... ${formatTime(currentTimeLocal)} (-${left / 1000.0}) ...")
+                System.err.println("... ${formatTTime(currentTimeLocal)} (-${left / 1000.0}) ...")
 
                 currentTimeLocal += min(1000, left)
                 if (currentTimeLocal != t.time) currentTimeLocal = floor(currentTimeLocal / 1000.0).toLong() * 1000
             }
 
             runWithThreadName(
-                    if (putTimeInThreadName) "${formatTime(currentTimeLocal)} = ${t.seq.toString().padStart(5)}"
+                    if (putTimeInThreadName) "${formatTTime(currentTimeLocal)} = ${t.seq.toString().padStart(5)}"
                     else null
             ) {
 
