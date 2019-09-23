@@ -147,8 +147,12 @@ class TestScheduler(
      * Advance to, and run, the next scheduled task.
      * @return false if there are no more tasks in the queue.
      * @throws TaskBodyException if the next task throws an exception.
+     * @throws InterruptedException if the thread has been interrupted, before the step is performed.
      */
     fun step(): Boolean {
+
+        if (Thread.interrupted()) throw InterruptedException()
+
         // get the next upcoming task
         val t = tasks.pollFirst()
         return if (t == null) false else {
