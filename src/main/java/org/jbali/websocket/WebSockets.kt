@@ -11,9 +11,7 @@ import org.apache.http.impl.EnglishReasonPhraseCatalog
 import org.apache.http.impl.io.*
 import org.apache.http.message.BasicHttpResponse
 import org.apache.http.protocol.ResponseContent
-import org.jbali.bytes.xor
-import org.jbali.bytes.xor4
-import org.jbali.bytes.xor4ip
+import org.jbali.bytes.*
 import org.slf4j.LoggerFactory
 import java.io.*
 import java.net.InetAddress
@@ -86,6 +84,8 @@ object WebSockets {
 
     // ========================================== HANDSHAKING ============================================== //
 
+    class ServerResponseException(m: String, c: Throwable) : RuntimeException("$m: $c", c)
+
     @Throws(HttpException::class, IOException::class)
     @JvmStatic
     fun clientHandshake(ins: InputStream, ous: OutputStream, host: String?, uri: String) {
@@ -131,7 +131,7 @@ object WebSockets {
 
             // the socket is now a websocket
         } catch (e: Throwable) {
-            throw RuntimeException("WebSocket clientHandshake failed, was reading response $resp: $e", e)
+            throw ServerResponseException("WebSocket clientHandshake failed, was reading response $resp", e)
         }
 
     }
@@ -326,7 +326,7 @@ object WebSockets {
         } else {
 
             // generate a 4 byte masking key and write it out
-            val maskingKey = Random.nextBytes(4)
+            val maskingKey = Bytes4(Random.nextBytes(4))
             ous.write(maskingKey)
 
             // --- now xor that key, repeated, with the payload ---
@@ -343,7 +343,7 @@ object WebSockets {
             // do the rest a little bit slower
             if (rest > 0) {
                 val restSlice = payload.copyOfRange(aligned, payloadSize)
-                ous.write(restSlice.xor(maskingKey))
+                ous.write(restSlice.xor(maskingKey.array))
             }
         }
 
@@ -388,12 +388,12 @@ object WebSockets {
         if (payloadSize > maxInSize)
             throw IllegalArgumentException("Incoming frame length $payloadSize is larger than limit $maxInSize")
 
-        val maskingKey =
-                if (!masked) null else ByteArray(4).also { ins.readFully(it) }
+        val maskingKey = Bytes4()
+        if (masked) ins.readFully(maskingKey.array)
 
         val payload = ByteArray(payloadSize).also { ins.readFully(it) }
 
-        if (maskingKey != null) {
+        if (masked) {
 
             // compute the part of the payload that is divisible by 4
             val rest = payloadSize % 4
@@ -408,7 +408,7 @@ object WebSockets {
             if (rest > 0) {
                 payload
                         .copyOfRange(aligned, payloadSize)
-                        .xor(maskingKey)
+                        .xor(maskingKey.array)
                         .copyInto(payload, aligned)
             }
         }
