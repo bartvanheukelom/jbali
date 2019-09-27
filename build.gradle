@@ -8,6 +8,7 @@ buildscript {
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath "org.jetbrains.kotlin:kotlin-serialization:$kotlin_version"
+        classpath "net.sf.proguard:proguard-gradle:6.1.1"
     }
 }
 
@@ -49,6 +50,22 @@ dependencies {
     testCompile "ch.qos.logback:logback-classic:1.1.2"
     testCompile "junit:junit:4.12"
 }
+
+task proguard(type: proguard.gradle.ProGuardTask) {
+    dependsOn jar
+
+    jar.outputs.files.files.forEach {
+        injars it
+        outjars it.path.replace(".jar", ".pg.jar")
+    }
+
+    libraryjars new File(org.gradle.internal.jvm.Jvm.current().jre.homeDir, "lib/rt.jar")
+    libraryjars sourceSets.main.compileClasspath.files
+
+    configuration file("proguard.pro")
+}
+
+build.dependsOn += proguard
 
 apply plugin: 'idea'
 idea {
