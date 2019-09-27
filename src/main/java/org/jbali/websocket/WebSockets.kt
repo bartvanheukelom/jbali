@@ -11,7 +11,10 @@ import org.apache.http.impl.EnglishReasonPhraseCatalog
 import org.apache.http.impl.io.*
 import org.apache.http.message.BasicHttpResponse
 import org.apache.http.protocol.ResponseContent
-import org.jbali.bytes.*
+import org.jbali.bytes.Bytes4
+import org.jbali.bytes.write
+import org.jbali.bytes.xor
+import org.jbali.bytes.xor4ip
 import org.slf4j.LoggerFactory
 import java.io.*
 import java.net.InetAddress
@@ -326,7 +329,7 @@ object WebSockets {
         } else {
 
             // generate a 4 byte masking key and write it out
-            val maskingKey = Bytes4(Random.nextBytes(4))
+            val maskingKey = Bytes4(Random.nextInt())
             ous.write(maskingKey)
 
             // --- now xor that key, repeated, with the payload ---
@@ -337,7 +340,7 @@ object WebSockets {
             // try to efficiently mask and write that part
             var b = 0
             while (b < aligned) {
-                ous.write(payload.xor4(b, maskingKey))
+                ous.write(payload.xor(b, maskingKey))
                 b += 4
             }
             // do the rest a little bit slower
