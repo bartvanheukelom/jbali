@@ -53,7 +53,6 @@ inline class Bytes4(val array: ByteArray = ByteArray(4)) {
      * Does not check whether the given parameters are valid!
      */
     inline fun xor(rhs: ByteArray, offset: Int): Bytes4 {
-        require(rhs.size >= offset + 4)
         return Bytes4(getInt() xor theUnsafe.getInt(rhs, byteArrOffset + offset.toLong()))
     }
 
@@ -80,6 +79,5 @@ inline fun ByteArray.xor(offset: Int, mask: Bytes4) = mask.xor(this, offset)
 /** XOR4 in place */
 @Suppress("NOTHING_TO_INLINE")
 inline fun ByteArray.xor4ip(offset: Int, mask: Bytes4) {
-    require(size >= offset + 4)
     theUnsafe.putInt(this, byteArrOffset + offset.toLong(), theUnsafe.getInt(this, byteArrOffset + offset.toLong()) xor mask.getInt())
 }
