@@ -13,7 +13,7 @@ import java.util.*
 private val log = LoggerFactory.getLogger(TextMessageService::class.java)!!
 
 class TextMessageService<T : Any>(
-        private val iface: Class<T>,
+        private val iface: Class<out T>,
         private val svcName: String = iface.name,
         private val endpoint: T
 ) {
