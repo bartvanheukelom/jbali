@@ -2,8 +2,12 @@ package org.jbali.util
 
 import arrow.core.Either
 import org.slf4j.Logger
+import java.io.Serializable
 import java.security.SecureRandom
 import java.time.Duration
+import javax.xml.bind.annotation.XmlAccessType
+import javax.xml.bind.annotation.XmlAccessorType
+import javax.xml.bind.annotation.XmlValue
 import kotlin.reflect.KCallable
 import kotlin.reflect.full.valueParameters
 
@@ -182,7 +186,10 @@ fun formatTTime(time: Long): String = "T+${formatMsTime(time)}"
  *
  * Contains no countermeasures against runtime (memory) hacks or anything like that!
  */
-inline class Password(private val value: String) {
+@XmlAccessorType(XmlAccessType.FIELD)
+data class Password(@field:XmlValue private val value: String) : Serializable {
+
+    @Suppress("unused") private constructor() : this(stringToBeUnmarshalled)
 
     /**
      * Returns the value.
@@ -192,4 +199,14 @@ inline class Password(private val value: String) {
 
     override fun toString() = "Password(*****)"
 
+    companion object {
+        const val serialVersionUID = 1L
+    }
+
 }
+
+/**
+ * Assign to string properties of a default-constructed object that are soon to be given
+ * their real value by some kind of deserialization system.
+ */
+const val stringToBeUnmarshalled = "stringToBeUnmarshalled"
