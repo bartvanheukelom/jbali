@@ -72,6 +72,7 @@ inline fun <T> runWithThreadName(name: String?, appendWithSeparator: String? = n
  * If entered is true, returns inner()
  * if it's false, calls enter, which must invoke its argument (which is a wrapper around inner) and return that result.
  */
+@UseExperimental(ExperimentalContracts::class)
 inline fun <T> reentrant(entered: ThreadLocal<Boolean>, noinline inner: () -> T, wrapper: (inner: () -> T) -> T): T {
     contract {
         callsInPlace(inner, InvocationKind.EXACTLY_ONCE)

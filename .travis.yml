@@ -1,4 +1,0 @@
-# DISABLED BECAUSE TRAVIS NO LONGER SEEMS TO SUPPORT JDK 8
-#language: java
-#jdk:
-#  - oraclejdk8

@@ -3,4 +3,4 @@ export
 out
 build
 \.gradle
-\.idea/workspace\.xml
+\.idea
