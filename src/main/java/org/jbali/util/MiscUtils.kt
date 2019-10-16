@@ -174,3 +174,22 @@ fun formatMsTime(time: Long): String {
 
 // TODO support T-
 fun formatTTime(time: Long): String = "T+${formatMsTime(time)}"
+
+
+/**
+ * Can be used to store a password or other secret, prevents accidentally
+ * printing/logging them or passing them where a non-secret string is accepted.
+ *
+ * Contains no countermeasures against runtime (memory) hacks or anything like that!
+ */
+inline class Password(private val value: String) {
+
+    /**
+     * Returns the value.
+     * The name of this getter is intentionally verbose.
+     */
+    fun accessPasswordValue(): String = value
+
+    override fun toString() = "Password(*****)"
+
+}
