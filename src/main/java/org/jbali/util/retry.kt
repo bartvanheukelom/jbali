@@ -1,6 +1,5 @@
 package org.jbali.util
 
-import com.google.common.util.concurrent.UncheckedExecutionException
 import org.slf4j.LoggerFactory
 import java.lang.Long.min
 import java.time.Duration
@@ -8,11 +7,13 @@ import java.time.Instant
 
 private val log = LoggerFactory.getLogger("retry")
 
+class GivenUpException(msg: String, cause: Throwable) : RuntimeException(msg, cause)
+
 /**
  * Retry operation until it succeeds, throw a non-retryable error or exceeds the max attempts.
  * errorCallback will receive each exception thrown and should return whether another attempt should be made.
  * If a non-retryable exception is thrown, throws that exception.
- * If max attempts are exceed, throws UncheckedExecutionException with the last retryable exception as cause.
+ * If max attempts are exceed, throws GivenUpException with the last retryable exception as cause.
  */
 fun <T> retry(
         initialSleep: Long = 250,
@@ -40,7 +41,7 @@ fun <T> retry(
                     (maxAttempts != null && attempts >= maxAttempts) ||
                     (maxDuration != null && timeTaken > maxDuration)
             ) {
-                throw UncheckedExecutionException("Operation failed after $attempts attempts in $timeTaken: $e", e)
+                throw GivenUpException("Operation failed after $attempts attempts in $timeTaken: $e", e)
 //                        .apply {
                 // TODO this seemed like a good idea but it results in several screens of log, what do?
 //                    errors.forEach(::addSuppressed)
