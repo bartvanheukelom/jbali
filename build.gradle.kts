@@ -41,7 +41,9 @@ dependencies {
     testImplementation("org.slf4j:slf4j-simple:$slf4j")
     testImplementation("junit:junit:4.12")
 
-    constraints {
-        implementation("org.jetbrains.kotlinx", "kotlinx-serialization-runtime", "0.13.0")
+    if (project == rootProject) {
+        constraints {
+            implementation("org.jetbrains.kotlinx", "kotlinx-serialization-runtime", "0.13.0")
+        }
     }
 }
