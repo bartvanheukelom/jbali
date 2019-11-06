@@ -71,13 +71,13 @@ fun <T> Iterable<T>.forEachWrappingExceptions(action: (T) -> Unit) {
                     } catch (tse: Throwable) {
                         "{!{toString error: $tse}!}"
                     }
-            throw RuntimeException("Exception while processing item $xs: $e", e)
+            throw RuntimeException("While processing item $xs: $e", e)
         }
     }
 }
 
 fun <T> Iterable<T>.forEachCatching(
-        errorHandler: (T, Throwable) -> Unit,
+        errorHandler: (T, Throwable) -> Unit, // TODO simple logging version
         action: (T) -> Unit
 ) {
     for (x in this) {
