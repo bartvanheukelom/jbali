@@ -45,7 +45,11 @@ fun onceFunction(f: () -> Unit): () -> Unit {
     }
 }
 
-fun <A,B> Either<A,B>.any() = fold({it},{it})
+/**
+ * Return the actual value in this either, whether it is left or right.
+ * @param C The common supertype of the left and right type.
+ */
+fun <C> Either<C, C>.value() = fold({it},{it})
 
 /**
  * The fully qualified name of this enum constant, e.g. foo.bar.Color.RED
