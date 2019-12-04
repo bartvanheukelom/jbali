@@ -9,6 +9,8 @@ import javax.xml.bind.annotation.XmlAccessType
 import javax.xml.bind.annotation.XmlAccessorType
 import javax.xml.bind.annotation.XmlValue
 import kotlin.reflect.KCallable
+import kotlin.reflect.KClass
+import kotlin.reflect.full.cast
 import kotlin.reflect.full.valueParameters
 
 val globalSecureRandom = SecureRandom()
@@ -100,6 +102,17 @@ fun <T> Iterable<T>.forEachCatching(
         }
     }
 }
+
+/**
+ * Normally returns the result of block().
+ * If block() throws, the exception is swallowed, and fb is returned instead.
+ */
+inline fun <T> withFallback(fb: T, block: () -> T) =
+        try {
+            block()
+        } catch (e: Throwable) {
+            fb
+        }
 
 class OutVar<T : Any> {
     lateinit var value: T
@@ -214,3 +227,6 @@ data class Password(@field:XmlValue private val value: String) : Serializable {
  * their real value by some kind of deserialization system.
  */
 const val stringToBeUnmarshalled = "stringToBeUnmarshalled"
+
+infix fun <A, B : Any> A.asClass(to: KClass<B>) =
+        to.cast(this)

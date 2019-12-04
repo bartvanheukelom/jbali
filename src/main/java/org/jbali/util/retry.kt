@@ -41,7 +41,7 @@ fun <T> retry(
                     (maxAttempts != null && attempts >= maxAttempts) ||
                     (maxDuration != null && timeTaken > maxDuration)
             ) {
-                throw GivenUpException("Operation failed after $attempts attempts in $timeTaken: $e", e)
+                throw GivenUpException("Operation failed after $attempts attempts in $timeTaken. Last attempt: $e", e)
 //                        .apply {
                 // TODO this seemed like a good idea but it results in several screens of log, what do?
 //                    errors.forEach(::addSuppressed)

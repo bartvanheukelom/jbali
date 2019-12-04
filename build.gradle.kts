@@ -34,6 +34,9 @@ dependencies {
     implementation("org.apache.httpcomponents:httpclient:4.4")
     implementation("org.apache.httpcomponents:httpcore:4.4")
 
+    // required to compile shared testing code in main sourceset
+    compileOnly(kotlin("test"))
+
     testImplementation(kotlin("test"))
     testImplementation(kotlin("test-junit"))
     testImplementation("org.slf4j:jul-to-slf4j:$slf4j")
