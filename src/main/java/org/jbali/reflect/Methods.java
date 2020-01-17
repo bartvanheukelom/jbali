@@ -1,18 +1,19 @@
 package org.jbali.reflect;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.List;
-import java.util.Map;
-
 import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import com.google.common.primitives.Primitives;
+
+import java.lang.reflect.Array;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.List;
+import java.util.Map;
 
 public class Methods {
 	
@@ -121,6 +122,23 @@ public class Methods {
 		
 		return b.toString();
 		
+	}
+
+	/**
+	 * @throws IllegalArgumentException if arg is not a valid argument for a parameter of type paramType
+	 */
+	public static void checkInvokeArg(Class<?> paramType, Object arg) {
+		Class<?> argType = arg == null ? null : arg.getClass();
+
+		if (paramType.isPrimitive()) {
+			if (argType == null) throw new IllegalArgumentException("arg null is not assignable to primitive " + paramType);
+
+			Class<?> wrapper = Primitives.wrap(paramType);
+			if (argType != wrapper) throw new IllegalArgumentException("arg " + argType + " is not unboxable to " + paramType);
+
+		} else if (argType != null && !paramType.isAssignableFrom(argType)) {
+			throw new IllegalArgumentException("arg " + argType + " is not assignable to " + paramType);
+		}
 	}
 	
 	
