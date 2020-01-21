@@ -43,7 +43,7 @@ data class ClassMapInfo<T : Any>(val clazz: KClass<T>) {
     val keys = props.keys
 }
 
-val <T : Any> KClass<T>.classMapInfo: ClassMapInfo<T> by CachedExtensionProperty(::ClassMapInfo)
+val <T : Any> KClass<T>.classMapInfo: ClassMapInfo<T> by StoredExtensionProperty(::ClassMapInfo)
 
 /**
  * Present the public member properties of any object as a Map. Uses the given object for storage, so take

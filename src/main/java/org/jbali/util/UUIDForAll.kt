@@ -4,7 +4,8 @@ import com.google.common.base.Function
 import com.google.common.cache.CacheBuilder
 import com.google.common.cache.CacheLoader
 import java.util.*
-import kotlin.properties.ReadOnlyProperty
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
 interface UUIdentifiable {
@@ -18,7 +19,7 @@ val Any.uuid: UUID get() =
 
 /** @return A UUID that is linked to, and unique to, the receiver's JVM identity. */
 val Any.objectIdentityUUID: UUID
-        by CachedExtensionProperty.ignoringReceiver(UUID::randomUUID)
+        by StoredExtensionProperty.ignoringReceiver(UUID::randomUUID)
 
 
 
@@ -38,19 +39,33 @@ inline fun <R, T> (() -> T).ignoringReceiver(): (R.() -> T) {
     return { t() }
 }
 
-class CachedExtensionProperty<in R : Any, out T>(getter: R.() -> T) : ReadOnlyProperty<R, T> {
+private val extensionPropertyStorage =
+        weakKeyLoadingCache<Any, ConcurrentHashMap<Any, Any>> {
+            ConcurrentHashMap()
+        }
+
+/**
+ * Delegate to add a mutable extension property to an object, whose value is stored in a weak-keyed identity-based map.
+ */
+@Suppress("UNCHECKED_CAST")
+class StoredExtensionProperty<in R : Any, T : Any>(
+        private val initialValue: R.() -> T
+) : ReadWriteProperty<R, T> {
 
     companion object {
-        fun <R : Any, T> ignoringReceiver(generator: () -> T) =
-                CachedExtensionProperty<R, T>(generator.ignoringReceiver())
+        fun <R : Any, T : Any> ignoringReceiver(initialValue: () -> T) =
+                StoredExtensionProperty<R, T>(initialValue.ignoringReceiver())
     }
 
-    val cache =
-            weakKeyLoadingCache<R, Optional<out T>> {
-                Optional.of(getter(it))
-            }
+    // TODO provideDelegate, check if property is indeed an extension, and ensure exactly 1 delegate per prop
 
     override fun getValue(thisRef: R, property: KProperty<*>): T =
-            cache.invoke(thisRef).orElse(null)
+        extensionPropertyStorage(thisRef).getOrPut(this) {
+            initialValue(thisRef)
+        } as T
+
+    override fun setValue(thisRef: R, property: KProperty<*>, value: T) {
+        extensionPropertyStorage(thisRef)[this] = value
+    }
 
 }
