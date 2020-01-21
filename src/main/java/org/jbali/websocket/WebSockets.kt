@@ -43,7 +43,10 @@ object WebSockets {
     const val HEADER_SEC_WEB_SOCKET_VERSION = "Sec-WebSocket-Version"
     const val HEADER_SEC_WEB_SOCKET_KEY = "Sec-WebSocket-Key"
     const val HEADER_SEC_WEB_SOCKET_ACCEPT = "Sec-WebSocket-Accept"
-    val HEADERS_FORWARDED_FOR = setOf("Real-Ip", "X-Real-Ip", "Forwarded", "X-Forwarded-For")
+    val HEADERS_FORWARDED_FOR = setOf(
+            "X-Real-Ip", // nginx uses this instead of x-forwarded-for by default
+            "X-Forwarded-For" // TODO support Forwarded, but that syntax is not the same as X-Forwarded-For
+    )
     const val ACCEPT_CONSTANT_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
     data class Frame(
@@ -185,7 +188,7 @@ object WebSockets {
             // parse the request
             val parser = DefaultHttpRequestParserFactory.INSTANCE.create(input, null)
             val req = parser.parse()
-
+            log.info("REQUEST $req")
 
             // TODO should require Connection: Upgrade, and Sec-WebSocket-Version: 13
 
@@ -200,7 +203,7 @@ object WebSockets {
             for (fwdHeader in HEADERS_FORWARDED_FOR) {
                 val xff = req.getFirstHeader(fwdHeader)
                 if (xff != null) {
-                    remoteAddress = InetAddress.getByName(xff.value.split(",".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()[0].trim { it <= ' ' })
+                    remoteAddress = InetAddress.getByName(xff.value.split(",".toRegex()).map { it.trim() }.first { it.isNotEmpty() })
                     break
                 }
             }
