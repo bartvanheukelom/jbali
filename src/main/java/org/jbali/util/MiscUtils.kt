@@ -230,3 +230,5 @@ const val stringToBeUnmarshalled = "stringToBeUnmarshalled"
 
 infix fun <A, B : Any> A.asClass(to: KClass<B>) =
         to.cast(this)
+
+inline fun <reified T> Any.cast() = this as T
