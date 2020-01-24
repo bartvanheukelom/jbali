@@ -11,31 +11,39 @@ repositories {
     jcenter()
 }
 
+// TODO make configurable
+val jdkVersion = foolCompilerNotConstant(8)
+
 tasks.withType<KotlinCompile> {
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = if (jdkVersion < 9) "1.$jdkVersion" else "$jdkVersion"
     }
 }
 
 dependencies {
     val slf4j = "1.7.25"
 
-    implementation(kotlin("stdlib-jdk8"))
-    implementation(kotlin("reflect"))
-    implementation("org.jetbrains.kotlinx", "kotlinx-serialization-runtime")
+    fun compileAndTest(dep: Any) {
+        compileOnly(dep)
+        testImplementation(dep)
+    }
 
-    implementation("io.arrow-kt:arrow-core:0.8.1")
+    compileAndTest(kotlin("stdlib-jdk8"))
+    compileAndTest(kotlin("reflect"))
+    compileAndTest("org.jetbrains.kotlinx:kotlinx-serialization-runtime")
 
-    implementation("com.google.guava:guava:28.0-jre")
-    implementation("org.slf4j:slf4j-api:$slf4j")
-    implementation("com.google.code.gson:gson:2.3.1")
-    implementation("org.apache.activemq:activemq-client:5.11.1")
-    implementation("commons-codec:commons-codec:1.10")
-    implementation("org.apache.httpcomponents:httpclient:4.4")
-    implementation("org.apache.httpcomponents:httpcore:4.4")
+    compileAndTest("io.arrow-kt:arrow-core:0.8.1")
+
+    compileAndTest("com.google.guava:guava:28.0-jre")
+    compileAndTest("org.slf4j:slf4j-api:$slf4j")
+    compileAndTest("com.google.code.gson:gson:2.3.1")
+    compileAndTest("org.apache.activemq:activemq-client:5.11.1")
+    compileAndTest("commons-codec:commons-codec:1.10")
+    compileAndTest("org.apache.httpcomponents:httpclient:4.4")
+    compileAndTest("org.apache.httpcomponents:httpcore:4.4")
 
     // required to compile shared testing code in main sourceset
-    compileOnly(kotlin("test"))
+    compileAndTest(kotlin("test"))
 
     testImplementation(kotlin("test"))
     testImplementation(kotlin("test-junit"))
@@ -50,3 +58,5 @@ dependencies {
         }
     }
 }
+
+fun <T> foolCompilerNotConstant(v: T) = v
