@@ -2,9 +2,7 @@ package org.jbali.kotser
 
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.UnstableDefault
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonConfiguration
-import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.*
 import kotlinx.serialization.modules.SerialModule
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.plus
@@ -51,3 +49,11 @@ fun <T> Json.parseDiag(deserializer: DeserializationStrategy<T>, string: String)
 //                Json::class.declaredMemberProperties.single { it.name == "configuration" }.get(this) as JsonConfiguration,
 //                context + sm
 //        )
+
+val JsonElement.literal: JsonLiteral get() =
+    this as? JsonLiteral ?: throw JsonElementTypeMismatchException(this::class.toString(), "JsonLiteral")
+
+val JsonElement.string: String get() =
+    literal.body as? String ?: throw JsonElementTypeMismatchException(this::class.toString(), "string")
+
+fun String.jsonElement() = JsonLiteral(this)
