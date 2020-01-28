@@ -206,7 +206,8 @@ fun formatTTime(time: Long): String = "T+${formatMsTime(time)}"
 @XmlAccessorType(XmlAccessType.FIELD)
 data class Password(@field:XmlValue private val value: String) : Serializable {
 
-    @Suppress("unused") private constructor() : this(stringToBeUnmarshalled)
+    // no-arg constructor for JAXB metadata, unmarshalling is not supported!
+    @Suppress("unused") private constructor() : this(fakeConstructorValue())
 
     /**
      * Returns the value.
@@ -227,6 +228,16 @@ data class Password(@field:XmlValue private val value: String) : Serializable {
  * their real value by some kind of deserialization system.
  */
 const val stringToBeUnmarshalled = "stringToBeUnmarshalled"
+
+
+/**
+ * Satisfies the compiler with a value of type T, but at runtime throws an exception.
+ * For use in no-arg constructors that must exist but not actually used, e.g. to satisfy
+ * JAXB for classes that are only supossed to be marshalled to XML, not the other way around.
+ */
+fun <T> fakeConstructorValue(): T =
+        throw RuntimeException("Using this constructor is not actually supported")
+
 
 infix fun <A, B : Any> A.asClass(to: KClass<B>) =
         to.cast(this)
