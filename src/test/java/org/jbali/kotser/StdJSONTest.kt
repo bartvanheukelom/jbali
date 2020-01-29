@@ -1,13 +1,17 @@
 package org.jbali.kotser
 
 import kotlinx.serialization.*
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonLiteral
+import kotlinx.serialization.json.JsonNull
 import org.junit.Test
 import java.net.InetAddress
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 
 inline class JSON(val s: String) {
     fun parse(): JsonElement = StdJSON.indented.parseJson(s)
@@ -89,6 +93,62 @@ class StdJSONTest {
 
         // LocalDate
         assertJson("\"2019-04-26\"".J, LocalDate.of(2019, 4, 26))
+
+    }
+
+    @Test
+    fun testLiteral() {
+        val j = Json.plain
+
+
+        val constructedTrue = JsonLiteral(true)
+        val constructedFalse = JsonLiteral(false)
+        val constructedNumber = JsonLiteral(12)
+        val constructedString = JsonLiteral("foo")
+        val constructedNumberString = JsonLiteral("12")
+        val constructedTrueString = JsonLiteral("true")
+
+
+        j.parseJson("null") as JsonNull
+
+        val parsedTrue = j.parseJson("true") as JsonLiteral
+        val parsedFalse = j.parseJson("false") as JsonLiteral
+        val parsedFalseWeird = j.parseJson("FaLSe") as JsonLiteral
+        val parsedTrueString = j.parseJson("\"true\"") as JsonLiteral
+
+        val parsedNumber = j.parseJson("12") as JsonLiteral
+        val parsedNumberString = j.parseJson("\"12\"") as JsonLiteral
+
+        val parsedString = j.parseJson("\"foo\"") as JsonLiteral
+
+        val parsedNullString = j.parseJson("\"null\"") as JsonLiteral
+
+
+        // the following assertions don't test our code, they document JsonLiteral
+        assertEquals(constructedTrue, parsedTrue)
+        assertEquals(constructedFalse, parsedFalse)
+        assertNotEquals(constructedFalse, parsedFalseWeird) // ! the original string is checked
+        assertEquals(constructedNumber, parsedNumber) // ! the string representation of the number is checked
+        assertEquals(constructedString, parsedString)
+        assertEquals(constructedNumberString, parsedNumberString)
+        assertEquals(constructedTrueString, parsedTrueString)
+
+
+        assertEquals(true, constructedTrue.unwrap())
+        assertEquals(true, parsedTrue.unwrap())
+        assertEquals(false, constructedFalse.unwrap())
+        assertEquals(false, parsedFalse.unwrap())
+        assertEquals(false, parsedFalseWeird.unwrap())
+        assertEquals("true", parsedTrueString.unwrap())
+
+        assertEquals(12, constructedNumber.unwrap())
+        assertEquals(12.0, parsedNumber.unwrap())
+        assertEquals("12", parsedNumberString.unwrap())
+
+        assertEquals("foo", constructedString.unwrap())
+        assertEquals("foo", parsedString.unwrap())
+
+        assertEquals("null", parsedNullString.unwrap())
 
     }
 }
