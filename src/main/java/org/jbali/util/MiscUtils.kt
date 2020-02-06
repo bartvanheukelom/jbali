@@ -173,15 +173,27 @@ fun Logger.invocation(func: KCallable<*>, vararg args: Any?) {
     info(invocationToString(func, *args))
 }
 
+/**
+ * ```
+ * fun foo(x: String, y: Int)
+ * invocationToString(::foo, "bar", 12, "derp")
+ * // = "foo(x=bar, y=12, [2]=derp)"
+ * ```
+ */
 fun invocationToString(func: KCallable<*>, vararg args: Any?): String {
+
+    // TODO loop on max(len(params), len(args)) to also display when too few args passed
     val argsStringed = args.mapIndexed { i, v ->
-        func.valueParameters.getOrNull(i)?.name + " = " + v.toString()
+        val param = func.valueParameters.getOrNull(i)?.name ?: "[$i]"
+        val arg = v.toString()
+        "$param=$arg"
     }
+
     val argsJoined =
             if (argsStringed.sumBy { it.length } >= 120) argsStringed.joinToString(separator = "\n\t", prefix = "\n\t", postfix = "\n")
             else argsStringed.joinToString()
-    val s = "${func.name}($argsJoined)"
-    return s
+
+    return "${func.name}($argsJoined)"
 }
 
 /** Format millis to MMM:SS:mmm */
