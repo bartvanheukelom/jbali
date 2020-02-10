@@ -250,6 +250,14 @@ const val stringToBeUnmarshalled = "stringToBeUnmarshalled"
 fun <T> fakeConstructorValue(): T =
         throw RuntimeException("Using this constructor is not actually supported")
 
+@Suppress("FunctionName")
+object FakeExpression {
+
+    fun <T> TODO(name: String = "<unnamed>"): T =
+            throw RuntimeException("This expression $name is not yet implemented") // TODO NotImplementedEXCEPTION (kotlin only has Error)
+
+}
+
 
 infix fun <A, B : Any> A.asClass(to: KClass<B>) =
         to.cast(this)
