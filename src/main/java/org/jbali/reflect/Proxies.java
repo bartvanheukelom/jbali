@@ -74,6 +74,12 @@ public class Proxies {
 		}));
 	}
 
+	public static <R> R createThrowingMock(Class<R> type) {
+		return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, (proxy, method, args) -> {
+			throw new RuntimeException("Fake exception for testing: " + invocationToString(method, args));
+		}));
+	}
+
 	/**
 	 * Copies all arguments using Java serialization before passing invocations to `real`.
 	 * Useful for e.g. testing remote interfaces that use this serialization.

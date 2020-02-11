@@ -256,6 +256,12 @@ object FakeExpression {
     fun <T> TODO(name: String = "<unnamed>"): T =
             throw RuntimeException("This expression $name is not yet implemented") // TODO NotImplementedEXCEPTION (kotlin only has Error)
 
+    fun <T> exceptionForTest(name: String = "Expression"): T =
+            throw RuntimeException("$name throws a fake exception for testing")
+
+    fun <T> errorForTest(name: String = "Expression"): T =
+        throw Error("$name throws a fake error for testing")
+
 }
 
 
