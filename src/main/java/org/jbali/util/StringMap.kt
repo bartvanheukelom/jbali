@@ -12,6 +12,27 @@ import kotlin.reflect.full.declaredMemberProperties
 class StringMap<V>(val contents: Map<String, V>) : Map<String, V> by contents {
     constructor(vararg entries: Pair<String, V>): this(mapOf(*entries))
     override fun toString() = "StringMap$contents"
+
+    companion object {
+
+        /**
+         * Check if all keys in the given map are strings and wrap it in a [StringMap].
+         * @throws IllegalArgumentException if a key is not a string.
+         */
+        @JvmStatic
+        fun checked(contents: Map<out Any?, Any?>): StringMap<Any?> {
+
+            // TODO extract to some kind of checkedCast
+            contents.keys.forEach { k ->
+                require(k is String) {
+                    "Not a string: $k"
+                }
+            }
+
+            @Suppress("UNCHECKED_CAST")
+            return StringMap(contents as Map<String, Any?>)
+        }
+    }
 }
 
 /**
