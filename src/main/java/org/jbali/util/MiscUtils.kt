@@ -268,4 +268,4 @@ object FakeExpression {
 infix fun <A, B : Any> A.asClass(to: KClass<B>) =
         to.cast(this)
 
-inline fun <reified T> Any.cast() = this as T
+inline fun <reified T : Any> Any.cast() = this as T
