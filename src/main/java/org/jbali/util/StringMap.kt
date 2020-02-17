@@ -35,6 +35,9 @@ class StringMap<V>(val contents: Map<String, V>) : Map<String, V> by contents {
     }
 }
 
+fun Map<out Any?, Any?>.asCheckedStringMap() =
+        StringMap.checked(this)
+
 /**
  * Turn an anonymous object into a StringMap.
  * Example:
