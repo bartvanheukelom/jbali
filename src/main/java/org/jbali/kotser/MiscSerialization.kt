@@ -33,6 +33,7 @@ abstract class StringBasedSerializer<T> : KSerializer<T> {
 
 }
 
+// TODO make interface Transformer<T, F>, and a variant of this class which accepts an instance
 abstract class TransformingSerializer<T, F>(
         val backend: KSerializer<F>
 ) : KSerializer<T> {
@@ -40,7 +41,9 @@ abstract class TransformingSerializer<T, F>(
     /**
      * If you get an error of the form:
      *    class WhateverSerializer overrides final method getDescriptor
-     * You should not apply @Serializer(forClass=Whatever) to that class.
+     * You should not apply @Serializer(forClass=Whatever::class) to that class.
+     * To make a companion the default serializer, instead apply to main class:
+     * @Serializable(with = Whatever.Companion::class)
      */
     final override val descriptor get() = backend.descriptor
 
