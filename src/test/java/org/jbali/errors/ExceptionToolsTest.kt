@@ -27,6 +27,7 @@ class ExceptionToolsTest {
 
         val sig = currentStackSignature()!!
 
+        // removeCurrentStack
         try {
             alex()
         } catch (e: Exception) {
@@ -34,6 +35,22 @@ class ExceptionToolsTest {
             val sb = e.stackTrace.last()
             assertEquals(ExceptionToolsTest::class.qualifiedName, sb.className)
             assertEquals(::testRemoveCurrentStack.name, sb.methodName)
+        }
+
+        // withoutCurrentStack
+        try {
+            alex()
+        } catch (e: Exception) {
+
+            val last = e.stackTrace.last()
+
+            e.withoutCurrentStack {
+                val sb = e.stackTrace.last()
+                assertEquals(ExceptionToolsTest::class.qualifiedName, sb.className)
+                assertEquals(::testRemoveCurrentStack.name, sb.methodName)
+            }
+
+            assertEquals(last, e.stackTrace.last())
         }
 
         // catch adds to stack

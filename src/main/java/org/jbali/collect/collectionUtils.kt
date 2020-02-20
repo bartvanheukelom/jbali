@@ -19,3 +19,16 @@ infix fun <A, B> Iterable<A>.longZip(b: Iterable<B>): Sequence<Pair<A?, B?>> =
                 yield(va to vb)
             }
         }
+
+/**
+ * Returns the index of the last element matching the given [predicate], or -1 if no such element was found.
+ */
+inline fun <T> List<T>.findLastIndex(predicate: (T) -> Boolean): Int {
+    val iterator = this.listIterator(size)
+    while (iterator.hasPrevious()) {
+        val index = iterator.previousIndex()
+        val element = iterator.previous()
+        if (predicate(element)) return index
+    }
+    return -1
+}

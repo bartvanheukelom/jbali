@@ -1,5 +1,6 @@
 package org.jbali.errors
 
+import org.jbali.collect.findLastIndex
 import org.jbali.threads.withValue
 import java.lang.Integer.min
 import java.util.*
@@ -24,16 +25,51 @@ import kotlin.contracts.contract
  * - internalCode()
  * - someMethod()
  * - handler()
+ *
+ * @return Undo lambda, see [removeStackFrom].
  */
-fun Throwable.removeCurrentStack() {
+fun Throwable.removeCurrentStack(): () -> Unit =
     // +1 = removeCurrentStack
-    currentStackSignature(1)?.let { removeStackFrom(it) }
+    currentStackSignature(1)
+            ?.let { removeStackFrom(it) }
+            ?: {}
+
+/**
+ * Run [block] while this exception's stacktrace is shortened
+ * according to the rules of [removeCurrentStack].
+ * After this method returns, the stack trace is as it was before this call.
+ */
+fun <T> Throwable.withoutCurrentStack(block: () -> T): T {
+    // +1 = withoutCurrentStack
+    val sig = currentStackSignature(1)
+    if (sig == null) {
+        return block()
+    } else {
+        val undo = removeStackFrom(sig)
+        try {
+            return block()
+        } finally {
+            try {
+                undo()
+            } catch (e: Throwable) {
+                addSuppressed(e)
+            }
+        }
+    }
 }
 
 data class StackSignature(
-        val thisMethod: StackTraceElement,
+        val callee: StackTraceElement,
         val caller: StackTraceElement
-)
+) {
+    infix fun matches(sig: StackSignature) =
+            caller == sig.caller &&
+                    callee sameMethodAs sig.callee
+}
+
+infix fun StackTraceElement.sameMethodAs(other: StackTraceElement) =
+        className  == other.className &&
+                methodName == other.methodName
 
 // using an overload instead of an optional parameter, because the latter would generate
 // a synthetic method $default that would add an extra stack frame
@@ -46,25 +82,45 @@ fun currentStackSignature(extraOffset: Int): StackSignature? {
     else StackSignature(t[2 + extraOffset], t[3 + extraOffset])
 }
 
+/**
+ * Remove the part of the stacktrace starting from (not including) the given [StackSignature],
+ * and everything below it, from this exception and all its cause exceptions.
+ * @return A lambda that can be called to undo this action. You can e.g. shorten a stack, log it,
+ *         then undo the shortening before rethrowing the exception.
+ */
 // TODO refactor to variable needle length
-fun Throwable.removeStackFrom(sig: StackSignature) {
+fun Throwable.removeStackFrom(sig: StackSignature): () -> Unit {
 
-    for (toClean in this.causeChain) {
+    // get and store once, because the getter makes a defensive copy
+    val originalTrace = stackTrace
 
-        val errTrace = toClean.stackTrace
+    // find the sig's caller in the exception stack
+    val calleeIndex =
+            originalTrace.asSequence().windowed(2).toList().findLastIndex {
+                val windowSig = StackSignature(callee = it[0], caller = it[1])
+                windowSig matches sig
+            }
 
-        // find the calling method in the exception stack
-        if (errTrace.size >= 3) for (i in errTrace.size - 1 downTo 1) {
-            if (errTrace[i] == sig.caller) {
-                // check if the calling method did in fact call this method
-                // (line number won't match)
-                val nextCall = errTrace[i - 1]
-                if (nextCall.className  == sig.thisMethod.className &&
-                    nextCall.methodName == sig.thisMethod.methodName) {
-                        // snip!
-                        toClean.stackTrace = Arrays.copyOfRange(errTrace, 0, i)
-                    break
-                }
+    // ignore not found, but also if found at 0
+    if (calleeIndex > 0) {
+        // snip!
+        stackTrace = Arrays.copyOfRange(originalTrace, 0, calleeIndex + 1)
+    }
+
+    val thisUndoer = {
+        stackTrace = originalTrace
+    }
+
+    // now recurse to cause
+    when (val cauz = cause) {
+        null -> return thisUndoer
+        else -> {
+            val causeUndoer: () -> Unit =
+                    cauz.removeStackFrom(sig)
+
+            return {
+                causeUndoer()
+                thisUndoer()
             }
         }
     }
@@ -111,16 +167,24 @@ fun commonTailLength(a: List<*>, b: List<*>): Int {
 }
 
 /**
- * Iterates this exception and all its causes
+ * Iterates this exception and all its causes.
  */
 val Throwable.causeChain: Iterable<Throwable> get() =
     independentIterable(this, Throwable::cause)
 
+/**
+ * Returns an [Iterable] that returns an iterator as specified in [independentIterator].
+ */
 fun <T> independentIterable(start: T, next: (cur: T) -> T?) =
     object : Iterable<T> {
         override fun iterator() = independentIterator(start, next)
     }
 
+/**
+ * Returns an iterator whose first element is [start],
+ * which subsequently yields the result of calling [next],
+ * until that returns `null`.
+ */
 fun <T> independentIterator(start: T, next: (cur: T) -> T?) =
     object : Iterator<T> {
         var nxt: T? = start
