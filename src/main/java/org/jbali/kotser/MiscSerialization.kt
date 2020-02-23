@@ -8,6 +8,7 @@ import kotlinx.serialization.Serializer
 import kotlinx.serialization.internal.StringDescriptor
 import kotlinx.serialization.modules.serializersModuleOf
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetAddress
@@ -79,4 +80,8 @@ val inetAddressSerModule = serializersModuleOf(mapOf(
 
 object BigDecimalSerializer : StringBasedSerializer<BigDecimal>() {
     override fun fromString(s: String) = BigDecimal(s)
+}
+
+object BigIntegerSerializer : StringBasedSerializer<BigInteger>() {
+    override fun fromString(s: String) = BigInteger(s)
 }
