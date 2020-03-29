@@ -26,20 +26,24 @@ class LibDependencyScope(
                     }
                 }
 
+        addDep(config, dep)
+
+    }
+
+    private fun addDep(config: String, dep: Any) {
         val configs =
-            when (config) {
-                "compileAndTest" ->
-                    listOf(
-                        "compileOnly",
-                        "testImplementation"
-                    )
-                else -> listOf(config)
-            }
+                when (config) {
+                    "compileAndTest" ->
+                        listOf(
+                                "compileOnly",
+                                "testImplementation"
+                        )
+                    else -> listOf(config)
+                }
 
         configs.forEach {
             project.dependencies.add(it, dep)
         }
-
     }
 
     /**
@@ -47,6 +51,10 @@ class LibDependencyScope(
      */
     fun compileAndTest(dependency: String, defaultVersion: String? = null) {
         add("compileAndTest", dependency, defaultVersion)
+    }
+
+    fun compileAndTest(project: Project) {
+        addDep("compileAndTest", project)
     }
 
     fun testImplementation(dependency: String, defaultVersion: String? = null) {
