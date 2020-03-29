@@ -2,8 +2,11 @@ import org.jbali.gradle.*
 
 plugins {
     kotlin("jvm")
-    id("org.jetbrains.kotlin.plugin.serialization")
+    kotlin("plugin.serialization")
 }
+
+group = "org.jbali"
+require(name == "jbali")
 
 libdependencies {
 
