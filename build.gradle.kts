@@ -5,21 +5,23 @@ plugins {
     kotlin("plugin.serialization")
 }
 
-group = "org.jbali"
-require(name == "jbali")
+initProject(
+    group = JBali.group,
+    name = JBali.aJbali
+)
 
-libdependencies {
+libDependencies {
 
     jcenter()
 
     val ksr = "0.11.0"
     val slf4j = "1.7.25"
 
-    compileAndTest(kotlin("stdlib-jdk8"))
-    compileAndTest(kotlin("reflect"))
-    compileAndTest("org.jetbrains.kotlinx:kotlinx-serialization-runtime", ksr)
+    compileAndTest(Kotlin.StdLib.jdk8)
+    compileAndTest(Kotlin.reflect)
+    compileAndTest(KotlinX.SerializationRuntime.jvm, ksr)
 
-    compileAndTest("io.arrow-kt:arrow-core", "0.8.1")
+    compileAndTest(Arrow.core, "0.8.1")
 
     compileAndTest("com.google.guava:guava", "28.0-jre")
     compileAndTest("org.slf4j:slf4j-api", slf4j)

@@ -69,6 +69,6 @@ class LibDependencyScope(
  * is the root project of the current build.
  * Otherwise, they should be specified using constraints by the containing project.
  */
-fun Project.libdependencies(config: LibDependencyScope.() -> Unit) {
+fun Project.libDependencies(config: LibDependencyScope.() -> Unit) {
     LibDependencyScope(this).config()
 }

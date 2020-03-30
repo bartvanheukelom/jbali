@@ -4,7 +4,11 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.dsl.DependencyConstraintHandler
 import org.gradle.api.artifacts.dsl.DependencyHandler
+import org.gradle.api.plugins.ExtensionAware
 import org.gradle.internal.deprecation.DeprecatableConfiguration
+import org.gradle.process.ExecSpec
+import org.jetbrains.kotlin.gradle.plugin.KotlinBasePluginWrapper
+
 
 /**
  * Add the given dependency to the `compileOnly` and `testImplementation` configurations.
@@ -30,3 +34,23 @@ val Configuration.deprecatedForDeclaration: Boolean get() =
 //            }
 //        }
 //    }
+
+fun Project.bash(script: String) {
+    this.exec {
+        val s = this as ExecSpec
+        s.commandLine("bash", "-c", "set -e; $script")
+    }
+}
+
+fun Project.initProject(group: String, name: String) {
+
+    // get it to check it
+    kotlinVersion
+
+    this.group = group
+
+    check(this.name == name) {
+        "Project $path name should be $name"
+    }
+
+}
