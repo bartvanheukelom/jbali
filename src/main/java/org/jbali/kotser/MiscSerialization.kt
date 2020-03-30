@@ -1,11 +1,7 @@
 package org.jbali.kotser
 
 import com.google.common.net.InetAddresses
-import kotlinx.serialization.Decoder
-import kotlinx.serialization.Encoder
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializer
-import kotlinx.serialization.internal.StringDescriptor
+import kotlinx.serialization.*
 import kotlinx.serialization.modules.serializersModuleOf
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -21,13 +17,13 @@ abstract class StringBasedSerializer<T> : KSerializer<T> {
      * You should not apply @Serializer(forClass=Whatever) to that class.
      * TODO removed final, what do?
      */
-    override val descriptor = StringDescriptor
+    override val descriptor = PrimitiveDescriptor(javaClass.name, PrimitiveKind.STRING)
 
     final override fun deserialize(decoder: Decoder): T =
             fromString(decoder.decodeString())
 
-    final override fun serialize(encoder: Encoder, obj: T) =
-            encoder.encodeString(toString(obj))
+    final override fun serialize(encoder: Encoder, value: T) =
+            encoder.encodeString(toString(value))
 
     abstract fun fromString(s: String): T
     open fun toString(o: T): String = o.toString()
@@ -48,8 +44,8 @@ abstract class TransformingSerializer<T, F>(
      */
     final override val descriptor get() = backend.descriptor
 
-    final override fun serialize(encoder: Encoder, obj: T) {
-        backend.serialize(encoder, transform(obj))
+    final override fun serialize(encoder: Encoder, value: T) {
+        backend.serialize(encoder, transform(value))
     }
 
     final override fun deserialize(decoder: Decoder): T {

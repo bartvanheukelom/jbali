@@ -131,7 +131,7 @@ fun Throwable.removeStackFrom(sig: StackSignature): () -> Unit {
  */
 val currentStackBase = ThreadLocal<StackSignature?>()
 // TODO @InlineOnly
-@UseExperimental(ExperimentalContracts::class)
+@OptIn(ExperimentalContracts::class)
 inline fun <T> stackRoot(body: () -> T): T {
     contract {
         callsInPlace(body, InvocationKind.EXACTLY_ONCE)

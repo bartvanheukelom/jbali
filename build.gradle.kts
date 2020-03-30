@@ -1,4 +1,6 @@
 import org.jbali.gradle.*
+import org.jetbrains.kotlin.config.KotlinCompilerVersion
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm")
@@ -9,31 +11,25 @@ initProject(
         group = JBali.group,
         name = JBali.aJbali,
         acceptableKotlinVersions = setOf(
-                KotlinVersions.V1_3_31,
                 KotlinVersions.V1_3_71
         )
 )
 
-tasks {
+// TODO centralize
+check("$kotlinVersion" == KotlinCompilerVersion.VERSION)
 
-    compileKotlin {
-        kotlinOptions {
-            enableInlineClasses()
-            use(Experimentals.Experimental)
-        }
+tasks.withType<KotlinCompile> {
+    kotlinOptions {
+        inlineClasses()
+        optIn(Experimentals.RequiresOptIn)
     }
-
-    compileJava {
-
-    }
-
 }
 
 libDependencies {
 
     jcenter()
 
-    val ksr = "0.11.0"
+    val ksr = "0.20.0"
     val slf4j = "1.7.25"
 
     compileAndTest(Kotlin.StdLib.jdk8)

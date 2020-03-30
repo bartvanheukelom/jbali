@@ -1,19 +1,22 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.json.JSON
+import kotlinx.serialization.UnstableDefault
+import kotlinx.serialization.json.Json
 import java.math.BigDecimal
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+@OptIn(UnstableDefault::class)
 class BigDecimalSerializerTest {
+
     @Test
     fun test() {
-        assertEquals(""""10"""", JSON.plain.stringify(BigDecimalSerializer, BigDecimal(10)))
-        assertEquals(""""12.30"""", JSON.plain.stringify(BigDecimalSerializer, BigDecimal(1230).scaleByPowerOfTen(-2)))
+        assertEquals(""""10"""", DefaultJson.plain.stringify(BigDecimalSerializer, BigDecimal(10)))
+        assertEquals(""""12.30"""", DefaultJson.plain.stringify(BigDecimalSerializer, BigDecimal(1230).scaleByPowerOfTen(-2)))
 
-        assertEquals(BigDecimal(1234).scaleByPowerOfTen(-2), JSON.plain.parse(BigDecimalSerializer, """"12.34""""))
-        assertEquals(BigDecimal(1230).scaleByPowerOfTen(-2), JSON.plain.parse(BigDecimalSerializer, """"12.30""""))
-        assertComparesEqual(BigDecimal(1230).scaleByPowerOfTen(-2), JSON.plain.parse(BigDecimalSerializer, """"12.3""""))
+        assertEquals(BigDecimal(1234).scaleByPowerOfTen(-2), DefaultJson.plain.parse(BigDecimalSerializer, """"12.34""""))
+        assertEquals(BigDecimal(1230).scaleByPowerOfTen(-2), DefaultJson.plain.parse(BigDecimalSerializer, """"12.30""""))
+        assertComparesEqual(BigDecimal(1230).scaleByPowerOfTen(-2), DefaultJson.plain.parse(BigDecimalSerializer, """"12.3""""))
     }
 }
 

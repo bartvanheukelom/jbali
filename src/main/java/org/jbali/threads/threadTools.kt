@@ -29,7 +29,7 @@ inline fun <R, P> withPropAs(getter: () -> P, setter: (P) -> Unit, v: P, block: 
 /**
  * Call body while this threadlocal has value v.
  */
-@UseExperimental(ExperimentalContracts::class)
+@OptIn(ExperimentalContracts::class)
 inline fun <L, T> ThreadLocal<L?>.withValue(v: L, body: () -> T): T {
     contract {
         callsInPlace(body, InvocationKind.EXACTLY_ONCE)
@@ -72,7 +72,7 @@ inline fun <T> runWithThreadName(name: String?, appendWithSeparator: String? = n
  * If entered is true, returns inner()
  * if it's false, calls enter, which must invoke its argument (which is a wrapper around inner) and return that result.
  */
-@UseExperimental(ExperimentalContracts::class)
+@OptIn(ExperimentalContracts::class)
 inline fun <T> reentrant(entered: ThreadLocal<Boolean>, noinline inner: () -> T, wrapper: (inner: () -> T) -> T): T {
     contract {
         callsInPlace(inner, InvocationKind.EXACTLY_ONCE)

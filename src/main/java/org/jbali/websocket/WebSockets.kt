@@ -25,7 +25,7 @@ import java.security.NoSuchAlgorithmException
 import kotlin.math.min
 import kotlin.random.Random
 
-@UseExperimental(ExperimentalUnsignedTypes::class)
+@OptIn(ExperimentalUnsignedTypes::class)
 object WebSockets {
 
     private val log = LoggerFactory.getLogger(WebSockets::class.java)

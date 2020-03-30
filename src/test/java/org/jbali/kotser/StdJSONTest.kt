@@ -1,6 +1,7 @@
 package org.jbali.kotser
 
 import kotlinx.serialization.*
+import kotlinx.serialization.builtins.set
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonLiteral
@@ -28,7 +29,7 @@ class StdJSONTest {
 
     private val serrer = StdJSON.indented
 
-    @UseExperimental(ImplicitReflectionSerializer::class)
+    @OptIn(ImplicitReflectionSerializer::class)
     private inline fun <reified T : Any> assertJson(json: JSON, v: T, ser: SerializationStrategy<T>? = null) {
 
         val expectParse: JsonElement = json.parse()
@@ -96,9 +97,10 @@ class StdJSONTest {
 
     }
 
+    @OptIn(UnstableDefault::class)
     @Test
     fun testLiteral() {
-        val j = Json.plain
+        val j = DefaultJson.plain
 
 
         val constructedTrue = JsonLiteral(true)

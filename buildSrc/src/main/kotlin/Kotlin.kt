@@ -66,9 +66,14 @@ fun KotlinJvmOptions.enableInlineClasses() {
     freeCompilerArgs += "-XXLanguage:+InlineClasses"
 }
 
+fun KotlinJvmOptions.inlineClasses() {
+    freeCompilerArgs += "-Xinline-classes"
+}
+
 enum class Experimentals(val featureName: String) {
     Contracts("kotlin.contracts.ExperimentalContracts"),
-    Experimental("kotlin.Experimental")
+    Experimental("kotlin.Experimental"),
+    RequiresOptIn("kotlin.RequiresOptIn")
 }
 
 fun KotlinJvmOptions.use(feature: Experimentals) {
@@ -77,6 +82,10 @@ fun KotlinJvmOptions.use(feature: Experimentals) {
 
 fun KotlinJvmOptions.useExperimental(feature: String) {
     freeCompilerArgs += "-Xuse-experimental=$feature"
+}
+
+fun KotlinJvmOptions.optIn(feature: Experimentals) {
+    freeCompilerArgs += "-Xopt-in=${feature.featureName}"
 }
 
 // doesn't appear like it can be used, will complain "this class can only be used as..."

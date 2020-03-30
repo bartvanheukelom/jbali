@@ -7,3 +7,9 @@ import kotlin.test.assertFailsWith
  */
 inline fun <reified T : Throwable> assertFailsWithPrinted(message: String? = null, noinline block: () -> Unit): T =
         assertFailsWith<T>(message, block).also { it.printStackTrace() }
+
+fun assertContains(expectedPart: String, actualFull: String) {
+    if (expectedPart !in actualFull) {
+        throw AssertionError("Expected part:\n\n${expectedPart}\n\nnot found in actual string:\n\n$actualFull")
+    }
+}
