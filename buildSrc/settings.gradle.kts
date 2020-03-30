@@ -1,5 +1,5 @@
 pluginManagement {
-    val kotlinVersion = KotlinVersion(1, 3, 31)
+    val kotlinVersion = KotlinVersion(1, 3, 71)
 
     // ============ shared TODO find way to share this =========== //
 

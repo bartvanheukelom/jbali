@@ -37,7 +37,10 @@ object KotlinX {
 
 object KotlinVersions {
     val V1_3_31 = KotlinVersion(1, 3, 31)
+    // TODO ...
     val V1_3_50 = KotlinVersion(1, 3, 50)
+    // TODO ...
+    val V1_3_71 = KotlinVersion(1, 3, 71)
 }
 
 // copied from kotlin-gradle-plugin
