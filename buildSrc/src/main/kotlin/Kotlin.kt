@@ -3,6 +3,7 @@ package org.jbali.gradle
 import org.gradle.api.Project
 import org.gradle.api.plugins.ExtensionAware
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePluginWrapper
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmOptions
 
 object Kotlin {
     private const val modulePrefix = "org.jetbrains.kotlin:kotlin-"
@@ -56,3 +57,24 @@ val Project.kotlinVersion: KotlinVersion? get() =
         declaredVersion
 
     } as KotlinVersion?
+
+fun KotlinJvmOptions.enableInlineClasses() {
+    freeCompilerArgs += "-XXLanguage:+InlineClasses"
+}
+
+enum class Experimentals(val featureName: String) {
+    Contracts("kotlin.contracts.ExperimentalContracts")
+}
+
+fun KotlinJvmOptions.use(feature: Experimentals) {
+    useExperimental(feature.featureName)
+}
+
+fun KotlinJvmOptions.useExperimental(feature: String) {
+    freeCompilerArgs += "-Xuse-experimental=$feature"
+}
+
+// doesn't appear like it can be used, will complain "this class can only be used as..."
+inline fun <reified C : Any> KotlinJvmOptions.useExperimental() {
+    freeCompilerArgs += "-Xuse-experimental=${C::class.qualifiedName}"
+}
