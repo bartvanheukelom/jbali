@@ -179,6 +179,8 @@ fun Logger.invocation(func: KCallable<*>, vararg args: Any?) {
  * invocationToString(::foo, "bar", 12, "derp")
  * // = "foo(x=bar, y=12, [2]=derp)"
  * ```
+ *
+ * @see org.jbali.reflect.MethodInvocation
  */
 fun invocationToString(func: KCallable<*>, vararg args: Any?): String {
 

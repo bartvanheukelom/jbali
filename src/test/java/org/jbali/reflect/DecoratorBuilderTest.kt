@@ -1,9 +1,7 @@
 package org.jbali.reflect
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import kotlin.reflect.jvm.javaMethod
+import kotlin.test.*
 
 class DecoratorBuilderTest {
 
@@ -13,20 +11,31 @@ class DecoratorBuilderTest {
 
     @Test fun test() {
 
-        var called = false
+        var receivedInvocation: MethodInvocation? = null
 
-        val impl = object : Iffy {
-            override fun honk(foo: String, x: Int) {}
-        }
+        val impl =
+                object : Iffy {
+                    override fun honk(foo: String, x: Int) {}
+                }
 
-        val dec = DecoratorBuilder<Iffy>(impl).withBefore { mi: MethodInvocation ->
-            assertEquals("honk(foo = bar, x = 12)", mi.toString())
-            called = true
-        }
+        val dec =
+                DecoratorBuilder<Iffy>(impl).withBefore { mi: MethodInvocation ->
+                    receivedInvocation = mi
+                }
 
-        assertFalse(called)
+        assertNull(receivedInvocation)
+
+        dec.honk("foo", 1)
+        assertEquals(MethodInvocation(
+                method = Iffy::honk.javaMethod!!,
+                args = listOf("foo", 1)
+        ), receivedInvocation)
+
         dec.honk("bar", 12)
-        assertTrue(called)
+        assertEquals(MethodInvocation(
+                method = Iffy::honk.javaMethod!!,
+                args = listOf("bar", 12)
+        ), receivedInvocation)
     }
 
 }
