@@ -24,9 +24,9 @@ public class Proxies {
 	 */
 	public interface SimpleInvocationHandler {
 		
-		void invoke(Method method, @NotNull Object[] args) throws Throwable;
+		void invoke(@NotNull Method method, Object @NotNull [] args) throws Throwable;
 
-		default void invokeNullableArgs(Method method, @Nullable Object[] args) throws Throwable {
+		default void invokeNullableArgs(@NotNull Method method, Object @Nullable [] args) throws Throwable {
 			invoke(method, args == null ? new Object[0] : args);
 		}
 		
