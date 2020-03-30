@@ -20,6 +20,7 @@ public class EnumTools {
 		return result;
 	}
 
+	@SuppressWarnings("unchecked")
 	public static EnumSet<?> parseEnumSetUnsafe(Class enumClass, String str) {
 		if (!enumClass.isEnum()) throw new IllegalArgumentException(enumClass + " is not an enum class");
 		return parseEnumSet(enumClass, str);

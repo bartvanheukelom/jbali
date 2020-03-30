@@ -23,6 +23,7 @@ object StdJSON {
 
 // TODO find out how this is properly done
 fun Json.stringify(j: JsonElement): String = stringify(JsonElement.serializer(), j)
+@UseExperimental(UnstableDefault::class)
 fun makeJsonPretty(t: String) = Json.indented.stringify(Json.plain.parseJson(t))
 
 
@@ -89,7 +90,7 @@ fun JsonElement.unwrap(): JsonValue? =
             is JsonLiteral -> when (val b = body) {
                 is Boolean, is Number -> b
                 is String -> when {
-                    isString -> b as String
+                    isString -> b
                     else -> when {
                         // from StringOps.kt, String.toBooleanStrictOrNull
                         b.equals("true", ignoreCase = true) -> true

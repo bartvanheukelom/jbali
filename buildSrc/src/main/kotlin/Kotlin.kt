@@ -59,11 +59,13 @@ val Project.kotlinVersion: KotlinVersion? get() =
     } as KotlinVersion?
 
 fun KotlinJvmOptions.enableInlineClasses() {
+//    freeCompilerArgs += "-Xinline-classes"
     freeCompilerArgs += "-XXLanguage:+InlineClasses"
 }
 
 enum class Experimentals(val featureName: String) {
-    Contracts("kotlin.contracts.ExperimentalContracts")
+    Contracts("kotlin.contracts.ExperimentalContracts"),
+    Experimental("kotlin.Experimental")
 }
 
 fun KotlinJvmOptions.use(feature: Experimentals) {

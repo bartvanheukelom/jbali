@@ -46,11 +46,13 @@ public class ServiceCompiler {
 		
 	}
 
+	@SuppressWarnings({"deprecation", "UnstableApiUsage"})
 	private static void writeCode(final File outputDir, @SuppressWarnings("unused") PrintWriter o, GeneratedCode code) throws IOException {
 		
 		File output = new File(outputDir, code.getClassName() + ".java");
 //		o.println(output + ":");
 //		o.println(code.getCode());
+
 		Files.write(code.getCode(), output, Charsets.UTF_8);
 		
 	}

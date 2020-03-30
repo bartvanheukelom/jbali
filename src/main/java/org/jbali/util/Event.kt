@@ -68,7 +68,7 @@ interface Listenable<P> {
 
         val defaultLogErrorCallback = loggingErrorCallback(log)
 
-        val rethrowEventErrorAsAssert: ListenerErrorCallback<*> = { l: EventListener<*>, e: Throwable ->
+        val rethrowEventErrorAsAssert: ListenerErrorCallback<*> = { _: EventListener<*>, e: Throwable ->
             throw FatalEventError(e)
         }
 

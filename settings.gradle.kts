@@ -9,7 +9,7 @@ pluginManagement {
     repositories {
         // for kser
         if (kserLegacyPlugin) {
-            maven(url = "http://dl.bintray.com/kotlin/kotlin-eap")
+            maven(url = "https://dl.bintray.com/kotlin/kotlin-eap")
         }
         gradlePluginPortal()
     }

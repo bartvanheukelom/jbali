@@ -13,6 +13,21 @@ initProject(
         )
 )
 
+tasks {
+
+    compileKotlin {
+        kotlinOptions {
+            enableInlineClasses()
+            use(Experimentals.Experimental)
+        }
+    }
+
+    compileJava {
+
+    }
+
+}
+
 libDependencies {
 
     jcenter()

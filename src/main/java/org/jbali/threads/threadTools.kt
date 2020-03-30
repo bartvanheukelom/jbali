@@ -102,6 +102,11 @@ inline fun <T> reentrant(entered: ThreadLocal<Boolean>, noinline inner: () -> T,
 fun currentThreadList(atomic: Boolean = false): List<ThreadInfo> =
     Thread.getAllStackTraces().map { (thread, stack) ->
         if (atomic && thread != Thread.currentThread()) {
+
+            // suspend and resume are deliberately used here despite their deprecation,
+            // but forgot (to document) why exactly
+
+            @Suppress("DEPRECATION")
             thread.suspend()
             try {
                 ThreadInfo(
@@ -111,6 +116,7 @@ fun currentThreadList(atomic: Boolean = false): List<ThreadInfo> =
                         stack = thread.stackTrace.toList()
                 )
             } finally {
+                @Suppress("DEPRECATION")
                 thread.resume()
             }
         } else {
