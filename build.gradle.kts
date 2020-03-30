@@ -6,8 +6,11 @@ plugins {
 }
 
 initProject(
-    group = JBali.group,
-    name = JBali.aJbali
+        group = JBali.group,
+        name = JBali.aJbali,
+        acceptableKotlinVersions = setOf(
+                KotlinVersions.V1_3_31
+        )
 )
 
 libDependencies {

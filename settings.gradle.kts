@@ -36,3 +36,5 @@ pluginManagement {
         }
     }
 }
+
+rootProject.name = "jbali"
