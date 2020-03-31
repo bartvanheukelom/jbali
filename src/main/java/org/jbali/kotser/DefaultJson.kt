@@ -5,6 +5,8 @@ import kotlinx.serialization.json.JsonConfiguration
 
 object DefaultJson {
 
+    val stable = Json(JsonConfiguration.Stable)
+
     val plainConfig =
             JsonConfiguration.Stable.copy(
                     useArrayPolymorphism = true
