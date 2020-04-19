@@ -8,6 +8,9 @@ import org.gradle.api.plugins.ExtensionAware
 import org.gradle.internal.deprecation.DeprecatableConfiguration
 import org.gradle.process.ExecSpec
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePluginWrapper
+import java.io.File
+import kotlin.properties.ReadOnlyProperty
+import kotlin.reflect.KProperty
 
 
 /**
@@ -20,6 +23,29 @@ fun DependencyHandler.compileAndTest(dependencyNotation: Any) {
 
 val Project.isRoot: Boolean get() =
         this == rootProject
+
+/**
+ * Returns the direct children of this project.
+ */
+val Project.childprojects: Collection<Project> get() =
+        childProjects.values
+
+fun Iterable<Project>.configure(action: Project.() -> Unit) =
+        forEach {
+            it.action()
+        }
+
+operator fun File.div(child: String) =
+        File(this, child)
+
+operator fun Project.div(child: String): Project =
+        childProjects.getValue(child)
+
+//val Project.childproject get() =
+//    object : ReadOnlyProperty<Project, Project?> {
+//        override fun getValue(thisRef: Project, property: KProperty<*>) =
+//                thisRef.childProjects[property.name]
+//    }
 
 val Configuration.deprecatedForDeclaration: Boolean get() =
         when (this) {

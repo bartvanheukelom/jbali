@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinPluginWrapper
 
 plugins {
     kotlin("jvm")
+    // TODO https://docs.gradle.org/current/userguide/kotlin_dsl.html#sec:kotlin-dsl_plugin
 //    `kotlin-dsl`
 }
 

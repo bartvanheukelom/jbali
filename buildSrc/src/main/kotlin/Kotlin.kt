@@ -2,9 +2,11 @@ package org.jbali.gradle
 
 import org.gradle.api.Project
 import org.gradle.api.plugins.ExtensionAware
+import org.gradle.api.plugins.PluginAware
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePluginWrapper
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmOptions
 
+// TODO more specific name and make this name an extension of DependencyHandlerScope
 object Kotlin {
     private const val modulePrefix = "org.jetbrains.kotlin:kotlin-"
 
@@ -33,6 +35,11 @@ object KotlinX {
         const val js = "org.jetbrains.kotlinx:kotlinx-serialization-runtime-js"
         const val jvm = "org.jetbrains.kotlinx:kotlinx-serialization-runtime"
     }
+
+    object Coroutines {
+        const val core = "org.jetbrains.kotlinx:kotlinx-coroutines-core"
+    }
+
 }
 
 object KotlinVersions {
@@ -41,6 +48,7 @@ object KotlinVersions {
     val V1_3_50 = KotlinVersion(1, 3, 50)
     // TODO ...
     val V1_3_71 = KotlinVersion(1, 3, 71)
+    val V1_3_72 = KotlinVersion(1, 3, 72)
 }
 
 // copied from kotlin-gradle-plugin
@@ -91,4 +99,16 @@ fun KotlinJvmOptions.optIn(feature: Experimentals) {
 // doesn't appear like it can be used, will complain "this class can only be used as..."
 inline fun <reified C : Any> KotlinJvmOptions.useExperimental() {
     freeCompilerArgs += "-Xuse-experimental=${C::class.qualifiedName}"
+}
+
+enum class KotlinCompilerPlugin {
+    jpa,
+    spring,
+    serialization;
+
+    val id = "org.jetbrains.kotlin.plugin.$name"
+
+    fun applyTo(project: PluginAware) {
+        project.pluginManager.apply(id)
+    }
 }
