@@ -6,6 +6,7 @@ import org.gradle.api.artifacts.dsl.DependencyConstraintHandler
 import org.gradle.api.artifacts.dsl.DependencyHandler
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.internal.deprecation.DeprecatableConfiguration
+import org.gradle.jvm.tasks.Jar
 import org.gradle.process.ExecSpec
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePluginWrapper
 import java.io.File
@@ -94,6 +95,10 @@ fun Project.initProject(
 
     check(this.name == name) {
         "Name of $this should be '$name'. The project name is taken from the directory name, but can be overriden in `settings.gradle.*`."
+    }
+
+    tasks.withType(Jar::class.java).forEach {
+        it.archiveFileName.set("$group.$name.jar")
     }
 
 }
