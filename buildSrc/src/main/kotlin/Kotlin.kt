@@ -55,18 +55,15 @@ object KotlinVersions {
 fun Project.getKotlinPluginVersion(): String? =
         plugins.asSequence().mapNotNull { (it as? KotlinBasePluginWrapper)?.kotlinPluginVersion }.firstOrNull()
 
+val Project.declaredKotlinVersion: KotlinVersion? get() =
+    (gradle as ExtensionAware).extensions.extraProperties["kotlinVersion"] as KotlinVersion?
+
 val Project.kotlinVersion: KotlinVersion? get() =
     (this as ExtensionAware).extensions.extraProperties.properties.getOrPut("kotlinVersion") {
-
-        val declaredVersion = (gradle as ExtensionAware).extensions.extraProperties["kotlinVersion"] as KotlinVersion?
-        val pluginVersion = getKotlinPluginVersion()
-
-        check(pluginVersion == "$declaredVersion") {
-            "kotlinPluginVersion $pluginVersion != kotlinVersion $declaredVersion"
+        check(getKotlinPluginVersion() == "$declaredKotlinVersion") {
+            "kotlinPluginVersion ${getKotlinPluginVersion()} != kotlinVersion $declaredKotlinVersion"
         }
-
-        declaredVersion
-
+        declaredKotlinVersion
     } as KotlinVersion?
 
 fun KotlinJvmOptions.enableInlineClasses() {
