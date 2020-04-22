@@ -11,7 +11,9 @@ import org.gradle.process.ExecSpec
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePluginWrapper
 import java.io.File
 import kotlin.properties.ReadOnlyProperty
+import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
+import kotlin.reflect.full.primaryConstructor
 
 
 /**
@@ -31,7 +33,7 @@ val Project.isRoot: Boolean get() =
 val Project.childprojects: Collection<Project> get() =
         childProjects.values
 
-fun Iterable<Project>.configure(action: Project.() -> Unit) =
+fun <T> Iterable<T>.configure(action: T.() -> Unit) =
         forEach {
             it.action()
         }
@@ -41,6 +43,35 @@ operator fun File.div(child: String) =
 
 operator fun Project.div(child: String): Project =
         childProjects.getValue(child)
+
+abstract class ProjectWrapper(val native: Project) : Project by native {
+    override fun toString() = native.toString()
+    override fun hashCode() = native.hashCode()
+    override fun equals(other: Any?) = native == other
+}
+
+class ProjectGroup<T : ProjectWrapper>(
+        private val groupProject: Project,
+        private val type: KClass<out T>,
+        val children: Map<String, T> =
+                groupProject.childProjects.mapValues {
+                    type.primaryConstructor!!.call(it.value)
+                }
+) : Set<T> by children.values.toSet() {
+
+    val name get() = groupProject.name
+
+//    fun configure(action: T.() -> Unit): Iterable<T> =
+//            configure(children.values, action)
+
+    operator fun div(subProjectName: String): T =
+            children.getValue(subProjectName)
+
+    override fun toString() = "ProjectGroup($name)"
+    override fun hashCode() = groupProject.hashCode()
+    override fun equals(other: Any?) = other is ProjectGroup<*> && other.groupProject == groupProject
+
+}
 
 //val Project.childproject get() =
 //    object : ReadOnlyProperty<Project, Project?> {
