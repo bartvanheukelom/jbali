@@ -24,54 +24,13 @@ fun DependencyHandler.compileAndTest(dependencyNotation: Any) {
    add("testImplementation", dependencyNotation)
 }
 
-val Project.isRoot: Boolean get() =
-        this == rootProject
-
-/**
- * Returns the direct children of this project.
- */
-val Project.childprojects: Collection<Project> get() =
-        childProjects.values
-
-fun <T> Iterable<T>.configure(action: T.() -> Unit) =
-        forEach {
-            it.action()
-        }
+//fun <T> Iterable<T>.configure(action: T.() -> Unit) =
+//        forEach {
+//            it.action()
+//        }
 
 operator fun File.div(child: String) =
         File(this, child)
-
-operator fun Project.div(child: String): Project =
-        childProjects.getValue(child)
-
-abstract class ProjectWrapper(val native: Project) : Project by native {
-    override fun toString() = native.toString()
-    override fun hashCode() = native.hashCode()
-    override fun equals(other: Any?) = native == other
-}
-
-class ProjectGroup<T : ProjectWrapper>(
-        private val groupProject: Project,
-        private val type: KClass<out T>,
-        val children: Map<String, T> =
-                groupProject.childProjects.mapValues {
-                    type.primaryConstructor!!.call(it.value)
-                }
-) : Set<T> by children.values.toSet() {
-
-    val name get() = groupProject.name
-
-//    fun configure(action: T.() -> Unit): Iterable<T> =
-//            configure(children.values, action)
-
-    operator fun div(subProjectName: String): T =
-            children.getValue(subProjectName)
-
-    override fun toString() = "ProjectGroup($name)"
-    override fun hashCode() = groupProject.hashCode()
-    override fun equals(other: Any?) = other is ProjectGroup<*> && other.groupProject == groupProject
-
-}
 
 //val Project.childproject get() =
 //    object : ReadOnlyProperty<Project, Project?> {
@@ -93,6 +52,7 @@ val Configuration.deprecatedForDeclaration: Boolean get() =
 //        }
 //    }
 
+// TODO make this a task type as well
 fun Project.bash(script: String) {
     this.exec {
         val s = this as ExecSpec
@@ -100,36 +60,3 @@ fun Project.bash(script: String) {
     }
 }
 
-/**
- * Sets the project [group] and checks its [name] (which can only be set in `settings.gradle*`).
- *
- * If [acceptableKotlinVersions] is given, checks whether the actual Kotlin version is one of them.
- *
- * @throws IllegalStateException if any of these conditions fail.
- */
-fun Project.initProject(
-        group: String,
-        name: String,
-        acceptableKotlinVersions: Set<KotlinVersion>? = null
-) {
-
-    // get kotlinVersion to check consistency between declared and plugin version
-    val kv = kotlinVersion
-
-    if (acceptableKotlinVersions != null) {
-        check(kv in acceptableKotlinVersions) {
-            "kotlinVersion $kv is not in acceptableKotlinVersions $acceptableKotlinVersions"
-        }
-    }
-
-    this.group = group
-
-    check(this.name == name) {
-        "Name of $this should be '$name'. The project name is taken from the directory name, but can be overriden in `settings.gradle.*`."
-    }
-
-    tasks.withType(Jar::class.java).forEach {
-        it.archiveFileName.set("$group.$name.jar")
-    }
-
-}

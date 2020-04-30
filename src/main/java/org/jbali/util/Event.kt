@@ -23,6 +23,8 @@ typealias ListenerErrorCallback<P> = ((l: EventListener<out P>, e: Throwable) ->
  * Allows an event property to be declared like:
  * val onChange by EventDelegate<ChangeInfo>()
  */
+// TODO make Event a delegate provider, enables:
+// val onBla: Event<Foo> by Event
 class EventDelegate<P> : ReadOnlyProperty<Any?, Event<P>> {
     private val constructed = AtomicReference<Event<P>>()
     override operator fun getValue(thisRef: Any?, property: KProperty<*>): Event<P> {
