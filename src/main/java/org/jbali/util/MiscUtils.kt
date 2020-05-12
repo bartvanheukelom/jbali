@@ -269,3 +269,6 @@ infix fun <A, B : Any> A.asClass(to: KClass<B>) =
         to.cast(this)
 
 inline fun <reified T : Any> Any.cast() = this as T
+
+fun ByteArray.toHexString(limit: Int = size): String =
+        HexBytes.toHex(this, limit)
