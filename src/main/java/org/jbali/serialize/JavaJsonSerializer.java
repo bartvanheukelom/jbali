@@ -16,6 +16,8 @@ import java.util.Map;
  * <li>All lists are unserialized as ImmutableList NOPE NOT YET</li>
  * </ul>
  * <p>Cyclic structures are not supported.</p>
+ *
+ * TODO use Kotlin serialization if available
  */
 public class JavaJsonSerializer {
 	
@@ -58,7 +60,10 @@ public class JavaJsonSerializer {
 	private static JSONArray complex(ValType vt, Object inner) {
 		return JSONArray.create(""+vt.letter, inner);
 	}
-	
+
+	/**
+	 * @return One of: <code>null</code>, Boolean, Double, String, JSONArray.
+	 */
 	public static Object serialize(Object val) {
 		if (val == null || val instanceof Boolean || val instanceof String || val instanceof Double) return val;
 		if (val instanceof byte[]) return complex(ValType.BYTE_ARRAY, Base64.encodeBase64String((byte[]) val));
@@ -75,7 +80,10 @@ public class JavaJsonSerializer {
 		if (val instanceof Serializable) return complex(ValType.JAVA_OBJECT, Base64.encodeBase64String(JavaSerializer.write((Serializable) val)));
 		throw new IllegalArgumentException("Cannot serialize value " + val + " of type " + val.getClass());
 	}
-	
+
+	/**
+	 * @param json One of: <code>null</code>, <code>JSONObject.NULL</code>, Boolean, Number, String, JSONArray.
+	 */
 	public static Object unserialize(Object json) {
 		if (json == JSONObject.NULL) return null;
 		if (json == null || json instanceof Boolean || json instanceof String) return json;
