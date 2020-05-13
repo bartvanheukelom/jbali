@@ -1,6 +1,9 @@
 package org.jbali.serialize;
 
 import com.google.common.collect.ImmutableList;
+import kotlin.collections.MapsKt;
+import kotlinx.serialization.json.*;
+import org.jbali.collect.Maps;
 import org.jbali.json.JSONObject;
 import org.junit.Test;
 
@@ -28,7 +31,19 @@ public class JavaJsonSerializerTest {
 				LocalDate.now(),
 				new Date(),
 				Instant.now(),
-				ImmutableList.of("12", LocalDate.now(), true, 12)
+				ImmutableList.of("12", LocalDate.now(), true, 12),
+				JsonNull.INSTANCE,
+				new JsonObject(Maps.create(
+						// to assert equal, this order must be preserved and the number must be an int
+						"missingno", JsonNull.INSTANCE,
+						"obj", new JsonObject(MapsKt.emptyMap()),
+						"foo", new JsonLiteral("bar"),
+						"blub", new JsonLiteral(12),
+						"arrrrrrr", new JsonArray(Arrays.asList(
+								new JsonLiteral("you are"),
+								new JsonLiteral("a pirate")
+						))
+				))
 //				Maybe.definitely(12), Maybe.unknown()
 		).forEach(v -> {
 			Object s = JavaJsonSerializer.serialize(v);
