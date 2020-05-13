@@ -1,9 +1,11 @@
 package org.jbali.serialize;
 
+import kotlinx.serialization.json.JsonElement;
 import org.apache.commons.codec.binary.Base64;
 import org.jbali.collect.Maps;
 import org.jbali.json.JSONArray;
 import org.jbali.json.JSONObject;
+import org.jbali.json.JsonConvertKt;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -22,14 +24,15 @@ public class JavaJsonSerializer {
 	enum ValType {
 		
 		JAVA_OBJECT('J'),
-		
+		JSON_ELEMENT('E'),
+
 		BYTE('x'),
 		CHAR('c'),
 		INT('i'),
 		SHORT('s'),
 		LONG('l'),
 		FLOAT('f'),
-		
+
 		BYTE_ARRAY('B'),
 		
 		
@@ -61,6 +64,7 @@ public class JavaJsonSerializer {
 	
 	public static Object serialize(Object val) {
 		if (val == null || val instanceof Boolean || val instanceof String || val instanceof Double) return val;
+		if (val instanceof JsonElement) return complex(ValType.JSON_ELEMENT, JsonConvertKt.convertToLegacy((JsonElement) val));
 		if (val instanceof byte[]) return complex(ValType.BYTE_ARRAY, Base64.encodeBase64String((byte[]) val));
 //		if (val instanceof Maybe<?>) return complex(ValType.MAYBE, serialize(((Maybe<?>) val).orNull()));
 		if (val instanceof Character) return complex(ValType.CHAR, String.valueOf(val));
@@ -85,6 +89,7 @@ public class JavaJsonSerializer {
 			char letter = ja.getString(0).charAt(0);
 			ValType vt = ValType.getByLetter(letter);
 			switch (vt) {
+				case JSON_ELEMENT: return JsonConvertKt.jsonElementFromLegacy(ja.get(1));
 				case JAVA_OBJECT: return JavaSerializer.read(Base64.decodeBase64(ja.getString(1)));				
 				case BYTE_ARRAY: return Base64.decodeBase64(ja.getString(1));
 				case BYTE: return ((Number)ja.get(1)).byteValue();

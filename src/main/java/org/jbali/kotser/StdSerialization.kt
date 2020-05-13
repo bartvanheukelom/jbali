@@ -1,6 +1,7 @@
 package org.jbali.kotser
 
 import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.UnstableDefault
 import kotlinx.serialization.json.*
 import kotlinx.serialization.modules.SerialModule
@@ -24,6 +25,13 @@ object StdJSON {
 // TODO find out how this is properly done
 fun Json.stringify(j: JsonElement): String = stringify(JsonElement.serializer(), j)
 fun makeJsonPretty(t: String) = Json.indented.stringify(Json.plain.parseJson(t))
+
+/**
+ * Alternative to toJson that doesn't bug
+ * TODO does it still bug in latest version?
+ */
+fun <T> Json.jsonify(o: T, ser: KSerializer<T>): JsonElement =
+        parse(JsonElement.serializer(), stringify(ser, o))
 
 
 /**
