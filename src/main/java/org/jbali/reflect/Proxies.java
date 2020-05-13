@@ -80,6 +80,8 @@ public class Proxies {
 		}));
 	}
 
+	// NOTE new proxy types are preferably not added here
+
 	/**
 	 * Copies all arguments using Java serialization before passing invocations to `real`.
 	 * Useful for e.g. testing remote interfaces that use this serialization.
@@ -104,22 +106,6 @@ public class Proxies {
 		}
 		return method.getName() + "(" + argsStr + ")";
 	}
-
-	
-//	public static <R> R createForking(Class<R> type, SimpleInvocationHandler handler) {
-//		return create(type, (proxy, method, args) -> {
-//			ThreadPool.execute(() -> {
-//				try {
-//					handler.invoke(method, args);
-//				} catch (Throwable e) {
-//					throw Exceptions.wrap(e);
-//				}
-//			});
-//			return null;
-//		});
-//	}
-	
-//	public static <R> R createDecorator(Class<R> type, R target, Runnable pre, Runnable post)
 
 	/**
 	 * Invoke method on obj, and if it throws an exception, throw that without the surrounding InvocationTargetException.
