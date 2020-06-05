@@ -54,12 +54,3 @@ data class PrintingFixedValueDelegate<T>(val value: T): ReadOnlyPropertyProvider
         return FixedValueDelegate(value)
     }
 }
-
-/**
- * Very simple wrapper around any value.
- * Can for instance be used to have nested nullability, i.e. a `Box<Int?>?` to distinguish between:
- * - `null`
- * - `Box(null)`
- * - `Box(12)`
- */
-data class Box<out T>(val contents: T)

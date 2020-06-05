@@ -2,10 +2,11 @@ package org.jbali.kotser
 
 import kotlinx.serialization.*
 import kotlinx.serialization.builtins.set
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonLiteral
 import kotlinx.serialization.json.JsonNull
+import org.jbali.kotser.std.InetAddressSerializer
+import org.jbali.kotser.std.StdJSON
 import org.junit.Test
 import java.net.InetAddress
 import java.time.Instant

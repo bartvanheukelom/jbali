@@ -1,7 +1,8 @@
-package org.jbali.kotser
+package org.jbali.kotser.std
 
 import kotlinx.serialization.Serializer
 import kotlinx.serialization.modules.SerializersModule
+import org.jbali.kotser.StringBasedSerializer
 import java.sql.Timestamp
 import java.time.Instant
 import java.time.LocalDate
@@ -23,6 +24,10 @@ object TimestampSerializer : StringBasedSerializer<Timestamp>() {
             Timestamp.valueOf(s)
 }
 
+/**
+ * Serializer module containing contextual implementations
+ * for some JSR-310 (ThreeTen) date/time classes.
+ */
 val dateTimeSerModule = SerializersModule {
     contextual(Instant::class, InstantSerializer)
     contextual(LocalDate::class, LocalDateSerializer)

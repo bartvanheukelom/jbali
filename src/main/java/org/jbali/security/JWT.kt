@@ -2,15 +2,14 @@ package org.jbali.security
 
 
 
-import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import org.jbali.bytes.Base64Encoding
 import org.jbali.bytes.Base64String
 import org.jbali.bytes.Base64Utf8String
+import org.jbali.json2.JSONString
 import org.jbali.kotser.DefaultJson
 import org.jbali.kotser.TransformingSerializer
 import java.time.Instant
@@ -24,19 +23,6 @@ data class JWTHeader(
 
 typealias Base64JSON = Base64Utf8String<Base64Encoding.Url, JSONString>
 
-/**
- * Contains a string whose contents are JSON.
- */
-inline class JSONString(
-        val string: String
-) {
-    fun <T> parse(jsonFormat: Json, deserializer: DeserializationStrategy<T>) =
-            jsonFormat.parse(deserializer, string)
-    companion object {
-        fun <T> stringify(jsonFormat: Json, serializer: SerializationStrategy<T>, obj: T) =
-                jsonFormat.stringify(serializer, obj)
-    }
-}
 
 inline class JWTSignature(
         val encoded: Base64String<Base64Encoding.Url>

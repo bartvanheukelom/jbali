@@ -6,7 +6,7 @@ import kotlinx.serialization.json.JsonElement
 
 /**
  * Defines [Json] instances that are only to be used for
- * (de)serialization of [JsonElement] objects.
+ * (de)serialization of [JsonElement] objects, as well as static utilities for doing that.
  */
 object BasicJson {
     val plain = Json(JsonConfiguration.Stable.copy(
@@ -27,3 +27,6 @@ object BasicJson {
             }.stringify(element)
 
 }
+
+fun Json.stringify(value: JsonElement): String =
+        stringify(JsonElement.serializer(), value)

@@ -3,6 +3,9 @@ package org.jbali.kotser
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
 
+/**
+ * Container for some default instances of [Json].
+ */
 object DefaultJson {
 
     val stable = Json(JsonConfiguration.Stable)
