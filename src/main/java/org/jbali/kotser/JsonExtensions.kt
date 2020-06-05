@@ -14,6 +14,7 @@ import kotlinx.serialization.serializer
  * @throws [SerializationException] if given value can not be serialized
  */
 @ImplicitReflectionSerializer
+// extension could theoretically be attached to StringFormat instead of Json, but that's of little added value.
 inline fun <reified T : Any> Json.stringify(value: T) =
         stringify(
                 serializer = serializer(),
