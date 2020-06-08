@@ -26,7 +26,9 @@ typealias Base64JSON = Base64Utf8String<Base64Encoding.Url, JSONString>
 
 inline class JWTSignature(
         val encoded: Base64String<Base64Encoding.Url>
-)
+) {
+    override fun toString() = encoded.toString()
+}
 
 data class JWT(
         val header: Base64JSON,
@@ -38,8 +40,11 @@ data class JWT(
     companion object {
         fun fromString(s: String): JWT {
             val split = s.split('.')
-            require(split.size == 3)
+            require(split.size == 3) {
+                "JWT string invalid: $s"
+            }
             return JWT(
+                    // TODO check here if input is valid base64
                     Base64JSON(Base64String(split[0])),
                     Base64JSON(Base64String(split[1])),
                     JWTSignature(Base64String(split[2]))
@@ -122,12 +127,19 @@ class JWTManager<P : Any>(
 
         // read and check header
         val h = token.header.unbase64().parse(json, Header.serializer())
-        require(h.typ == "JWT")
-        require(h.alg == signer.alg)
+        require(h.typ == "JWT") {
+            "JWT header typ invalid: $h"
+        }
+        require(h.alg == signer.alg) {
+            "JWT header alg invalid: $h"
+        }
 
         // check signature
         val goodSig = signer.sign(token.header, token.payload)
-        require(goodSig == token.signature)
+        require(goodSig == token.signature) {
+            // TODO log the required signature? (but don't send to client!)
+            "JWT signature different"
+        }
 
     }
 
