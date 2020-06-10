@@ -4,6 +4,9 @@ import arrow.core.Either
 import org.slf4j.Logger
 import java.security.SecureRandom
 import java.time.Duration
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 import kotlin.reflect.full.cast
@@ -39,7 +42,11 @@ fun <C> Either<C, C>.value() = fold({it},{it})
  * Run action on each item in this iterable. If an exception occurs while processing an item,
  * wrap it in an exception that has the item's toString in the message.
  */
-fun <T> Iterable<T>.forEachWrappingExceptions(action: (T) -> Unit) {
+@OptIn(ExperimentalContracts::class)
+inline fun <T> Iterable<T>.forEachWrappingExceptions(action: (T) -> Unit) {
+    contract {
+        callsInPlace(action, InvocationKind.UNKNOWN)
+    }
     for (x in this) {
         try {
             action(x)

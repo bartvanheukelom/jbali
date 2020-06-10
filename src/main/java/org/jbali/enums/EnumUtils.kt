@@ -1,4 +1,4 @@
-package org.jbali.enum
+package org.jbali.enums
 
 
 /**
