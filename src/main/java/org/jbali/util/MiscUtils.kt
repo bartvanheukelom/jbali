@@ -174,3 +174,6 @@ class ObjectIdentity(val o: Any) {
     override fun equals(other: Any?) = other is ObjectIdentity && other.o === o
     override fun hashCode() = System.identityHashCode(o)
 }
+
+fun ByteArray.toHexString(limit: Int = size): String =
+        HexBytes.toHex(this, limit)

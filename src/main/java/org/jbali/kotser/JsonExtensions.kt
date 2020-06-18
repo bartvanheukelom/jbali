@@ -1,12 +1,10 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.DeserializationStrategy
-import kotlinx.serialization.ImplicitReflectionSerializer
-import kotlinx.serialization.SerializationException
+import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonException
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.serializer
 
 
 /**
@@ -21,6 +19,14 @@ inline fun <reified T : Any> Json.stringify(value: T) =
                 serializer = serializer(),
                 value = value
         )
+
+/**
+ * Alternative to toJson that doesn't bug
+ * TODO does it still bug in latest version?
+ */
+fun <T> Json.jsonify(o: T, ser: KSerializer<T>): JsonElement =
+        parse(JsonElement.serializer(), stringify(ser, o))
+
 
 /**
  * Nominally the same as [Json.parse], but throws more readable exceptions on parse errors.
