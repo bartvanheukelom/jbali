@@ -34,8 +34,8 @@ inline class JSONString(
          * Serialize a value to a JSON string using `kotlin-serialization`.
          * TODO make an extension in kotser package.
          */
-        fun <T> stringify(jsonFormat: Json, serializer: SerializationStrategy<T>, obj: T) =
-                jsonFormat.stringify(serializer, obj)
+        fun <T> stringify(jsonFormat: Json, serializer: SerializationStrategy<T>, obj: T): JSONString =
+                JSONString(jsonFormat.stringify(serializer, obj))
 
     }
 
