@@ -15,6 +15,8 @@ object DefaultJson {
                     useArrayPolymorphism = true
             )
 
+    val read get() = plain
+
     val plain = Json(plainConfig)
     val indented = Json(plainConfig.copy(prettyPrint = true))
 

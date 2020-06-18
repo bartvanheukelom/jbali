@@ -1,8 +1,6 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonConfiguration
-import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.*
 
 /**
  * Defines [Json] instances that are only to be used for
@@ -17,7 +15,16 @@ object BasicJson {
     ))
 
     fun parse(string: String): JsonElement =
-            plain.parseJson(string)
+            when (string) {
+                "{}" -> JsonObject.empty
+                "[]" -> JsonArray.empty
+                "true" -> JsonPrimitive.bool(true)
+                "false" -> JsonPrimitive.bool(false)
+                "null" -> JsonNull
+                // TODO 0 and 1?
+//                "" -> TODO throw
+                else -> plain.parseJson(string)
+            }
 
     fun stringify(element: JsonElement, prettyPrint: Boolean = true): String =
             if (prettyPrint) {

@@ -12,6 +12,8 @@ import java.util.*
 
 private val log = LoggerFactory.getLogger(TextMessageService::class.java)!!
 
+// TODO simple kotlin-serialization JSON instead of JavaJsonSerializer.
+//      perhaps migrate to that slowly with an annotation per method.
 class TextMessageService<T : Any>(
         private val iface: Class<out T>,
         private val svcName: String = iface.name,

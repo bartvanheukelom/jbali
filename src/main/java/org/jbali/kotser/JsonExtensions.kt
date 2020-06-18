@@ -1,11 +1,13 @@
 package org.jbali.kotser
 
 import kotlinx.serialization.*
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonException
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.ImplicitReflectionSerializer
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.*
+import kotlinx.serialization.serializer
 
+// TODO contribute to kotlinserialization lib
 
 /**
  * Serializes [value] into an equivalent JSON using the default serializer for reified type [T].
@@ -47,6 +49,14 @@ fun <T> Json.parseDiag(deserializer: DeserializationStrategy<T>, string: String)
         }
 
 private val emptyJsonObject = JsonObject(emptyMap())
+private val emptyJsonArray = JsonArray(emptyList())
 
-val JsonObject.Companion.empty get() =
-    emptyJsonObject
+val JsonObject.Companion.empty get() = emptyJsonObject
+val JsonArray.Companion.empty get() = emptyJsonArray
+
+val jsonTrue = JsonPrimitive(true)
+val jsonFalse = JsonPrimitive(false)
+
+@Suppress("NOTHING_TO_INLINE")
+inline fun JsonPrimitive.Companion.bool(b: Boolean): JsonPrimitive =
+        if (b) jsonTrue else jsonFalse

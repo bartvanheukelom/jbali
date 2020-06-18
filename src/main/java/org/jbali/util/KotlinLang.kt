@@ -26,8 +26,8 @@ data class FixedValueDelegate<T>(val value: T) : ReadOnlyProperty<Any?, T> {
 }
 
 /**
- * Property delegate provider that calls initer with a reference to the property and
- * provides the property with a delegate that will always return initer's return value.
+ * Property delegate provider that calls [initer] with a reference to the property and
+ * provides the property with a delegate that will always return [initer]'s return value.
  *
  * ```
  * val del = InitFixedValueDelegate<String> { prop ->
