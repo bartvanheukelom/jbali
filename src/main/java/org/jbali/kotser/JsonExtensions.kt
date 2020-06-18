@@ -5,6 +5,7 @@ import kotlinx.serialization.ImplicitReflectionSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonException
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.serializer
 
 
@@ -38,3 +39,8 @@ fun <T> Json.parseDiag(deserializer: DeserializationStrategy<T>, string: String)
         } catch (e: Throwable) {
             throw IllegalArgumentException("While deserializing with $deserializer from JSON:\n${string.prependIndent("  ")}\ngot error: $e", e)
         }
+
+private val emptyJsonObject = JsonObject(emptyMap())
+
+val JsonObject.Companion.empty get() =
+    emptyJsonObject
