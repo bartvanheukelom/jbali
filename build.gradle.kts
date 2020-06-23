@@ -41,6 +41,7 @@ libDependencies {
     compileAndTest(Ktor.Server.core, ktor)
     compileAndTest(Ktor.websockets, ktor)
     compileAndTest(Ktor.Client.cio, ktor)
+    compileAndTest("io.ktor:ktor-serialization", ktor)
 
     compileAndTest(Arrow.core, "0.8.1")
 

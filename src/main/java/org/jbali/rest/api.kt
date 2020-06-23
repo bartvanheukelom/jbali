@@ -2,6 +2,8 @@ package org.jbali.rest
 
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
+import io.ktor.application.install
+import io.ktor.features.ContentNegotiation
 import io.ktor.http.ContentType
 import io.ktor.http.Parameters
 import io.ktor.http.content.TextContent
@@ -11,6 +13,7 @@ import io.ktor.response.respond
 import io.ktor.routing.Route
 import io.ktor.routing.createRouteFromPath
 import io.ktor.routing.get
+import io.ktor.serialization.serialization
 import io.ktor.util.flattenEntries
 import io.ktor.util.pipeline.PipelineContext
 import kotlinx.serialization.ImplicitReflectionSerializer
@@ -42,6 +45,16 @@ data class RestApiBuilder(
         val jsonFormat: Json
 ) {
 
+    init {
+        // TODO now that this exists, can return objects directly?
+        route.install(ContentNegotiation) {
+            serialization(
+                    contentType = ContentType.Application.Json,
+                    format = jsonFormat
+            )
+        }
+    }
+
     inner class Collection(
             // when Collection was an inner class, accessing jsonFormat from an inline function compiled,
             // but threw IllegalAccessError.
@@ -49,7 +62,7 @@ data class RestApiBuilder(
             val colRoute: Route
     ) {
 
-        @OptIn(ImplicitReflectionSerializer::class, ExperimentalStdlibApi::class)
+        @OptIn(ExperimentalStdlibApi::class)
         inline fun <reified I : Any, reified T : Any> index(noinline impl: I.(ApplicationCall) -> T) {
             index(
                     inputType = classedTypeOf(),
@@ -98,6 +111,51 @@ data class RestApiBuilder(
                         contentType = ContentType.Application.Json
                 ))
             }
+        }
+
+        @OptIn(ExperimentalStdlibApi::class)
+        suspend inline fun <reified T : Any> PipelineContext<Unit, ApplicationCall>.rawHandle(
+                noinline impl: suspend () -> T
+        ) {
+            rawHandle(
+                    returnType = classedTypeOf(),
+                    impl = impl
+            )
+        }
+
+        suspend fun <T : Any> PipelineContext<Unit, ApplicationCall>.rawHandle(
+                returnType: ClassedType<T>,
+                impl: suspend () -> T
+        ) {
+            val returnJson =
+                    try {
+
+                        // TODO error handling
+
+                        // call implementation
+                        val returnVal = impl()
+
+                        // serialize return value
+                        // TODO on error, HttpStatusCode.InternalServerError
+                        jsonFormat.stringify(serializer(returnType.type), returnVal)
+
+                    } catch (e: Throwable) {
+                        // TODO remove
+                        System.err.println("---------------------------------------------------------------------------")
+                        e.printStackTrace()
+                        System.err.println("---------------------------------------------------------------------------")
+                        Thread.sleep(100)
+                        throw e
+                    }
+
+            // instruct client how to deserialize the response
+            call.response.addContentTypeInnerHeader(returnType.type)
+
+            // respond JSON response
+            call.respond(TextContent(
+                    text = returnJson,
+                    contentType = ContentType.Application.Json
+            ))
         }
 
     }
