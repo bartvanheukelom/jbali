@@ -1,13 +1,12 @@
 package org.jbali.kotser
 
 import kotlinx.serialization.*
-import kotlinx.serialization.DeserializationStrategy
-import kotlinx.serialization.ImplicitReflectionSerializer
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.*
-import kotlinx.serialization.serializer
 
 // TODO contribute to kotlinserialization lib
+
+fun JsonConfiguration.format(): Json =
+        Json(this)
 
 /**
  * Serializes [value] into an equivalent JSON using the default serializer for reified type [T].

@@ -15,10 +15,11 @@ import java.io.ObjectOutput
  */
 @OptIn(ExperimentalStdlibApi::class, ImplicitReflectionSerializer::class)
 class JsonSerialized<T : Any>
-@JvmOverloads
 constructor(
-        var json: JSONString = JSONString(stringToBeUnmarshalled)
+        var json: JSONString
 ) : Externalizable {
+
+    internal constructor() : this(JSONString(stringToBeUnmarshalled))
 
     override fun toString() =
             json.toString()

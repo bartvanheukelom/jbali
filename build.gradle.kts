@@ -31,10 +31,16 @@ libDependencies {
 
     val ksr = "0.20.0"
     val slf4j = "1.7.25"
+    val ktor = "1.3.2"
 
     compileAndTest(Kotlin.StdLib.jdk8)
     compileAndTest(Kotlin.reflect)
     compileAndTest(KotlinX.SerializationRuntime.jvm, ksr)
+
+    // TODO https://docs.gradle.org/current/userguide/feature_variants.html
+    compileAndTest(Ktor.Server.core, ktor)
+    compileAndTest(Ktor.websockets, ktor)
+    compileAndTest(Ktor.Client.cio, ktor)
 
     compileAndTest(Arrow.core, "0.8.1")
 

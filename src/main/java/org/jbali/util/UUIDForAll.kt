@@ -1,71 +1,28 @@
 package org.jbali.util
 
-import com.google.common.base.Function
-import com.google.common.cache.CacheBuilder
-import com.google.common.cache.CacheLoader
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
-import kotlin.properties.ReadWriteProperty
-import kotlin.reflect.KProperty
 
+/**
+ * Data types that implement this interface are identified by a [UUID].
+ * This UUID must be unique among all objects of that type. It may be shared by objects
+ * of different, but related types. For example, a single UUID can be used by a request, its response,
+ * an error contained in said response, and the [Throwable] that is used to transport this error.
+ */
 interface UUIdentifiable {
     val uuid: UUID
 }
 
-/** @return The UUID of the receiver if it natively has one, otherwise one that is linked to the object's JVM identity. */
+/** @return The UUID of the receiver if it natively has one (implements [UUIdentifiable]), otherwise one that is linked to the object's identity. */
 val Any.uuid: UUID get() =
     if (this is UUIdentifiable) uuid
     else objectIdentityUUID
 
-/** @return A UUID that is linked to, and unique to, the receiver's JVM identity. */
+/**
+ * Returns a UUID that is linked to the receiver object's identity. This exact extension property will always return
+ * the same UUID for a given object during its lifetime in this process. No further guarantees are given, so:
+ * - Different results may be returned by this property in different [ClassLoader]s.
+ * - Serialization of the receiving object changes its identity and the value of this property.
+ * - There is no deterministic conversion from identity (if it were made a concrete number) to UUID.
+ */
 val Any.objectIdentityUUID: UUID
         by StoredExtensionProperty.ignoringReceiver(UUID::randomUUID)
-
-
-
-// utils
-
-fun <K : Any, V : Any> weakKeyLoadingCache(loader: (K) -> V): (K) -> V =
-        CacheBuilder.newBuilder()
-                .weakKeys()
-                .build(CacheLoader.from(Function<K, V> {
-                    loader(it!!)
-                }))::get
-
-// TODO ask if there isn't any simpler way
-@Suppress("NOTHING_TO_INLINE")
-inline fun <R, T> (() -> T).ignoringReceiver(): (R.() -> T) {
-    val t: () -> T = this
-    return { t() }
-}
-
-private val extensionPropertyStorage =
-        weakKeyLoadingCache<Any, ConcurrentHashMap<Any, Any>> {
-            ConcurrentHashMap()
-        }
-
-/**
- * Delegate to add a mutable extension property to an object, whose value is stored in a weak-keyed identity-based map.
- */
-@Suppress("UNCHECKED_CAST")
-class StoredExtensionProperty<in R : Any, T : Any>(
-        private val initialValue: R.() -> T
-) : ReadWriteProperty<R, T> {
-
-    companion object {
-        fun <R : Any, T : Any> ignoringReceiver(initialValue: () -> T) =
-                StoredExtensionProperty<R, T>(initialValue.ignoringReceiver())
-    }
-
-    // TODO provideDelegate, check if property is indeed an extension, and ensure exactly 1 delegate per prop
-
-    override fun getValue(thisRef: R, property: KProperty<*>): T =
-        extensionPropertyStorage(thisRef).getOrPut(this) {
-            initialValue(thisRef)
-        } as T
-
-    override fun setValue(thisRef: R, property: KProperty<*>, value: T) {
-        extensionPropertyStorage(thisRef)[this] = value
-    }
-
-}

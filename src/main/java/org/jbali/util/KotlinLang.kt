@@ -54,3 +54,14 @@ data class PrintingFixedValueDelegate<T>(val value: T): ReadOnlyPropertyProvider
         return FixedValueDelegate(value)
     }
 }
+
+
+/**
+ * Decorate this function to also accept, and ignore, a receiver of type [R].
+ */
+// TODO ask if there isn't any simpler way
+@Suppress("NOTHING_TO_INLINE")
+inline fun <R, T> (() -> T).ignoringReceiver(): (R.() -> T) {
+    val t: () -> T = this
+    return { t() }
+}

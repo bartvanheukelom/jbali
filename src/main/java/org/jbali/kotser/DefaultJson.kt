@@ -12,10 +12,12 @@ object DefaultJson {
 
     val plainConfig =
             JsonConfiguration.Stable.copy(
-                    useArrayPolymorphism = true
+                    useArrayPolymorphism = true,
+                    ignoreUnknownKeys = true
             )
 
     val read get() = plain
+    val readLenient = Json(plainConfig.copy(isLenient = true))
 
     val plain = Json(plainConfig)
     val indented = Json(plainConfig.copy(prettyPrint = true))

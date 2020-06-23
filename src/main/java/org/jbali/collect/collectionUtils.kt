@@ -32,3 +32,24 @@ inline fun <T> List<T>.findLastIndex(predicate: (T) -> Boolean): Int {
     }
     return -1
 }
+
+
+/**
+ * Performs the given [action] on the sequential index, key and value of each element.
+ *
+ * An function with overloads for `Map<K, V>` and `List<Pair<K, V>>` can use this to provide the looping implementation
+ * without converting between [Pair] and [Map.Entry] for each element.
+ *
+ * @param [key] function that extracts the key from an element.
+ * @param [value] function that extracts the value from an element.
+ */
+inline fun <E : Any, K, V> Iterable<E>.forEachEntryIndexed(
+        key: (E) -> K,
+        value: (E) -> V,
+        action: (Int, K, V) -> Unit
+) {
+    var i = 0
+    forEach { e ->
+        action(i++, key(e), value(e))
+    }
+}
