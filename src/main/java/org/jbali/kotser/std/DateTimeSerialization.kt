@@ -3,14 +3,22 @@ package org.jbali.kotser.std
 import kotlinx.serialization.Serializer
 import kotlinx.serialization.modules.SerializersModule
 import org.jbali.kotser.StringBasedSerializer
+import org.jbali.kotser.TransformingSerializer
+import org.jbali.threeten.toDate
 import java.sql.Timestamp
 import java.time.Instant
 import java.time.LocalDate
+import java.util.*
 
 @Serializer(forClass = Instant::class)
 object InstantSerializer : StringBasedSerializer<Instant>() {
     override fun fromString(s: String): Instant =
             Instant.parse(s)
+}
+
+object DateSerializer : TransformingSerializer<Date, Instant>(InstantSerializer) {
+    override fun transform(obj: Date): Instant = obj.toInstant()
+    override fun detransform(tf: Instant): Date = tf.toDate()
 }
 
 @Serializer(forClass = LocalDate::class)
@@ -30,6 +38,7 @@ object TimestampSerializer : StringBasedSerializer<Timestamp>() {
  */
 val dateTimeSerModule = SerializersModule {
     contextual(Instant::class, InstantSerializer)
+    contextual(Date::class, DateSerializer)
     contextual(LocalDate::class, LocalDateSerializer)
     contextual(Timestamp::class, TimestampSerializer)
 }

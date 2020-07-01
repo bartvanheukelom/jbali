@@ -1,6 +1,5 @@
 package org.jbali.util
 
-import arrow.core.Either
 import org.slf4j.Logger
 import java.security.SecureRandom
 import java.time.Duration
@@ -31,12 +30,6 @@ fun onceFunction(f: () -> Unit): () -> Unit {
         }
     }
 }
-
-/**
- * Return the actual value in this either, whether it is left or right.
- * @param C The common supertype of the left and right type.
- */
-fun <C> Either<C, C>.value() = fold({it},{it})
 
 /**
  * Run action on each item in this iterable. If an exception occurs while processing an item,
@@ -177,3 +170,20 @@ class ObjectIdentity(val o: Any) {
 
 fun ByteArray.toHexString(limit: Int = size): String =
         HexBytes.toHex(this, limit)
+
+/**
+ * Basically:
+ *
+ *     (getter() ?: generator())
+ *         .updater()
+ *         .also(setter)
+ */
+inline fun <T> genericUpdate(
+        getter: () -> T?,
+        generator: () -> T,
+        updater: T.() -> T,
+        setter: (T) -> Unit
+): T =
+        (getter() ?: generator())
+                .updater()
+                .also(setter)

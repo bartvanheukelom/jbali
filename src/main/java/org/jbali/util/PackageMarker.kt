@@ -17,6 +17,8 @@ abstract class PackageMarker {
 
     val name = javaClass.`package`.name
 
+    override fun toString() = "package $name"
+
     fun resource(resName: String) =
             javaClass.getResource(resName) ?:
             throw IllegalArgumentException("Resource ${name}.$resName not found")

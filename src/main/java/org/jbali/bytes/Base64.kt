@@ -16,8 +16,8 @@ sealed class Base64Encoding<E : Base64Encoding<E>>(
     override fun encodeToString(value: ByteArray): StringEncoded<ByteArray, E> =
             StringEncoded(encoder.encodeToString(value))
 
-    fun decode(enc: Base64String<E>): ByteArray =
-            decoder.decode(enc.encoded)
+//    fun decode(enc: Base64String<E>): ByteArray =
+//            decoder.decode(enc.encoded)
 
     override fun decodeString(encoded: StringEncoded<ByteArray, E>): ByteArray =
             decoder.decode(encoded.encoded)
@@ -72,7 +72,7 @@ inline class Base64Utf8String<E : Base64Encoding<E>, S>(
     @OptIn(ExperimentalStdlibApi::class)
     fun decode(encoding: E, wrapper: String.() -> S): S =
             encoded
-                    .let(encoding::decode)
+                    .let(encoding::decodeString)
                     .decodeToString()
                     .wrapper()
 
