@@ -55,6 +55,10 @@ public class Proxies {
 		}
 	};
 
+	public static <R> R createSimple(Class<R> type, SimpleInvocationHandler handler) {
+		return create(type, handler);
+	}
+
 	public static <R> R create(Class<R> type, SimpleInvocationHandler handler) {
 		return create(type, handler.toInvocationHandler());
 	}

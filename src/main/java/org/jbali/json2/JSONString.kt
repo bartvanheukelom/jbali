@@ -3,6 +3,7 @@ package org.jbali.json2
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import org.jbali.kotser.BasicJson
 import org.jbali.kotser.stringify
 
@@ -25,6 +26,9 @@ inline class JSONString(
     fun <T> parse(jsonFormat: Json, deserializer: DeserializationStrategy<T>) =
             jsonFormat.parse(deserializer, string)
 
+    fun parse(): JsonElement =
+            BasicJson.parse(string)
+
     fun prettify() =
             JSONString(makeJsonPretty(string))
 
@@ -36,6 +40,9 @@ inline class JSONString(
          */
         fun <T> stringify(jsonFormat: Json, serializer: SerializationStrategy<T>, obj: T): JSONString =
                 JSONString(jsonFormat.stringify(serializer, obj))
+
+        fun stringify(element: JsonElement, prettyPrint: Boolean = true): JSONString =
+                JSONString(BasicJson.stringify(element, prettyPrint = prettyPrint))
 
     }
 

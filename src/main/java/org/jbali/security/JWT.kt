@@ -86,7 +86,7 @@ abstract class JWTSigner(
 /**
  * Serializer for [Instant] according to the JWT `NumericDate` specification.
  */
-object JWTNumericDateSerializer : TransformingSerializer<Instant, Double>(Double.serializer()) {
+object JWTNumericDateSerializer : TransformingSerializer<Instant, Double>(Instant::class, Double.serializer()) {
     override fun transform(obj: Instant) =
             obj.epochSecond.toDouble()
 

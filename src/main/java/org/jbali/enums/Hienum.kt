@@ -78,7 +78,7 @@ abstract class Hienum<R : Hienum<R>>(
 
     abstract class HienumCompanion<R : Hienum<R>>(
             val rootClass: KClass<R>
-    ) : StringBasedSerializer<R>() {
+    ) : StringBasedSerializer<R>(rootClass) {
 
         // must all be lazy because the leaf objects have not been constructed yet when this companion is inited
         // TODO group into 1 lazy, or explicitly init this as soon as possible

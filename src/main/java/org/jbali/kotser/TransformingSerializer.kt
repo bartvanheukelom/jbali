@@ -3,28 +3,28 @@ package org.jbali.kotser
 import kotlinx.serialization.Decoder
 import kotlinx.serialization.Encoder
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialDescriptor
+import kotlin.reflect.KClass
 
 
 /**
  * Base class for a [KSerializer] for [T] which serializes values
- * by converting them from/to [F] and delegating the actual serialization
- * to the given backend serializer.
+ * by converting them from/to [B] using the abstract methods [transform] and [detransform],
+ * and delegating the actual serialization to the given [backend] serializer.
  */
 // TODO make interface Transformer<T, F>, and a variant of this class which accepts an instance
-abstract class TransformingSerializer<T, F>(
-        val backend: KSerializer<F>
+abstract class TransformingSerializer<T : Any, B>(
+        val type: KClass<T>,
+        val backend: KSerializer<B>
 ) : KSerializer<T> {
 
-    /**
-     * The descriptor is taken from the backend serializer.
-     *
-     * If you get an error of the form:
-     *    class WhateverSerializer overrides final method getDescriptor
-     * You should not apply @Serializer(forClass=Whatever::class) to that class.
-     * To make a companion the default serializer, instead apply to main class:
-     * @Serializable(with = Whatever.Companion::class)
-     */
-    final override val descriptor get() = backend.descriptor
+    abstract fun transform(obj: T): B
+    abstract fun detransform(tf: B): T
+
+    override val descriptor = SerialDescriptor(
+            type.qualifiedName!!, // TODO read @SerialName
+            backend.descriptor.kind
+    )
 
     final override fun serialize(encoder: Encoder, value: T) {
         backend.serialize(encoder, transform(value))
@@ -33,7 +33,4 @@ abstract class TransformingSerializer<T, F>(
     final override fun deserialize(decoder: Decoder): T {
         return detransform(backend.deserialize(decoder))
     }
-
-    abstract fun transform(obj: T): F
-    abstract fun detransform(tf: F): T
 }

@@ -11,23 +11,23 @@ import java.time.LocalDate
 import java.util.*
 
 @Serializer(forClass = Instant::class)
-object InstantSerializer : StringBasedSerializer<Instant>() {
+object InstantSerializer : StringBasedSerializer<Instant>(Instant::class) {
     override fun fromString(s: String): Instant =
             Instant.parse(s)
 }
 
-object DateSerializer : TransformingSerializer<Date, Instant>(InstantSerializer) {
+object DateSerializer : TransformingSerializer<Date, Instant>(Date::class, InstantSerializer) {
     override fun transform(obj: Date): Instant = obj.toInstant()
     override fun detransform(tf: Instant): Date = tf.toDate()
 }
 
 @Serializer(forClass = LocalDate::class)
-object LocalDateSerializer : StringBasedSerializer<LocalDate>() {
+object LocalDateSerializer : StringBasedSerializer<LocalDate>(LocalDate::class) {
     override fun fromString(s: String): LocalDate = LocalDate.parse(s)
 }
 
 @Serializer(forClass = Timestamp::class)
-object TimestampSerializer : StringBasedSerializer<Timestamp>() {
+object TimestampSerializer : StringBasedSerializer<Timestamp>(Timestamp::class) {
     override fun fromString(s: String): Timestamp =
             Timestamp.valueOf(s)
 }

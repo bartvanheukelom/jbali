@@ -2,6 +2,8 @@ package org.jbali.errors
 
 import org.jbali.collect.findLastIndex
 import org.jbali.threads.withValue
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.lang.Integer.min
 import java.util.*
 import kotlin.NoSuchElementException
@@ -199,3 +201,12 @@ fun <T> independentIterator(start: T, next: (cur: T) -> T?) =
 
 fun ensureUnchecked(e: Throwable) =
         e as? RuntimeException ?: RuntimeException(e)
+
+/**
+ * Return the string output of [printStackTrace].
+ */
+val Throwable.stackTraceString: String get() =
+    StringWriter().also {
+        printStackTrace(PrintWriter(it))
+    }.toString()
+

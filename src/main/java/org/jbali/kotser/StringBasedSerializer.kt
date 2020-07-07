@@ -1,20 +1,19 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.*
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlin.reflect.KClass
 
 /**
  * Base class for a [KSerializer] for [T] which serializes values
  * by converting them from/to a string.
  */
-abstract class StringBasedSerializer<T> : KSerializer<T> {
-
-    override val descriptor = PrimitiveDescriptor(javaClass.name, PrimitiveKind.STRING)
-
-    final override fun deserialize(decoder: Decoder): T =
-            fromString(decoder.decodeString())
-
-    final override fun serialize(encoder: Encoder, value: T) =
-            encoder.encodeString(toString(value))
+abstract class StringBasedSerializer<T : Any>(
+        type: KClass<T>
+) : TransformingSerializer<T, String>(
+        type = type,
+        backend = String.serializer()
+) {
 
     abstract fun fromString(s: String): T
 
@@ -24,5 +23,8 @@ abstract class StringBasedSerializer<T> : KSerializer<T> {
      * Defaults to `o.toString()`.
      */
     open fun toString(o: T): String = o.toString()
+
+    override fun transform(obj: T) = toString(obj)
+    override fun detransform(tf: String): T = fromString(tf)
 
 }

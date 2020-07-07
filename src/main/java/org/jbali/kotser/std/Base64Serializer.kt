@@ -7,7 +7,7 @@ import org.jbali.kotser.StringBasedSerializer
 
 class Base64Serializer<E : Base64Encoding<E>>(
         val encoding: Base64Encoding<E>
-) : StringBasedSerializer<ByteArray>() {
+) : StringBasedSerializer<ByteArray>(ByteArray::class) {
 
     override fun fromString(s: String): ByteArray =
             encoding.decodeString(Base64String(s))
