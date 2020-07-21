@@ -14,6 +14,8 @@ typealias OnceFlagIsNamedOneTimeFlag = OneTimeFlag
 class OneTimeFlag {
     private val a = AtomicReference<Instant>()
 
+    val flaggedSince: Instant? get() = a.get()
+
     /** Whether it was flagged */
     operator fun invoke() = a.get() != null
 
