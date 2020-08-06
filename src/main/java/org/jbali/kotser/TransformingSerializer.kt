@@ -1,10 +1,8 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.Decoder
-import kotlinx.serialization.Encoder
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.SerialDescriptor
+import kotlinx.serialization.*
 import kotlin.reflect.KClass
+import kotlin.reflect.typeOf
 
 
 /**
@@ -14,15 +12,23 @@ import kotlin.reflect.KClass
  */
 // TODO make interface Transformer<T, F>, and a variant of this class which accepts an instance
 abstract class TransformingSerializer<T : Any, B>(
-        val type: KClass<T>,
+        serialName: String,
         val backend: KSerializer<B>
 ) : KSerializer<T> {
+
+    constructor(
+            type: KClass<T>, // TODO read @SerialName
+            backend: KSerializer<B>
+    ) : this(
+            serialName = type.qualifiedName!!,
+            backend = backend
+    )
 
     abstract fun transform(obj: T): B
     abstract fun detransform(tf: B): T
 
     override val descriptor = SerialDescriptor(
-            type.qualifiedName!!, // TODO read @SerialName
+            serialName,
             backend.descriptor.kind
     )
 
@@ -34,3 +40,18 @@ abstract class TransformingSerializer<T : Any, B>(
         return detransform(backend.deserialize(decoder))
     }
 }
+
+@OptIn(ExperimentalStdlibApi::class, ImplicitReflectionSerializer::class)
+inline fun <reified T : Any, reified B> transformingSerializer(
+        crossinline transformer: (T) -> B,
+        crossinline detransformer: (B) -> T
+): KSerializer<T> =
+        object : TransformingSerializer<T, B>(
+                serialName = typeOf<T>().toString(),
+                backend = serializer()
+        ) {
+            override fun toString(): String =
+                    "Serializer<${descriptor.serialName}>"
+            override fun transform(obj: T): B = transformer(obj)
+            override fun detransform(tf: B): T = detransformer(tf)
+        }
