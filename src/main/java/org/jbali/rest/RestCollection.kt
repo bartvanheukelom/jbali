@@ -5,8 +5,8 @@ import io.ktor.application.call
 import io.ktor.routing.Route
 import io.ktor.routing.createRouteFromPath
 import io.ktor.routing.get
-import org.jbali.util.ClassedType
-import org.jbali.util.classedTypeOf
+import org.jbali.util.ReifiedType
+import org.jbali.util.reifiedTypeOf
 
 fun RestRoute.collection(name: String, config: RestCollection.() -> Unit): RestCollection =
         RestCollection(
@@ -22,20 +22,19 @@ class RestCollection(
         route = route
 ) {
 
-    @OptIn(ExperimentalStdlibApi::class)
     inline fun <reified I : Any, reified T : Any> index(
             noinline impl: suspend I.(ApplicationCall) -> T
     ) {
         index(
-                inputType = classedTypeOf(),
-                returnType = classedTypeOf(),
+                inputType = reifiedTypeOf(),
+                returnType = reifiedTypeOf(),
                 impl = impl
         )
     }
 
     fun <I : Any, T : Any> index(
-            inputType: ClassedType<I>,
-            returnType: ClassedType<T>,
+            inputType: ReifiedType<I>,
+            returnType: ReifiedType<T>,
             impl: suspend I.(ApplicationCall) -> T
     ) {
         route.get("") {

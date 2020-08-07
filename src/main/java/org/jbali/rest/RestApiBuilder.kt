@@ -12,9 +12,11 @@ import io.ktor.routing.Route
 import io.ktor.routing.get
 import io.ktor.serialization.serialization
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.json
 import org.jbali.errors.removeCommonStack
 import org.jbali.errors.stackTraceString
 import org.jbali.kotser.DefaultJson
+import org.jbali.oas.*
 import org.jbali.util.uuid
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -36,6 +38,11 @@ interface RestApiContext {
 class RestException(val statusCode: HttpStatusCode, cause: Throwable) :
         RuntimeException("Rest exception $statusCode: $cause", cause)
 
+data class RestApi(
+        val oas: OpenAPI
+)
+
+@OptIn(ExperimentalStdlibApi::class)
 data class RestApiBuilder(
         override val route: Route,
         override val jsonFormat: Json
@@ -45,6 +52,8 @@ data class RestApiBuilder(
     private val log: Logger = LoggerFactory.getLogger(RestApiBuilder::class.java)
 
     override val context get() = this
+
+    private val oasPaths = mutableMapOf<String, PathItem>()
 
     init {
         route.apply {
@@ -72,12 +81,54 @@ data class RestApiBuilder(
                 }
             }
 
+            oasPaths["/"] = PathItem(
+                get = Operation(
+                        responses = mapOf(
+                                HttpStatusCode.OK.value.toString() to Response(
+                                        description = "root hi",
+                                        content = json {
+                                            ContentType.Application.Json.contentType to json {
+                                                "schema" to json {
+                                                    "type" to "object"
+                                                    "properties" to json {
+                                                        "hello" to json {
+                                                            "type" to "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                )
+                        )
+                )
+            )
+
             get("") {
-                call.respond("Hello from the REST API")
+                respondObject(json {
+                    "hello" to "this is api"
+                })
             }
         }
     }
 
+    fun build(): RestApi {
+        val oas = OpenAPI(
+                openapi = "3.0.3",
+                info = Info(
+                        title = "rest api",
+                        version = "0.1"
+                ),
+                paths = oasPaths
+        )
+
+        route.get("oas") {
+            respondObject(oas)
+        }
+
+        return RestApi(
+                oas = oas
+        )
+    }
 
 }
 
@@ -85,8 +136,10 @@ fun Route.restApi(
         jsonFormat: Json = DefaultJson.indented,
 
         config: RestApiBuilder.() -> Unit
-) =
+): RestApi =
         RestApiBuilder(
                 route = this,
                 jsonFormat = jsonFormat
-        ).also { it.config() }
+        )
+                .apply(config)
+                .build()

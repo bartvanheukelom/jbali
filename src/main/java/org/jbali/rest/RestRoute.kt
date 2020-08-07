@@ -10,18 +10,17 @@ import io.ktor.routing.Route
 import io.ktor.routing.createRouteFromPath
 import io.ktor.util.pipeline.PipelineContext
 import kotlinx.serialization.serializer
-import org.jbali.util.ClassedType
-import org.jbali.util.classedTypeOf
+import org.jbali.util.ReifiedType
+import org.jbali.util.reifiedTypeOf
 
 abstract class RestRoute : RestApiContext {
 
     abstract val route: Route
 
-    @ExperimentalStdlibApi
     inline fun <reified I : Any> PipelineContext<Unit, ApplicationCall>.readInput(): I =
-            readInput(type = classedTypeOf())
+            readInput(type = reifiedTypeOf())
 
-    fun <I : Any> PipelineContext<Unit, ApplicationCall>.readInput(type: ClassedType<I>): I =
+    fun <I : Any> PipelineContext<Unit, ApplicationCall>.readInput(type: ReifiedType<I>): I =
             try {
                 // compose input
                 readInput(
@@ -33,13 +32,24 @@ abstract class RestRoute : RestApiContext {
             }
 
     suspend fun <T : Any> PipelineContext<Unit, ApplicationCall>.rawHandle(
-            returnType: ClassedType<T>,
+            returnType: ReifiedType<T>,
             impl: suspend () -> T
     ) {
 
         // call implementation
         val returnVal = impl()
 
+        respondObject(returnType, returnVal)
+    }
+
+    suspend inline fun <reified T : Any> PipelineContext<Unit, ApplicationCall>.respondObject(returnVal: T) {
+        respondObject(
+                returnType = reifiedTypeOf(),
+                returnVal = returnVal
+        )
+    }
+
+    suspend fun <T : Any> PipelineContext<Unit, ApplicationCall>.respondObject(returnType: ReifiedType<T>, returnVal: T) {
         // serialize return value
         val returnJson = jsonFormat.stringify(serializer(returnType.type), returnVal)
 
@@ -47,18 +57,21 @@ abstract class RestRoute : RestApiContext {
         call.response.addContentTypeInnerHeader(returnType.type)
 
         // respond JSON response
+        respondJson(returnJson)
+    }
+
+    suspend fun PipelineContext<Unit, ApplicationCall>.respondJson(json: String) {
         call.respond(TextContent(
-                text = returnJson,
+                text = json,
                 contentType = ContentType.Application.Json
         ))
     }
 
-    @OptIn(ExperimentalStdlibApi::class)
     suspend inline fun <reified T : Any> PipelineContext<Unit, ApplicationCall>.rawHandle(
             noinline impl: suspend () -> T
     ) {
         rawHandle(
-                returnType = classedTypeOf(),
+                returnType = reifiedTypeOf(),
                 impl = impl
         )
     }

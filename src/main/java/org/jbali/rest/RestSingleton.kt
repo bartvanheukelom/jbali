@@ -5,8 +5,8 @@ import io.ktor.application.call
 import io.ktor.routing.Route
 import io.ktor.routing.createRouteFromPath
 import io.ktor.routing.get
-import org.jbali.util.ClassedType
-import org.jbali.util.classedTypeOf
+import org.jbali.util.ReifiedType
+import org.jbali.util.reifiedTypeOf
 
 @ExperimentalStdlibApi
 inline fun <reified T : Any> RestRoute.singleton(
@@ -15,13 +15,13 @@ inline fun <reified T : Any> RestRoute.singleton(
 ): RestSingleton<T> =
         singleton(
                 name = name,
-                type = classedTypeOf(),
+                type = reifiedTypeOf(),
                 config = config
         )
 
 fun <T : Any> RestRoute.singleton(
         name: String,
-        type: ClassedType<T>,
+        type: ReifiedType<T>,
         config: RestSingleton<T>.() -> Unit
 ): RestSingleton<T> =
         RestSingleton(
@@ -33,24 +33,23 @@ fun <T : Any> RestRoute.singleton(
 class RestSingleton<T : Any>(
         context: RestApiContext,
         route: Route,
-        val type: ClassedType<T>
+        val type: ReifiedType<T>
 ) : RestRoute.Sub(
         context = context,
         route = route
 ) {
 
-    @OptIn(ExperimentalStdlibApi::class)
     inline fun <reified I : Any> get(
             noinline impl: suspend I.(ApplicationCall) -> T
     ) {
         get(
-                inputType = classedTypeOf(),
+                inputType = reifiedTypeOf(),
                 impl = impl
         )
     }
 
     fun <I : Any> get(
-            inputType: ClassedType<I>,
+            inputType: ReifiedType<I>,
             impl: suspend I.(ApplicationCall) -> T
     ) {
         route.get("") {

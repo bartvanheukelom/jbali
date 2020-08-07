@@ -2,7 +2,7 @@ package org.jbali.kotser
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.serializer
-import org.jbali.util.ClassedType
+import org.jbali.util.ReifiedType
 
 
 // TODO add caching here, or somewhere.
@@ -10,5 +10,5 @@ import org.jbali.util.ClassedType
 //      more cumbersome if it has a good equals (but what about classloaders),
 //      harder if it doesn't.
 @Suppress("UNCHECKED_CAST")
-val <T : Any> ClassedType<T>.serializer get() =
+val <T : Any> ReifiedType<T>.serializer get() =
     serializer(type) as KSerializer<T>

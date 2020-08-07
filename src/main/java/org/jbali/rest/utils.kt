@@ -12,7 +12,7 @@ import kotlinx.serialization.json.Json
 import org.jbali.json2.KVON
 import org.jbali.kotser.KVONDeserializer
 import org.jbali.kotser.serializer
-import org.jbali.util.ClassedType
+import org.jbali.util.ReifiedType
 import kotlin.reflect.KType
 
 
@@ -25,11 +25,11 @@ val Parameters.kvon get() =
 
 
 @OptIn(ImplicitReflectionSerializer::class, ExperimentalStdlibApi::class)
-fun <I : Any> PipelineContext<Unit, ApplicationCall>.readInput(type: ClassedType<I>, jsonFormat: Json): I =
+fun <I : Any> PipelineContext<Unit, ApplicationCall>.readInput(type: ReifiedType<I>, jsonFormat: Json): I =
         try {
             when (type) {
 
-                ClassedType.unit ->
+                ReifiedType.unit ->
                     @Suppress("UNCHECKED_CAST")
                     Unit as I
 
