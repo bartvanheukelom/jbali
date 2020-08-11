@@ -329,7 +329,7 @@ fun EventListener<Unit>.call(errCb: ListenerErrorCallback<Unit> = Listenable.def
 
 // Ovservables TODO move to own file and I guess rename because of java.util.Observable
 
-interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T> {
+interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T>, ReadOnlyProperty<Any?, T> {
     val onChange: Event<Change<T>>
     val onNewValue: Event<T>
 
@@ -337,6 +337,9 @@ interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T> {
             onNewValue.listen(name, callback)
 
     override operator fun invoke() = get()
+
+    override fun getValue(thisRef: Any?, property: KProperty<*>): T =
+            get()
 
     /**
      * Register a handler that will be called immediately with the current value,
