@@ -15,12 +15,19 @@ fun JsonConfiguration.format(): Json =
  */
 @ImplicitReflectionSerializer
 // extension could theoretically be attached to StringFormat instead of Json, but that's of little added value.
-inline fun <reified T : Any> Json.stringify(value: T) =
+inline fun <reified T> Json.stringify(value: T) =
         stringify(
                 serializer = serializer(),
                 value = value
         )
 
+@ImplicitReflectionSerializer
+// extension could theoretically be attached to StringFormat instead of Json, but that's of little added value.
+inline fun <reified T> Json.parse(string: String): T =
+        parse(
+                deserializer = serializer(),
+                string = string
+        )
 /**
  * Alternative to toJson that doesn't bug
  * TODO does it still bug in latest version?
