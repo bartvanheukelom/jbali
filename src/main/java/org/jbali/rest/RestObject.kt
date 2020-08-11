@@ -8,11 +8,10 @@ import io.ktor.routing.get
 import org.jbali.util.ReifiedType
 import org.jbali.util.reifiedTypeOf
 
-@ExperimentalStdlibApi
 inline fun <reified T : Any> RestRoute.singleton(
         name: String,
-        noinline config: RestSingleton<T>.() -> Unit
-): RestSingleton<T> =
+        noinline config: RestObject<T>.() -> Unit
+): RestObject<T> =
         singleton(
                 name = name,
                 type = reifiedTypeOf(),
@@ -22,15 +21,15 @@ inline fun <reified T : Any> RestRoute.singleton(
 fun <T : Any> RestRoute.singleton(
         name: String,
         type: ReifiedType<T>,
-        config: RestSingleton<T>.() -> Unit
-): RestSingleton<T> =
-        RestSingleton(
+        config: RestObject<T>.() -> Unit
+): RestObject<T> =
+        RestObject(
                 context = context,
                 route = route.createRouteFromPath(name),
                 type = type
         ).apply(config)
 
-class RestSingleton<T : Any>(
+open class RestObject<T : Any>(
         context: RestApiContext,
         route: Route,
         val type: ReifiedType<T>
@@ -48,6 +47,14 @@ class RestSingleton<T : Any>(
         )
     }
 
+    fun get(
+            impl: suspend (ApplicationCall) -> T
+    ) {
+        get(inputType = ReifiedType.unit) {
+            impl(it)
+        }
+    }
+
     fun <I : Any> get(
             inputType: ReifiedType<I>,
             impl: suspend I.(ApplicationCall) -> T
@@ -58,5 +65,14 @@ class RestSingleton<T : Any>(
             }
         }
     }
+
+//    fun <T : Any> put(
+//            type: ReifiedType<T>,
+//            impl: suspend PipelineContext<Unit, A>(ApplicationCall) -> T
+//    ) {
+//        get(inputType = ReifiedType.unit) {
+//            impl(it)
+//        }
+//    }
 
 }

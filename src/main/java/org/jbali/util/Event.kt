@@ -374,7 +374,13 @@ interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T>, ReadOnlyPrope
 
 }
 
-data class Change<T>(val before: T, val after: T)
+data class Change<T>(val before: T, val after: T) {
+    val different: Boolean = before != after
+    val afterIfDifferent get() = if (different) after else null
+}
+
+infix fun <T> T.changedTo(after: T): Change<T> =
+        Change(before = this, after = after)
 
 open class MutableObservable<T>(initialValue: T, name: String? = null): Observable<T> {
 
