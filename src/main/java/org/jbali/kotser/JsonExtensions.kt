@@ -63,6 +63,9 @@ val JsonArray.Companion.empty get() = emptyJsonArray
 val jsonTrue = JsonPrimitive(true)
 val jsonFalse = JsonPrimitive(false)
 
+fun jsonString(string: String) = JsonLiteral(string)
+fun jsonString(value: Any?) = JsonLiteral(value.toString())
+
 @Suppress("NOTHING_TO_INLINE")
 inline fun JsonPrimitive.Companion.bool(b: Boolean): JsonPrimitive =
         if (b) jsonTrue else jsonFalse

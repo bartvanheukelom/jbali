@@ -2,6 +2,10 @@ package org.jbali.util
 
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
+import kotlin.reflect.KProperty1
+import kotlin.reflect.KType
+import kotlin.reflect.full.isSubtypeOf
+import kotlin.reflect.typeOf
 
 /**
  * Base interface that can be used for implementing property delegate *providers* of read-only properties.
@@ -64,4 +68,18 @@ data class PrintingFixedValueDelegate<T>(val value: T): ReadOnlyPropertyProvider
 inline fun <R, T> (() -> T).ignoringReceiver(): (R.() -> T) {
     val t: () -> T = this
     return { t() }
+}
+
+/**
+ * If the given property's return type is (a subtype of) [P], returns it casted.
+ * Otherwise throws [ClassCastException].
+ */
+@OptIn(ExperimentalStdlibApi::class)
+inline fun <T, reified P> KProperty1<T, *>.checkReturnType(): KProperty1<T, P> {
+    val expected: KType = typeOf<P>()
+    if (!returnType.isSubtypeOf(expected)) {
+        throw ClassCastException("$this returnType is not (a subtype of) $expected")
+    }
+    @Suppress("UNCHECKED_CAST")
+    return this as KProperty1<T, P>
 }

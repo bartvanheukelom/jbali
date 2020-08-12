@@ -10,7 +10,6 @@ import kotlin.reflect.typeOf
  * by converting them from/to [B] using the abstract methods [transform] and [detransform],
  * and delegating the actual serialization to the given [backend] serializer.
  */
-// TODO make interface Transformer<T, F>, and a variant of this class which accepts an instance
 abstract class TransformingSerializer<T : Any, B>(
         serialName: String,
         val backend: KSerializer<B>
@@ -47,12 +46,30 @@ inline fun <reified T : Any, reified B> transformingSerializer(
         crossinline transformer: (T) -> B,
         crossinline detransformer: (B) -> T
 ): KSerializer<T> =
+        transformingSerializer(
+                serialName = serialName,
+                transformer = object : Transformer<T, B> {
+                    override fun transform(obj: T): B = transformer(obj)
+                    override fun detransform(tf: B): T = detransformer(tf)
+                }
+        )
+
+interface Transformer<T, B> {
+    fun transform(obj: T): B
+    fun detransform(tf: B): T
+}
+
+@OptIn(ImplicitReflectionSerializer::class, ExperimentalStdlibApi::class)
+inline fun <reified T : Any, reified B> transformingSerializer(
+        serialName: String = typeOf<T>().toString(),
+        transformer: Transformer<T, B>
+): KSerializer<T> =
         object : TransformingSerializer<T, B>(
                 serialName = serialName,
                 backend = serializer()
         ) {
             override fun toString(): String =
                     "Serializer<${descriptor.serialName}>"
-            override fun transform(obj: T): B = transformer(obj)
-            override fun detransform(tf: B): T = detransformer(tf)
+            override fun transform(obj: T): B = transformer.transform(obj)
+            override fun detransform(tf: B): T = transformer.detransform(tf)
         }
