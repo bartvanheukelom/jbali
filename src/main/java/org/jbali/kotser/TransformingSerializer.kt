@@ -41,13 +41,14 @@ abstract class TransformingSerializer<T : Any, B>(
     }
 }
 
-@OptIn(ExperimentalStdlibApi::class, ImplicitReflectionSerializer::class)
+@OptIn(ImplicitReflectionSerializer::class, ExperimentalStdlibApi::class)
 inline fun <reified T : Any, reified B> transformingSerializer(
+        serialName: String = typeOf<T>().toString(),
         crossinline transformer: (T) -> B,
         crossinline detransformer: (B) -> T
 ): KSerializer<T> =
         object : TransformingSerializer<T, B>(
-                serialName = typeOf<T>().toString(),
+                serialName = serialName,
                 backend = serializer()
         ) {
             override fun toString(): String =
