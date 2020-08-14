@@ -42,6 +42,8 @@ abstract class TransformingSerializer<T : Any, B>(
 
 @OptIn(ImplicitReflectionSerializer::class, ExperimentalStdlibApi::class)
 inline fun <reified T : Any, reified B> transformingSerializer(
+        // TODO type parameters should not be included according to doc
+        // TODO include the backend serialName, unless this serializer is the default for T
         serialName: String = typeOf<T>().toString(),
         crossinline transformer: (T) -> B,
         crossinline detransformer: (B) -> T
