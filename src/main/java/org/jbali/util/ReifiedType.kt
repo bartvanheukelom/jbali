@@ -90,7 +90,8 @@ inline fun <reified T> KType.reify(): ReifiedType<T> {
     require (this.isSubtypeOf(parent.type)) {
         "$this is not a subtype of $parent"
     }
-    return ReifiedType(this)
+    @Suppress("UNCHECKED_CAST")
+    return cachedReifiedType as ReifiedType<T>
 }
 
 fun KType.match(): ReifiedType.Matcher<Any?> =
@@ -112,5 +113,10 @@ inline fun <reified T> reifiedTypeOf(): ReifiedType<T> {
     @OptIn(ExperimentalStdlibApi::class)
     val type = typeOf<T>()
 
-    return ReifiedType(type = type)
+    @Suppress("UNCHECKED_CAST")
+    return type.cachedReifiedType as ReifiedType<T>
+}
+
+val KType.cachedReifiedType: ReifiedType<*> by StoredExtensionProperty {
+    ReifiedType<Any?>(type = this)
 }

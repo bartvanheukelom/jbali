@@ -50,10 +50,16 @@ interface StringEncoding<V, E : StringEncoding<V, E>> {
     fun decodeString(encoded: StringEncoded<V, E>): V
 }
 
+infix fun <V, E : StringEncoding<V, E>> V.encodedAs(e: StringEncoding<V, E>): StringEncoded<V, E> =
+        e.encodeToString(this)
+
 inline class StringEncoded<V, E : StringEncoding<V, E>>(
+        @get:Deprecated("string", ReplaceWith("string"))
         val encoded: String
 ) {
-    override fun toString() = encoded
+    val string get() = encoded
+
+    override fun toString() = string
 }
 
 typealias Base64String<E> = StringEncoded<ByteArray, E>
