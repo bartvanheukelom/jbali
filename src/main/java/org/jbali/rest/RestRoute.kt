@@ -59,17 +59,25 @@ abstract class RestRoute : RestApiContext {
         // call implementation
         val returnVal = impl()
 
-        respondObject(returnType, returnVal)
+        respondObject(returnType = returnType, returnVal = returnVal)
     }
 
-    suspend inline fun <reified T : Any> PipelineContext<Unit, ApplicationCall>.respondObject(returnVal: T) {
+    suspend inline fun <reified T : Any> PipelineContext<Unit, ApplicationCall>.respondObject(
+            returnVal: T,
+            status: HttpStatusCode = HttpStatusCode.OK
+    ) {
         respondObject(
+                status = status,
                 returnType = reifiedTypeOf(),
                 returnVal = returnVal
         )
     }
 
-    suspend fun <T : Any> PipelineContext<Unit, ApplicationCall>.respondObject(returnType: ReifiedType<T>, returnVal: T) {
+    suspend fun <T : Any> PipelineContext<Unit, ApplicationCall>.respondObject(
+            returnType: ReifiedType<T>,
+            returnVal: T,
+            status: HttpStatusCode = HttpStatusCode.OK
+    ) {
 
         // serialize return value
         val returnJson: String = returnVal.asJsonCache.invoke(returnType.serializer)
@@ -78,11 +86,18 @@ abstract class RestRoute : RestApiContext {
         call.response.addContentTypeInnerHeader(returnType.type)
 
         // respond JSON response
-        respondJson(returnJson)
+        respondJson(
+                json = returnJson,
+                status = status
+        )
     }
 
-    suspend fun PipelineContext<Unit, ApplicationCall>.respondJson(json: String) {
+    suspend fun PipelineContext<Unit, ApplicationCall>.respondJson(
+            json: String,
+            status: HttpStatusCode = HttpStatusCode.OK
+    ) {
         respond(TextContent(
+                status = status,
                 text = json,
                 contentType = ContentType.Application.Json
         ))

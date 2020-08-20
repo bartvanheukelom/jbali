@@ -10,6 +10,7 @@ import io.ktor.http.content.TextContent
 import io.ktor.response.respond
 import io.ktor.routing.Route
 import io.ktor.routing.get
+import io.ktor.routing.route
 import io.ktor.serialization.serialization
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.json
@@ -123,6 +124,16 @@ data class RestApiBuilder(
 
         route.get("oas") {
             respondObject(oas)
+        }
+
+        // default to 404 if no matches
+        route.route("{...}") {
+            handle {
+                respondObject(
+                        status = HttpStatusCode.NotFound,
+                        returnVal = "Not Found"
+                )
+            }
         }
 
         return RestApi(

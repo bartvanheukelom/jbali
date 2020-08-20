@@ -3,32 +3,39 @@ package org.jbali.ktor
 import io.ktor.application.ApplicationCall
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.TextContent
+import io.ktor.response.respond
 import io.ktor.response.respondBytes
 import io.ktor.response.respondText
-import io.ktor.response.respondTextWriter
-import java.io.PrintWriter
-
-
-/**
- * Respond with text content [PrintWriter].
- *
- * The [writer] parameter will be called later when engine is ready to produce content.
- * Provided [PrintWriter] will be closed automatically.
- */
-suspend fun ApplicationCall.respondTextPrinter(contentType: ContentType? = null, status: HttpStatusCode? = null, writer: suspend PrintWriter.() -> Unit) {
-    respondTextWriter(
-            contentType = contentType,
-            status = status
-    ) {
-        PrintWriter(this).writer()
-    }
-}
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import org.jbali.kotser.BasicJson
+import org.jbali.kotser.stringify
 
 suspend fun ApplicationCall.respondJpeg(data: ByteArray) =
         respondBytes(
                 contentType = ContentType.Image.JPEG,
                 bytes = data
         )
+
+suspend fun ApplicationCall.respondJson(
+        json: JsonElement,
+        status: HttpStatusCode? = null,
+        encoder: Json = BasicJson.indented
+) =
+        respond(json.toHTTPContent(status = status, encoder = encoder))
+
+fun JsonElement.toHTTPContent(
+        status: HttpStatusCode? = null,
+        encoder: Json = BasicJson.indented
+) =
+        TextContent(
+                text = encoder.stringify(this),
+                contentType = ContentType.Application.Json,
+                status = status
+        )
+
+// --------------------- basic errors ------------------- //
 
 suspend fun ApplicationCall.respondBasicError(
         status: HttpStatusCode,
