@@ -8,8 +8,10 @@ import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
+import kotlin.reflect.KType
 import kotlin.reflect.full.cast
 import kotlin.reflect.full.valueParameters
+import kotlin.reflect.typeOf
 
 val globalSecureRandom = SecureRandom()
 
@@ -97,6 +99,17 @@ class OutVar<T : Any> {
 fun Logger.invocation(func: KCallable<*>, vararg args: Any?) {
     info(invocationToString(func, *args))
 }
+
+val KType.simplified: String by StoredExtensionProperty {
+    val str = this.toString()
+    if (str.count { it == '.' } == 1) {
+        str.removePrefix("kotlin.")
+    } else {
+        str
+    }
+}
+
+val Pair<*, *>.assignFormatted get() = "${first}=${second}"
 
 /**
  * ```
