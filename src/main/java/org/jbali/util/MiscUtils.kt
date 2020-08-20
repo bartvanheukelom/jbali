@@ -11,7 +11,6 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.full.cast
 import kotlin.reflect.full.valueParameters
-import kotlin.reflect.typeOf
 
 val globalSecureRandom = SecureRandom()
 
@@ -107,6 +106,16 @@ val KType.simplified: String by StoredExtensionProperty {
     } else {
         str
     }
+}
+
+val KClass<*>.kotlinReferenceLink: String by StoredExtensionProperty {
+    "https://kotlinlang.org/api/latest/jvm/stdlib/" +
+            (qualifiedName ?: "kotlin.Nothing").let {
+                val ld = it.lastIndexOf('.')
+                val pack = it.substring(0, ld)
+                val name = it.substring(ld + 1)
+                "$pack/-${name.toLowerCase()}"
+            } + "/"
 }
 
 val Pair<*, *>.assignFormatted get() = "${first}=${second}"
