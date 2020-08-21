@@ -4,8 +4,13 @@ import arrow.core.Either
 import arrow.core.Left
 import arrow.core.Right
 import arrow.core.getOrHandle
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
-inline class ErrorMessage(val msg: String)
+inline class ErrorMessage(val msg: String) {
+    override fun toString(): String = "Error: $msg"
+}
 
 /**
  * Represents the result of a call that may give
@@ -20,6 +25,23 @@ inline class ErrorMessage(val msg: String)
  * - [nullToError]
  */
 typealias Uncertain<T> = Either<ErrorMessage, T>
+
+/**
+ * If this is certain, run [block] with the value.
+ */
+@OptIn(ExperimentalContracts::class)
+inline fun <T> Uncertain<T>.ifCertain(block: (T) -> Unit) {
+    contract {
+        callsInPlace(block, InvocationKind.AT_MOST_ONCE)
+    }
+}
+
+/**
+ * Returns the [toString] of the certain value, or the error message prefixed by "Error: ".
+ * This can theoretically lead to a disambiguity if the value's [toString] also includes said prefix.
+ */
+fun Uncertain<*>.toStringOrError(): String =
+        value().toString()
 
 /**
  * Returns the result, or throws the error.
