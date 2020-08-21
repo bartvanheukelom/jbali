@@ -18,7 +18,8 @@ data class HTTPOrigin(val origin: String) {
 }
 
 val ApplicationRequest.originHeaderOrMessage: Uncertain<HTTPOrigin>
-    get() =
-        header("Origin")
-                .nullToError { "Request has no Origin header" }
-                .map { HTTPOrigin(it) }
+    get() = originIfGiven.nullToError { "Request has no Origin header" }
+
+val ApplicationRequest.originIfGiven: HTTPOrigin?
+    get() = header("Origin")
+                ?.let { HTTPOrigin(it) }

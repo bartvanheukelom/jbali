@@ -193,6 +193,14 @@ class ObjectIdentity(val o: Any) {
 fun ByteArray.toHexString(limit: Int = size): String =
         HexBytes.toHex(this, limit)
 
+data class GeneratorUpdater<T : Any>(
+        val generator: () -> T,
+        val updater: T.() -> T
+) {
+    operator fun invoke(maybeBase: T?): T =
+            (maybeBase ?: generator()).updater()
+}
+
 /**
  * Basically:
  *
@@ -200,12 +208,11 @@ fun ByteArray.toHexString(limit: Int = size): String =
  *         .updater()
  *         .also(setter)
  */
-inline fun <T> genericUpdate(
+inline fun <T : Any> createOrUpdate(
         getter: () -> T?,
-        generator: () -> T,
-        updater: T.() -> T,
+        gup: GeneratorUpdater<T>,
         setter: (T) -> Unit
 ): T =
-        (getter() ?: generator())
-                .updater()
+        getter()
+                .let { gup(it) }
                 .also(setter)

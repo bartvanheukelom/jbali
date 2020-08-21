@@ -7,17 +7,15 @@ import io.ktor.sessions.set
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import org.jbali.kotser.DefaultJson
-import org.jbali.util.genericUpdate
+import org.jbali.util.GeneratorUpdater
+import org.jbali.util.createOrUpdate
 
-
-inline fun <reified T> CurrentSession.update(
-        generator: () -> T,
-        updater: T.() -> T
+inline fun <reified T : Any> CurrentSession.createOrUpdate(
+        gup: GeneratorUpdater<T>
 ): T =
-        genericUpdate(
+        createOrUpdate(
                 getter = { get<T>() },
-                generator = generator,
-                updater = updater,
+                gup = gup,
                 setter = { set(it) }
         )
 
