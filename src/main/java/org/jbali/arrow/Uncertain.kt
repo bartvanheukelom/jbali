@@ -55,7 +55,7 @@ fun <T> Uncertain<T>.getOrThrow(): T =
 /**
  * `Right(this)` if not null, else `Left(ErrorMessage(errMsg()))`.
  */
-fun <T> T?.nullToError(errMsg: () -> String): Either<ErrorMessage, T> =
+inline fun <T> T?.nullToError(errMsg: () -> String): Either<ErrorMessage, T> =
         when (this) {
             null -> errorMessage(errMsg())
             else -> result(this)

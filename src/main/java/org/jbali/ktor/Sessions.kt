@@ -19,7 +19,7 @@ inline fun <reified T : Any> CurrentSession.createOrUpdate(
                 setter = { set(it) }
         )
 
-class KXSSessionSerializer<S>(
+class KXSSessionSerializer<S : Any>(
         private val serializer: KSerializer<S>,
         private val jsonFormat: Json = DefaultJson.plain
 ) : SessionSerializer<S> {
