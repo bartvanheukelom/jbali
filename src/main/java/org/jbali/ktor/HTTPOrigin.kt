@@ -55,7 +55,7 @@ data class HTTPOrigin(
 
     object Serializer : StringBasedSerializer<HTTPOrigin>(HTTPOrigin::class) {
         override fun fromString(s: String) = HTTPOrigin(s)
-        override fun toString(o: HTTPOrigin) = o.toString()
+        override fun toString(o: HTTPOrigin) = o.string
     }
 }
 
