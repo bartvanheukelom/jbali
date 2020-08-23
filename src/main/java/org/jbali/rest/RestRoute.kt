@@ -29,7 +29,7 @@ abstract class RestRoute : RestApiContext {
     abstract val route: Route
 
     // TODO cache TextContent, or at least the bytes
-    val <T : Any> T.asJsonCache: (KSerializer<T>) -> String
+    val <T> T.asJsonCache: (KSerializer<T>) -> String
             by StoredExtensionProperty {
                 val obj = this
                 weakKeyLoadingCache<KSerializer<T>, String> { ser ->
@@ -51,7 +51,7 @@ abstract class RestRoute : RestApiContext {
                 throw RestException(HttpStatusCode.BadRequest, e)
             }
 
-    suspend fun <T : Any> PipelineContext<Unit, ApplicationCall>.rawHandle(
+    suspend fun <T> PipelineContext<Unit, ApplicationCall>.rawHandle(
             returnType: ReifiedType<T>,
             impl: suspend () -> T
     ) {
@@ -62,7 +62,7 @@ abstract class RestRoute : RestApiContext {
         respondObject(returnType = returnType, returnVal = returnVal)
     }
 
-    suspend inline fun <reified T : Any> PipelineContext<Unit, ApplicationCall>.respondObject(
+    suspend inline fun <reified T> PipelineContext<Unit, ApplicationCall>.respondObject(
             returnVal: T,
             status: HttpStatusCode = HttpStatusCode.OK
     ) {
@@ -73,7 +73,7 @@ abstract class RestRoute : RestApiContext {
         )
     }
 
-    suspend fun <T : Any> PipelineContext<Unit, ApplicationCall>.respondObject(
+    suspend fun <T> PipelineContext<Unit, ApplicationCall>.respondObject(
             returnType: ReifiedType<T>,
             returnVal: T,
             status: HttpStatusCode = HttpStatusCode.OK

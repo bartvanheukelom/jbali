@@ -8,7 +8,7 @@ import io.ktor.routing.get
 import org.jbali.util.ReifiedType
 import org.jbali.util.reifiedTypeOf
 
-inline fun <reified T : Any> RestRoute.singleton(
+inline fun <reified T> RestRoute.singleton(
         name: String,
         noinline config: RestObject<T>.() -> Unit
 ): RestObject<T> =
@@ -18,7 +18,7 @@ inline fun <reified T : Any> RestRoute.singleton(
                 config = config
         )
 
-fun <T : Any> RestRoute.singleton(
+fun <T> RestRoute.singleton(
         name: String,
         type: ReifiedType<T>,
         config: RestObject<T>.() -> Unit
@@ -29,7 +29,7 @@ fun <T : Any> RestRoute.singleton(
                 type = type
         ).apply(config)
 
-open class RestObject<T : Any>(
+open class RestObject<T>(
         context: RestApiContext,
         route: Route,
         val type: ReifiedType<T>

@@ -7,7 +7,7 @@ import org.jbali.util.StoredExtensionProperty
 
 
 // TODO this caching, is it effective? do ClassedTypes/KTypes obtained from reified share the identity?
-val <T : Any> ReifiedType<T>.serializer: KSerializer<T> by StoredExtensionProperty {
+val <T> ReifiedType<T>.serializer: KSerializer<T> by StoredExtensionProperty {
     @Suppress("UNCHECKED_CAST")
     serializer(type) as KSerializer<T>
 }
