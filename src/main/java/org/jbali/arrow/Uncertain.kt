@@ -30,9 +30,12 @@ typealias Uncertain<T> = Either<ErrorMessage, T>
  * If this is certain, run [block] with the value.
  */
 @OptIn(ExperimentalContracts::class)
-inline fun <T> Uncertain<T>.ifCertain(block: (T) -> Unit) {
+inline fun <T> Uncertain<T>.ifCertain(crossinline block: (T) -> Unit) {
     contract {
         callsInPlace(block, InvocationKind.AT_MOST_ONCE)
+    }
+    if (this is Either.Right) {
+        block(this.b)
     }
 }
 
