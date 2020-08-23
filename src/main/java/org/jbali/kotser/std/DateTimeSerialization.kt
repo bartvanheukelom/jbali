@@ -6,6 +6,7 @@ import org.jbali.kotser.StringBasedSerializer
 import org.jbali.kotser.TransformingSerializer
 import org.jbali.threeten.toDate
 import java.sql.Timestamp
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.util.*
@@ -30,6 +31,12 @@ object LocalDateSerializer : StringBasedSerializer<LocalDate>(LocalDate::class) 
 object TimestampSerializer : StringBasedSerializer<Timestamp>(Timestamp::class) {
     override fun fromString(s: String): Timestamp =
             Timestamp.valueOf(s)
+}
+
+@Serializer(forClass = Duration::class)
+object DurationSerializer : StringBasedSerializer<Duration>(Duration::class) {
+    override fun fromString(s: String): Duration =
+            Duration.parse(s)
 }
 
 /**

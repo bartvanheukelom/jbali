@@ -11,7 +11,16 @@ import kotlin.test.assertEquals
  * Asserts that the given [JSONString]s are equal, after normalizing the formatting.
  */
 fun assertJsonEquals(expected: JSONString, actual: JSONString, message: String? = null) {
-    assertEquals(expected.prettify(), actual.prettify(), message)
+    assertEquals(
+            expected =
+                    try {
+                        expected.prettify()
+                    } catch (e: Exception) {
+                        throw IllegalArgumentException("The expected value given to assertJsonEquals appears to be invalid: $e", e)
+                    },
+            actual = actual.prettify(),
+            message = message
+    )
 }
 
 /**
@@ -37,6 +46,9 @@ fun <T> JsonSerializer<T>.assertSerialization(obj: T, expectJson: JSONString): T
  */
 fun <T> JsonSerializer<T>.assertSerialization(obj: T, expectJson: JsonElement): T =
         assertSerialization(obj, JSONString.stringify(expectJson))
+
+fun <T> JsonSerializer<T>.assertSerialization(obj: T, expectJson: String): T =
+        assertSerialization(obj, JSONString(expectJson))
 
 
 @ImplicitReflectionSerializer

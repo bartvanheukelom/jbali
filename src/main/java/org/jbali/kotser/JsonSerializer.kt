@@ -24,7 +24,7 @@ fun <T> T.stringifyWith(s: JsonSerializer<T>): JSONString =
 fun <T> JSONString.parseWith(s: JsonSerializer<T>): T =
         s.parse(this)
 
-@ImplicitReflectionSerializer
+@OptIn(ImplicitReflectionSerializer::class)
 inline fun <reified T> jsonSerializer(
         serializer: KSerializer<T> = kotlinx.serialization.serializer(),
         format: Json = DefaultJson.plain

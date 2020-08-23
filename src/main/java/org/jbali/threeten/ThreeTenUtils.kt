@@ -7,10 +7,18 @@ import java.util.*
 fun Instant.toDate() = Date(this.toEpochMilli())
 
 /**
- * The length of this duration in seconds, as double, with millisecond precision.
+ * The length of this duration in seconds, as double, with millisecond precision
+ * (if available from double).
  */
 val Duration.secondsDouble get() =
-    toMillis().toDouble() / 1000.0
+        toMillis().toDouble() / 1000.0
+
+/**
+ * The length of this duration in days, as double, with millisecond precision
+ * (if available from double).
+ */
+val Duration.daysDouble get() =
+        toMillis().toDouble() / (1000.0 * 60.0 * 60.0 * 24.0)
 
 
 fun nanos(x: Long): Duration = Duration.ofNanos(x)

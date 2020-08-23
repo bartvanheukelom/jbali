@@ -48,5 +48,5 @@ inline class JSONString(
 
 }
 
-fun makeJsonPretty(t: String) =
+fun makeJsonPretty(t: String): String =
         BasicJson.indented.stringify(BasicJson.plain.parseJson(t))
