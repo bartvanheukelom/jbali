@@ -28,7 +28,9 @@ abstract class RestRoute : RestApiContext {
 
     abstract val route: Route
 
-    // TODO cache TextContent, or at least the bytes
+    // TODO cache TextContent, or at least the bytes.
+    // TODO the assumption made the in StoredExtensionProperty implementation, that the delegates themselves are basically
+    //      static, is now proven false. theoretically, could leak memory if rest routes are created and removed repeatedly.
     val <T> T.asJsonCache: (KSerializer<T>) -> String
             by StoredExtensionProperty {
                 val obj = this

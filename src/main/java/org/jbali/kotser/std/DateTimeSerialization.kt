@@ -9,6 +9,7 @@ import java.sql.Timestamp
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZonedDateTime
 import java.util.*
 
 @Serializer(forClass = Instant::class)
@@ -25,6 +26,11 @@ object DateSerializer : TransformingSerializer<Date, Instant>(Date::class, Insta
 @Serializer(forClass = LocalDate::class)
 object LocalDateSerializer : StringBasedSerializer<LocalDate>(LocalDate::class) {
     override fun fromString(s: String): LocalDate = LocalDate.parse(s)
+}
+
+@Serializer(forClass = ZonedDateTime::class)
+object ZonedDateTimeSerializer : StringBasedSerializer<ZonedDateTime>(ZonedDateTime::class) {
+    override fun fromString(s: String): ZonedDateTime = ZonedDateTime.parse(s)
 }
 
 @Serializer(forClass = Timestamp::class)
