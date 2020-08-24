@@ -17,7 +17,7 @@ import org.jbali.collect.forEachEntryIndexed
  * - TODO? `list[]=1, list[]=2` -> `"list": ["1", "2"]`
  * - TODO? `obj.x=1, obj.y=2` -> `"obj": {"x": "1", "y": "2"]`
  *
- * TODO do similar standardized formats exist?
+ * TODO do similar standardized formats exist? -> perhaps the Properties format of kotlinx.serialization
  *
  * TODO how hard would it be to write a custom kotlin-serialization format for this?
  *
