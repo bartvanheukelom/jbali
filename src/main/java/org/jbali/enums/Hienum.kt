@@ -32,14 +32,20 @@ abstract class Hienum<R : Hienum<R>>(
             throw AssertionError("INSTANCE not found on $javaClass. It should be an object.")
         }
 
-        // and to declare serialVersionUID 1
-        ObjectStreamClass.lookup(javaClass).let { osc ->
-            require(osc.serialVersionUID == 1L) {
-                throw AssertionError("$javaClass must declare: const val serialVersionUID = 1L")
+        // and require each leaf but also each parent class to declare serialVersionUID 1
+        var jc: Class<*> = javaClass
+        while (jc != Hienum::class.java) {
+            ObjectStreamClass.lookup(jc).let { osc ->
+                require(osc.serialVersionUID == 1L) {
+                    throw AssertionError("$jc must declare: const val serialVersionUID = 1L")
+                }
+                require(osc.fields.isEmpty()) {
+                    throw AssertionError("$jc must not have any non-transient fields: ${osc.fields.joinToString { 
+                        "$it"
+                    }}")
+                }
             }
-            require(osc.fields.isEmpty()) {
-                throw AssertionError("$javaClass must not have any non-transient fields")
-            }
+            jc = jc.superclass ?: throw AssertionError()
         }
     }
 
@@ -62,7 +68,7 @@ abstract class Hienum<R : Hienum<R>>(
     // - Deserialization will create temporary non-canonical instances of each class, but readResolve resolves that
     // - All fields must be transient, so the serialized form has no data.
     //   As a result, those fields are only inited in canonical instances, but that is the only place they are read anyway.
-    // - Each leaf class must declare serialUID 1
+    // - Each class (including intermediates) must declare serialUID 1
     protected fun readResolve(): Any = javaClass.kotlin.objectInstance!!
 
 //    /**
