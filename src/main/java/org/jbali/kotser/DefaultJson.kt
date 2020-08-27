@@ -20,6 +20,8 @@ object DefaultJson {
     val readLenient = Json(plainConfig.copy(isLenient = true))
 
     val plain = Json(plainConfig)
+    val plainOmitDefaults = Json(plainConfig.copy(encodeDefaults = false))
     val indented = Json(plainConfig.copy(prettyPrint = true))
+    val indentedOmitDefaults = Json(plainConfig.copy(prettyPrint = true, encodeDefaults = false))
 
 }
