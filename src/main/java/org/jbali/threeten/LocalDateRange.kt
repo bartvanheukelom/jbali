@@ -3,12 +3,6 @@ package org.jbali.threeten
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
-/**
- * Returns a range from this value up to but excluding the specified [to] value.
- */
-infix fun LocalDate.until(to: LocalDate) =
-        LocalDateRange(this, to)
-
 class LocalDateRange(
         val from: LocalDate,
         val to: LocalDate

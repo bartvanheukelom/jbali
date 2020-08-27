@@ -52,6 +52,7 @@ libDependencies {
     compileAndTest("commons-codec:commons-codec", "1.10")
     compileAndTest("org.apache.httpcomponents:httpclient", "4.4")
     compileAndTest("org.apache.httpcomponents:httpcore", "4.4")
+    compileAndTest("org.threeten:threeten-extra", "1.5.0")
 
     // required to compile shared testing code in main sourceset
     compileAndTest(kotlin("test"))
