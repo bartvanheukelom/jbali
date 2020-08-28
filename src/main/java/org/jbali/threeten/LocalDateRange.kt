@@ -3,6 +3,12 @@ package org.jbali.threeten
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
+/**
+ * Represents a range of [LocalDate]s starting at [from] (inclusive) and ending at [to] (exclusive).
+ * Can also be treated as a [List]<[LocalDate]>, containing each day in the range.
+ *
+ * The range can be empty, but not negative/backwards, i.e. [from] cannot be later than [to].
+ */
 class LocalDateRange(
         val from: LocalDate,
         val to: LocalDate
