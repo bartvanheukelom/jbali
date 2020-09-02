@@ -85,6 +85,7 @@ abstract class RestRoute : RestApiContext {
         val returnJson: String = returnVal.asJsonCache.invoke(returnType.serializer)
 
         // instruct client how to deserialize the response
+        // TODO instead, set contentType to application/vnd.$returnType+json... but how to deal with nullability and type parameters
         call.response.addContentTypeInnerHeader(returnType.type)
 
         // respond JSON response
@@ -96,8 +97,13 @@ abstract class RestRoute : RestApiContext {
 
     suspend fun PipelineContext<Unit, ApplicationCall>.respondJson(
             json: String,
-            status: HttpStatusCode = HttpStatusCode.OK
+            status: HttpStatusCode = HttpStatusCode.OK,
+            contentType: ContentType = ContentType.Application.Json
     ) {
+
+        // disable because that's the caller's own responsibility
+//        contentType.requireJson()
+
         respond(TextContent(
                 status = status,
                 text = json,

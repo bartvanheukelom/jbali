@@ -2,6 +2,7 @@ package org.jbali.rest
 
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
+import io.ktor.http.ContentType
 import io.ktor.http.Parameters
 import io.ktor.response.ApplicationResponse
 import io.ktor.response.header
@@ -15,6 +16,20 @@ import org.jbali.kotser.serializer
 import org.jbali.util.ReifiedType
 import kotlin.reflect.KType
 
+/**
+ * Check whether this content type is a valid JSON type.
+ *
+ * Does not catch all invalid cases. For example, `application/.vnd.dotty...+json` is allowed.
+ * @throws IllegalArgumentException if this content type is not a valid JSON type.
+ */
+fun ContentType.requireJson() {
+    require(contentType == ContentType.Application.Json.contentType)
+
+    val jsonSub = ContentType.Application.Json.contentSubtype
+    if (contentSubtype != jsonSub) {
+        require(jsonSub in contentSubtype.split('+'))
+    }
+}
 
 fun ApplicationResponse.addContentTypeInnerHeader(type: KType) {
     header("X-Content-Type-Inner", type.toString().replace(" ", ""))
