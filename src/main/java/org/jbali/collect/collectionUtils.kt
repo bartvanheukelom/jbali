@@ -53,3 +53,29 @@ inline fun <E : Any, K, V> Iterable<E>.forEachEntryIndexed(
         action(i++, key(e), value(e))
     }
 }
+
+/**
+ * @return This iterable if it implements [RandomAccess], otherwise a [List] copy of it.
+ */
+fun <T> Iterable<T>.ensureRandomAccessImmutableList(): List<T> =
+        if (this is List && this is RandomAccess) {
+            this
+        } else {
+            this.toList()
+        }
+
+/**
+ * Checks whether this iterable contains any duplicate items.
+ * @return This iterable if it doesn't contain any duplicates.
+ * @throws IllegalArgumentException if duplicates have been found, with a message describing exactly which.
+ */
+fun <T : Iterable<*>> T.checkUnique(): T {
+    val dups = groupBy { it }
+            .mapValues { it.value.size }
+            .filter { it.value > 1 }
+    if (dups.isNotEmpty()) {
+        throw IllegalArgumentException("Duplicate entries: $dups")
+    } else {
+        return this
+    }
+}

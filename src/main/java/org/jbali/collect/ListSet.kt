@@ -1,70 +1,55 @@
 package org.jbali.collect
 
+import java.util.*
+import kotlin.collections.ArrayList
+
 /**
- * Marker interface that indicates both List and Set semantics
+ * Marker interface that indicates both [List] and [Set] semantics.
  */
-interface ListSet<T> : List<T>, Set<T> {
-    override fun spliterator() = (this as List<T>).spliterator()
+interface ListSet<T> : List<T>, Set<T>, Collection<T>, Iterable<T> {
+
+    fun filter(predicate: (T) -> Boolean): ListSet<T> {
+        return ListSetImpl(uniqueItemList = filterTo(ArrayList(), predicate))
+    }
+
+    override fun spliterator(): Spliterator<T>
 }
 
-class ListSetImpl<T> private constructor(
-        val items: List<T>,
-        @Suppress("UNUSED_PARAMETER") overloadMarker: Unit
-) : ListSet<T>, RandomAccess {
+/**
+ * [ListSet] implementation that delegates all behaviour to a [List]
+ * that has been verified to contain only unique items.
+ */
+class ListSetImpl<T>
 
-    init {
-        TODO()
-    }
-    override val size: Int
-        get() = TODO("not implemented") //To change initializer of created properties use File | Settings | File Templates.
+/**
+ * Construct around a list that is already known to contain only unique items.
+ */
+internal constructor(
+        private val uniqueItemList: List<T>
+) : ListSet<T>, List<T> by uniqueItemList, RandomAccess {
 
-    override fun contains(element: T): Boolean {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override val size = uniqueItemList.size
 
-    override fun containsAll(elements: Collection<T>): Boolean {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun spliterator(): Spliterator<T> =
+            uniqueItemList.spliterator()
 
-    override fun get(index: Int): T {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    override fun indexOf(element: T): Int {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    override fun isEmpty(): Boolean {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    override fun iterator(): Iterator<T> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    override fun lastIndexOf(element: T): Int {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    override fun listIterator(): ListIterator<T> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    override fun listIterator(index: Int): ListIterator<T> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    override fun subList(fromIndex: Int, toIndex: Int): List<T> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun toString() =
+            uniqueItemList.toString()
 
     constructor(items: Iterable<T>) : this(
-            items
-                    .ensureRandomAccessList()
-                    .also { require(it.toSet().size != it.size) },
-            Unit
+            uniqueItemList = items
+                    .ensureRandomAccessImmutableList()
+                    .checkUnique()
     )
 }
 
-fun <T> Iterable<T>.ensureRandomAccessList(): List<T> = if (this is List && this is RandomAccess) this else this.toList()
-fun <T> Iterable<T>.toListSet() = if (this is ListSet) this else ListSetImpl(this)
+/**
+ * @return This iterable if it implements [ListSet], or a copy of it.
+ * @throws IllegalArgumentException if the iterable contains duplicate entries, i.e. does not adhere to [Set] semantics.
+ */
+fun <T> Iterable<T>.toListSet() =
+        if (this is ListSet) {
+            this
+        } else {
+            ListSetImpl(this)
+        }
