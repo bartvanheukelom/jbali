@@ -52,4 +52,18 @@ fun KType.checkAssignableFrom(x: Any?) {
     }
 }
 
+/**
+ * The static [Field] of this _object_ class that refers to the singular instance, if any.
+ *
+ * Unlike [KClass.objectInstance], this can be called before or while the class or object are being initialized.
+ */
+val <T : Any> KClass<T>.objectInstanceField: Field? get() =
+    javaObjectType.declaredFields.singleOrNull {
+        it.name == "INSTANCE" && it.type == javaObjectType && it.isStatic && it.isFinal
+    }
 
+/**
+ * Returns the runtime [KClass] of this object.
+ */
+val <T : Any> T.kClass: KClass<T> get() =
+        javaClass.kotlin

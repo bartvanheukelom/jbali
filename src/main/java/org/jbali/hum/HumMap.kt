@@ -1,4 +1,4 @@
-package org.jbali.enums
+package org.jbali.hum
 
 import org.jbali.collect.ListSet
 
