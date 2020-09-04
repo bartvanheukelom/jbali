@@ -67,3 +67,11 @@ val <T : Any> KClass<T>.objectInstanceField: Field? get() =
  */
 val <T : Any> T.kClass: KClass<T> get() =
         javaClass.kotlin
+
+val Class<*>.binaryName: String get() {
+    val pp = `package`.name + "."
+    return canonicalName.removePrefix(pp).replace('.', '$')
+}
+
+val Class<*>.qualifiedBinaryName: String get() =
+        "${`package`.name}.$binaryName"
