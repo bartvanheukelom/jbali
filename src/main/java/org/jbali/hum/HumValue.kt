@@ -18,6 +18,9 @@ abstract class HumValue<R : HumValue<R>>(
 
     private val rootClass: KClass<R> get() = root.rootClass
 
+    operator fun contains(element: R): Boolean =
+            element == this
+
     init {
 
         // TODO check parent is sealed (once per parent, so lazy)
@@ -57,8 +60,8 @@ abstract class HumValue<R : HumValue<R>>(
     companion object {
 
         @JvmStatic
-        fun <R : HumValue<R>> getGroup(type: Class<R>): HumGroup<R> =
-                type.kotlin.humGroup
+        fun getGroup(type: Class<*>): HumGroup<*, *> =
+                type.kotlin.forceHumGroup
 
     }
 

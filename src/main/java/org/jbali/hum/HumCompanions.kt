@@ -9,7 +9,7 @@ import kotlin.reflect.full.companionObjectInstance
 
 abstract class HumRoot<R : HumValue<R>>(
         rootClass: KClass<R>
-) : HumGroup<R>(rootClass) {
+) : HumGroup<R, R>(rootClass) {
 
     val rootClass get() = groupClass
 
@@ -19,9 +19,9 @@ abstract class HumRoot<R : HumValue<R>>(
 }
 
 // TODO also companion for values?
-abstract class HumGroup<R : HumValue<*>>(
-        val groupClass: KClass<R>
-) : StringBasedSerializer<R>(groupClass) {
+abstract class HumGroup<R : HumValue<R>, G : R>(
+        val groupClass: KClass<G>
+) : StringBasedSerializer<G>(groupClass) {
 
     override fun toString() =
             "HumGroup(${groupClass.qualifiedName})"
@@ -34,31 +34,32 @@ abstract class HumGroup<R : HumValue<*>>(
      * but this allows something like:
      * - `hv in dynamicGroup`
      */
-    operator fun contains(hv: HumValue<*>) =
-            groupClass.isInstance(hv)
+    operator fun contains(element: R): Boolean =
+            groupClass.isInstance(element)
 
     // TODO find a way to init this once per hierarchy, instead of the runtime overhead of lazy
     // must be lazy because the leaf objects have not been constructed yet when this companion is inited
     private val late by lazy { Late() }; inner class Late {
 
-        val values: ListSet<R> =
+        val values: ListSet<G> =
                 try {
                     groupClass.loadSealedObjects().toListSet()
                 } catch (e: Exception) {
                     throw AssertionError("Could not load sealed objects of $groupClass: $e", e)
                 }
 
-        val allByName: Map<String, R> =
+        // TODO group-local name (and ordinal)
+        val allByName: Map<String, G> =
                 values.associateBy { it.name }
 
     }
 
-    val values: ListSet<R> get() = late.values
-    val byName: Map<String, R> get() = late.allByName
+    val values: ListSet<G> get() = late.values
+    val byName: Map<String, G> get() = late.allByName
 
-    override fun fromString(s: String): R =
+    override fun fromString(s: String): G =
             byName.getValue(s)
-    override fun toString(o: R) =
+    override fun toString(o: G) =
             o.name
 
 }
@@ -73,12 +74,15 @@ val <R : HumValue<R>> KClass<R>.humRoot: HumRoot<R>
         return grp as HumRoot<R>
     }
 
-val <R : HumValue<R>> KClass<R>.humGroup: HumGroup<R>
+val KClass<*>.forceHumGroup: HumGroup<*, *> get() =
+        companionObjectInstance as HumGroup<*, *>
+
+val <R : HumValue<R>, G : R> KClass<G>.humGroup: HumGroup<R, G>
     get() {
-        val grp = companionObjectInstance as HumGroup<*>
+        val grp = forceHumGroup
         if (grp.groupClass != this) {
             throw AssertionError()
         }
         @Suppress("UNCHECKED_CAST")
-        return grp as HumGroup<R>
+        return grp as HumGroup<R, G>
     }
