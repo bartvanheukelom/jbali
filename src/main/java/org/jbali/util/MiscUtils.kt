@@ -9,7 +9,6 @@ import kotlin.contracts.contract
 import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
-import kotlin.reflect.full.cast
 import kotlin.reflect.full.valueParameters
 
 val globalSecureRandom = SecureRandom()
@@ -164,10 +163,6 @@ fun formatTTime(time: Long): String = "T+${formatMsTime(time)}"
  */
 const val stringToBeUnmarshalled = "stringToBeUnmarshalled"
 
-infix fun <A, B : Any> A.asClass(to: KClass<B>) =
-        to.cast(this)
-
-inline fun <reified T : Any> Any.cast() = this as T
 
 /**
  * Very simple wrapper around any value.
