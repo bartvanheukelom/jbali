@@ -15,6 +15,11 @@ fun Routing.captureTrace() {
     }
 }
 
-val ApplicationCall.capturedTrace: RoutingResolveTrace
-    get() =
-    attributes.getOrNull(akRoutingResolveTrace) ?: throw IllegalStateException("Trace not captured, did you call Routing.captureTrace()?")
+val ApplicationCall.traceIfCaptured: RoutingResolveTrace? get() =
+        attributes.getOrNull(akRoutingResolveTrace)
+
+val ApplicationCall.capturedTrace: RoutingResolveTrace get() =
+    traceIfCaptured ?: throw IllegalStateException("Trace not captured, did you call Routing.captureTrace()?")
+
+val ApplicationCall.traceTextIfCaptured: String get() =
+    traceIfCaptured?.buildText() ?: "(trace not captured)"
