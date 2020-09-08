@@ -55,14 +55,23 @@ fun <T> Uncertain<T>.getOrThrow(): T =
             throw IllegalStateException(it.msg)
         }
 
+
 /**
  * `Right(this)` if not null, else `Left(ErrorMessage(errMsg()))`.
  */
-inline fun <T> T?.nullToError(errMsg: () -> String): Either<ErrorMessage, T> =
+inline fun <T> T?.nullToError(errMsg: () -> String): Uncertain<T> =
         when (this) {
             null -> errorMessage(errMsg())
             else -> result(this)
         }
+
+@Deprecated("No need to call this on a non-nullable type", ReplaceWith("result(this)"))
+@JvmName("nullToError\$rcvNotNull")
+@JvmSynthetic
+@Suppress("UNUSED_PARAMETER")
+fun <T : Any> T.nullToError(noErrMsg: () -> String): Uncertain<T> =
+        result(this)
+
 
 fun <T> result(r: T) =
         Right(r)
