@@ -40,6 +40,22 @@ data class ExplainedBool @JvmOverloads constructor(
         return !value
     }
 
+    /**
+     * @return this if it's true, else `null`
+     */
+    fun ifTrue(): ExplainedBool? = this.takeIf { it.isTrue() }
+
+    /**
+     * @return this if it's false, else `null`
+     */
+    fun ifFalse(): ExplainedBool? = this.takeIf { it.isFalse() }
+
+    fun mapExplanation(map: (String) -> String) =
+            ExplainedBool(
+                    value = value,
+                    explanation = map(explanation)
+            )
+
 }
 
 
