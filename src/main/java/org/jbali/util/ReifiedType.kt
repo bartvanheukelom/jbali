@@ -29,19 +29,23 @@ data class ReifiedType<T>(
         val unit = reifiedTypeOf<Unit>()
     }
 
-    fun match() = Matcher<T>(this)
+    fun match() = Matcher<T, Unit>(this, Unit)
 
-    data class Matcher<T>(
+    fun <I : Any?> match(input: I) = Matcher<T, I>(this, input)
+
+    data class Matcher<T, I>(
             /** Is public for inlining, but do not use directly. */
             val thisType: ReifiedType<T>,
+            /** Is public for inlining, but do not use directly. */
+            val input: I,
             /** Is public for inlining, but do not use directly. */
             val result: Box<T>? = null
     ) {
 
-        inline fun <reified O> to(block: () -> O): Matcher<T> =
+        inline fun <reified O> to(block: (I) -> O): Matcher<T, I> =
                 to(reifiedTypeOf<O>(), block)
 
-        inline fun <O> to(m: ReifiedType<O>, block: () -> O): Matcher<T> =
+        inline fun <O> to(m: ReifiedType<O>, block: (I) -> O): Matcher<T, I> =
                 when {
 
                     result != null ->
@@ -51,7 +55,7 @@ data class ReifiedType<T>(
                     m extends thisType ->
                         // unchecked cast because compiler doesn't know that O extends T, but we do
                         @Suppress("UNCHECKED_CAST")
-                        this.copy(result = Box(block()) as Box<T>)
+                        this.copy(result = Box(block(input)) as Box<T>)
 
                     else ->
                         this
@@ -69,10 +73,10 @@ data class ReifiedType<T>(
         /**
          * Terminates the matcher by returning the result of the matched block, or the given [block].
          */
-        inline fun otherwise(block: () -> T): T =
+        inline fun otherwise(block: (I) -> T): T =
                 when {
                     result != null -> result.contents
-                    else -> block()
+                    else -> block(input)
                 }
 
     }
@@ -94,7 +98,7 @@ inline fun <reified T> KType.reify(): ReifiedType<T> {
     return cachedReifiedType as ReifiedType<T>
 }
 
-fun KType.match(): ReifiedType.Matcher<Any?> =
+fun KType.match(): ReifiedType.Matcher<Any?, Unit> =
         ReifiedType<Any?>(this).match()
 
 
