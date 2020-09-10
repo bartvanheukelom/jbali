@@ -4,7 +4,28 @@ import java.time.Duration
 import java.time.Instant
 import java.util.*
 
-fun Instant.toDate() = Date(this.toEpochMilli())
+// TODO instantMinDate etc
+
+/**
+ * The latest [Instant] that can accurately be represented by [Date].
+ */
+val instantMaxDate: Instant =
+        Instant.ofEpochMilli(Long.MAX_VALUE)
+
+/**
+ * The latest [Instant] that can be converted to [Date] without [ArithmeticException] being thrown,
+ * but while losing its nanosecond precision.
+ */
+val instantVeryMaxDate: Instant =
+        Instant.ofEpochMilli(Long.MAX_VALUE).plusNanos(999_999L)
+
+// TODO toDateExact
+fun Instant.toDate(): Date =
+        try {
+            Date(this.toEpochMilli())
+        } catch (e: ArithmeticException) {
+            throw ArithmeticException("$this cannot be represented as Date due to long overflow")
+        }
 
 /**
  * The length of this duration in seconds, as double, with millisecond precision
