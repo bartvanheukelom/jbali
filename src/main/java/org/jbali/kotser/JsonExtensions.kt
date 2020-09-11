@@ -2,6 +2,8 @@ package org.jbali.kotser
 
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
+import kotlinx.serialization.modules.SerialModule
+import kotlin.reflect.typeOf
 
 // TODO contribute to kotlinserialization lib
 
@@ -13,11 +15,16 @@ fun JsonConfiguration.format(): Json =
  * @throws [JsonException] if given value can not be encoded
  * @throws [SerializationException] if given value can not be serialized
  */
+@OptIn(ExperimentalStdlibApi::class)
 @ImplicitReflectionSerializer
 // extension could theoretically be attached to StringFormat instead of Json, but that's of little added value.
 inline fun <reified T> Json.stringify(value: T) =
         stringify(
-                serializer = serializer(),
+                serializer = try {
+                    serializer<T>()
+                } catch (e: Exception) {
+                    throw SerializationException("Error getting static serializer for ${typeOf<T>()}: $e", e)
+                },
                 value = value
         )
 
