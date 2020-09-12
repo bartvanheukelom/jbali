@@ -9,9 +9,10 @@ import io.ktor.util.AttributeKey
 private val akRoutingResolveTrace =
         AttributeKey<RoutingResolveTrace>("routingResolveTrace")
 
-fun Routing.captureTrace() {
+fun Routing.captureTrace(andAlso: (RoutingResolveTrace) -> Unit = {}) {
     trace {
         it.call.attributes[akRoutingResolveTrace] = it
+        andAlso(it)
     }
 }
 
