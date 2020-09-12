@@ -173,7 +173,12 @@ const val stringToBeUnmarshalled = "stringToBeUnmarshalled"
  *
  * A box is equal to another box if the contents are also equal. This is in contrast to [ObjectIdentity].
  */
-data class Box<out T>(val contents: T)
+data class Box<out T>(val contents: T) {
+    // this version complements .boxed()
+    fun unboxed() = contents
+}
+
+fun <T> T.boxed() = Box(this)
 
 
 /**
