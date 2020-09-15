@@ -18,6 +18,9 @@ data class ReifiedType<T>(
 
     val javaType get() = type.javaType
 
+    override fun toString() =
+            type.toString()
+
 //    @Suppress("UNCHECKED_CAST")
 //    val clazz: KClass<T> get() = type.classifier
 //
@@ -89,11 +92,18 @@ data class ReifiedType<T>(
 
 }
 
+/**
+ * Tell the compiler that this [KType] represents (a subtype of) [T],
+ * verified at runtime.
+ * @throws ClassCastException if this is not [T].
+ */
 inline fun <reified T> KType.reify(): ReifiedType<T> {
+
     val parent = reifiedTypeOf<T>()
-    require (this.isSubtypeOf(parent.type)) {
-        "$this is not a subtype of $parent"
+    if (!this.isSubtypeOf(parent.type)) {
+        throw ClassCastException("($this).reify<$parent>() invalid: $this is not a subtype of $parent")
     }
+
     @Suppress("UNCHECKED_CAST")
     return cachedReifiedType as ReifiedType<T>
 }
