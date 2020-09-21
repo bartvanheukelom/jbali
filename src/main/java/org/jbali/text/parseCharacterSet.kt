@@ -1,14 +1,19 @@
 package org.jbali.text
 
+import com.google.common.collect.ImmutableRangeSet
+import com.google.common.collect.Range
+import org.jbali.collect.CharDomain
+
 /**
- * Parse a regexlike character set string into a [java.util.SortedSet] of [Char].
+ * Parse a regexlike character set string into a [Set] of [Char].
  * `-` is used to specify ranges. To include `-` in the set, list it as first or last character.
  * Example:
  * - `A-Za-z_-` -> `setOf('-', 'A', 'B', ..., 'Z', '_', 'a', ..., 'z')`
- * @throws IllegalArgumentException for syntax errors.
+ * @throws IllegalArgumentException for syntax errors, or if any input ranges have nonempty overlap
  */
+@Suppress("UnstableApiUsage")
 fun parseCharacterSet(input: String): Set<Char> =
-        buildString {
+        ImmutableRangeSet.builder<Char>().apply {
 
             var state = 0
             var start: Char = Char.MIN_VALUE
@@ -26,7 +31,7 @@ fun parseCharacterSet(input: String): Set<Char> =
                     // begin state, is never reentered once left
                     0 -> {
                         if (c == '-') {
-                            append('-')
+                            add(Range.singleton('-'))
                         } else {
                             start = c
                             state = 2
@@ -48,7 +53,7 @@ fun parseCharacterSet(input: String): Set<Char> =
                         if (c == '-') {
                             state = 3
                         } else {
-                            append(start)
+                            add(Range.singleton(start))
                             start = c
                         }
                     }
@@ -63,9 +68,7 @@ fun parseCharacterSet(input: String): Set<Char> =
                                 syntaxError("end char is not after start char '$start'")
                             }
                             else -> {
-                                while (start <= c) {
-                                    append(start++)
-                                }
+                                add(Range.closed(start, c))
                                 state = 1
                             }
                         }
@@ -85,15 +88,18 @@ fun parseCharacterSet(input: String): Set<Char> =
                 1 -> {}
                 // have one normal char and it's not going to be a range
                 2 -> {
-                    append(start)
+                    add(Range.singleton(start))
                 }
                 // have start char and dash, but there's not going to be and end, so they are just 2 chars to include
                 3 -> {
-                    append(start)
-                    append('-')
+                    add(Range.singleton(start))
+                    add(Range.singleton('-'))
                 }
 
                 else -> throw AssertionError("end state $state")
             }
 
-        }.toSortedSet()
+        }.build().asSet(CharDomain)
+
+fun Set<Char>.toConcatString() =
+        joinToString("")

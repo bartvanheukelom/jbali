@@ -6,26 +6,55 @@ import kotlin.test.assertFailsWith
 
 class ParseCharacterSetKtTest {
 
+    private fun t(expect: String, input: String) {
+        val parse = parseCharacterSet(input)
+        println(parse)
+        println(parse.toConcatString())
+        assertEquals(expect, parse.toConcatString())
+
+        val expectSet = expect.toSet()
+        assertEquals(expectSet, parse)
+//        assertEquals(expectSet.toString(), parse.toString())
+    }
+
     @Test fun test() {
 
-        assertEquals("".toSortedSet(), parseCharacterSet(""))
-        assertEquals("a".toSortedSet(), parseCharacterSet("a"))
+        t("", "")
+        t("a", "a")
 
-        assertEquals("abcABC_-".toSortedSet(), parseCharacterSet("abcABC_-"))
-        assertEquals("abcABC_-".toSortedSet(), parseCharacterSet("ABCabc_-"))
-        assertEquals("abcABC_-".toSortedSet(), parseCharacterSet("a-cA-C_-"))
-        assertEquals("abcABC_-".toSortedSet(), parseCharacterSet("-a-cA-C_"))
-        assertEquals("abcABC_-".toSortedSet(), parseCharacterSet("-A-Ca-c_"))
-        assertEquals("abcABC_-".toSortedSet(), parseCharacterSet("-A-C_a-c_"))
+        t("-ABC_abc", "abcABC_-")
+        t("-ABC_abc", "ABCabc_-")
+        t("-ABC_abc", "a-cA-C_-")
+        t("-ABC_abc", "-a-cA-C_")
+        t("-ABC_abc", "-A-Ca-c_")
+        t("-ABC_abc", "-A-Ca-c_")
 
-        assertEquals("ABC012".toSortedSet(), parseCharacterSet("A-C0-2"))
-        assertEquals("-ABC".toSortedSet(), parseCharacterSet("--A-C"))
+        t("012ABC", "A-C0-2")
+        t("-ABC", "-A-C")
 
-        assertEquals("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_- ".toSortedSet(), parseCharacterSet("A-Za-z0-9_ -"))
+        t(" -0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz", "A-Za-z0-9_ -")
+
+        // almost all "latin" chars
+        t(
+                " -0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyzÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞ"+
+                        "ßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķ"+
+                        "ĸĹĺĻļĽľĿŀŁłŃńŅņŇňŉŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽžſƀƁƂƃƄƅƆƇƈƉƊƋƌƍƎƏƐ"+
+                        "ƑƒƓƔƕƖƗƘƙƚƛƜƝƞƟƠơƢƣƤƥƦƧƨƩƪƫƬƭƮƯưƱƲƳƴƵƶƷƸƹƺƻƼƽƾƿǀǁǂǃǄǅǆǇǈǉǊǋǌǍǎǏǐǑǒǓǔǕǖǗǘǙǚǛǜǝǞǟǠǡǢǣǤ"+
+                        "ǥǦǧǨǩǪǫǬǭǮǯǰǱǲǳǴǵǶǷǸǹǺǻǼǽǾǿȀȁȂȃȄȅȆȇȈȉȊȋȌȍȎȏȐȑȒȓȔȕȖȗȘșȚțȜȝȞȟȠȡȢȣȤȥȦȧȨȩȪȫȬȭȮȯȰȱȲȳȴȵȶȷȸȹ"+
+                        "ȺȻȼȽȾȿɀɁɂɃɄɅɆɇɈɉɊɋɌɍɎɏḂḃḄḅḆḇḈḉḊḋḌḍḎḏḐḑḒḓḔḕḖḗḘḙḚḛḜḝḞḟḠḡḢḣḤḥḦḧḨḩḪḫḬḭḮḯḰḱḲḳḴḵḶḷḸḹḺḻḼḽḾḿṀṁṂṃṄṅṆ"+
+                        "ṇṈṉṊṋṌṍṎṏṐṑṒṓṔṕṖṗṘṙṚṛṜṝṞṟṠṡṢṣṤṥṦṧṨṩṪṫṬṭṮṯṰṱṲṳṴṵṶṷṸṹṺṻṼṽṾṿẀẁẂẃẄẅẆẇẈẉẊẋẌẍẎẏẐẑẒẓẔẕẖẗẘẙẚẛẜẝẞẟẠ"+
+                        "ạẢảẤấẦầẨẩẪẫẬậẮắẰằẲẳẴẵẶặẸẹẺẻẼẽẾếỀềỂểỄễỆệỈỉỊịỌọỎỏỐốỒồỔổỖỗỘộỚớỜờỞởỠỡỢợỤụỦủỨứỪừỬửỮữỰựỲỳ",
+
+                "0-9A-Za-zÀ-ÖØ-öø-ÿĀ-ſƀ-ɏḂ-ỳ_ -"
+        )
 
         assertFailsWith<IllegalArgumentException> { parseCharacterSet("A-C--") }
         assertFailsWith<IllegalArgumentException> { parseCharacterSet("C-A") }
         assertFailsWith<IllegalArgumentException> { parseCharacterSet("A-Za-z0-9_- ") }
+
+        // overlap
+        assertFailsWith<IllegalArgumentException> { parseCharacterSet("A-KF-Z") }
+        assertFailsWith<IllegalArgumentException> { parseCharacterSet("AA") }
     }
 
 }
