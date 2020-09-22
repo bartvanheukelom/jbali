@@ -12,7 +12,8 @@ interface ListSet<T> : List<T>, Set<T>, Collection<T>, Iterable<T> {
         return ListSetImpl(uniqueItemList = filterTo(ArrayList(), predicate))
     }
 
-    override fun spliterator(): Spliterator<T>
+    override fun spliterator(): Spliterator<T> =
+            Spliterators.spliterator(this, Spliterator.ORDERED)
 }
 
 /**
