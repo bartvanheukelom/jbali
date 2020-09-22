@@ -1,8 +1,9 @@
 package org.jbali.collect
 
 import com.google.common.collect.DiscreteDomain
+import java.io.Serializable
 
-object CharDomain : DiscreteDomain<Char>() {
+object CharDomain : DiscreteDomain<Char>(), Serializable {
 
     override fun next(value: Char): Char? =
             when (value) {
