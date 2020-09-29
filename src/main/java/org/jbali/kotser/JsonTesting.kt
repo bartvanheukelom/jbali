@@ -7,6 +7,19 @@ import kotlin.test.assertEquals
 
 // TODO contribute to kotlinserialization lib
 
+
+/**
+ * Asserts that the given [JSONString], when parsed, is equal to [expected].
+ */
+fun assertJsonEquals(expected: JsonElement, actual: JSONString, message: String? = null) {
+    assertEquals(
+            expected = expected,
+            actual = actual.parse(),
+            message = message
+    )
+}
+
+
 /**
  * Asserts that the given [JSONString]s are equal, after normalizing the formatting.
  */
