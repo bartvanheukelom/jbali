@@ -1,5 +1,6 @@
 package org.jbali.kotser.std
 
+import com.google.common.net.HostAndPort
 import com.google.common.net.InetAddresses
 import kotlinx.serialization.Serializer
 import kotlinx.serialization.modules.SerializersModule
@@ -11,6 +12,17 @@ import java.math.BigInteger
 import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetAddress
+import java.util.*
+
+object UUIDSerializer : StringBasedSerializer<UUID>(UUID::class) {
+    override fun fromString(s: String): UUID = UUID.fromString(s)
+}
+
+@Suppress("UnstableApiUsage")
+object HostAndPortSerializer : StringBasedSerializer<HostAndPort>(HostAndPort::class) {
+    override fun fromString(s: String): HostAndPort = HostAndPort.fromString(s)
+}
+
 
 // --- InetAddress
 
