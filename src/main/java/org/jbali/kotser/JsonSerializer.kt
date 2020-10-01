@@ -16,6 +16,10 @@ data class JsonSerializer<T>(
     fun stringify(obj: T): JSONString = JSONString.stringify(format, serializer, obj)
     fun parse(str: JSONString) = str.parse(format, serializer)
 
+    // convenience methods:
+
+    fun parseJsonString(str: String) = parse(JSONString(str))
+
 }
 
 fun <T> T.stringifyWith(s: JsonSerializer<T>): JSONString =
