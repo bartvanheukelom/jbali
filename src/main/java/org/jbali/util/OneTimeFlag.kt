@@ -25,6 +25,12 @@ class OneTimeFlag {
     fun flagIfUnflagged() =
             a.compareAndSet(null, Instant.now())
 
+    inline fun <reified T> ifUnflagged(block: () -> T) {
+        if (flagIfUnflagged()) {
+            block()
+        }
+    }
+
     /**
      * @throws IllegalStateException if already flagged (with time in message).
      */
