@@ -6,13 +6,13 @@ import kotlin.collections.ArrayList
 /**
  * Marker interface that indicates both [List] and [Set] semantics.
  */
-interface ListSet<T> : List<T>, Set<T>, Collection<T>, Iterable<T> {
+interface ListSet<out T> : List<T>, Set<T>, Collection<T>, Iterable<T> {
 
     fun filter(predicate: (T) -> Boolean): ListSet<T> {
         return ListSetImpl(uniqueItemList = filterTo(ArrayList(), predicate))
     }
 
-    override fun spliterator(): Spliterator<T> =
+    override fun spliterator(): Spliterator<@UnsafeVariance T> =
             Spliterators.spliterator(this, Spliterator.ORDERED)
 }
 
@@ -20,7 +20,7 @@ interface ListSet<T> : List<T>, Set<T>, Collection<T>, Iterable<T> {
  * [ListSet] implementation that delegates all behaviour to a [List]
  * that has been verified to contain only unique items.
  */
-class ListSetImpl<T>
+class ListSetImpl<out T>
 
 /**
  * Construct around a list that is already known to contain only unique items.
@@ -31,7 +31,7 @@ internal constructor(
 
     override val size = uniqueItemList.size
 
-    override fun spliterator(): Spliterator<T> =
+    override fun spliterator(): Spliterator<@UnsafeVariance T> =
             uniqueItemList.spliterator()
 
     override fun toString() =

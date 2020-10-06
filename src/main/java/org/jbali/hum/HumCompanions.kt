@@ -22,6 +22,10 @@ import kotlin.reflect.full.isSubclassOf
 abstract class HumRoot<R : HumValue<R>>(rootClass: KClass<R>)
     : HumTree<R, R>(rootClass, rootClass)
 
+interface HumTreeOut<out G> {
+    val values: ListSet<G>
+}
+
 /**
  * Represent a single subtree of a hierarchical enum, which includes the option of representing a single value,
  * or the entire tree.
@@ -30,6 +34,7 @@ abstract class HumTree<R : HumValue<R>, G : R>(
         val rootClass: KClass<R>,
         gc: KClass<G>?
 ) :
+        HumTreeOut<G>,
         KSerializer<G>,
         // TODO KSerializer<HumGroup>
         Externalizable
@@ -121,7 +126,7 @@ abstract class HumTree<R : HumValue<R>, G : R>(
 
     }
 
-    val values: ListSet<G> get() = late.values
+    override val values: ListSet<G> get() = late.values
     val byName: Map<String, G> get() = late.allByName
 
 //    fun <G, V> associateWith(valueGetter: (G) -> V): Map<G, V> =
