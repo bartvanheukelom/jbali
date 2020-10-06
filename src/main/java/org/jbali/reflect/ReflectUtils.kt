@@ -53,6 +53,14 @@ fun KType.checkAssignableFrom(x: Any?) {
 }
 
 /**
+ * Whether this is the class of a Kotlin (companion) _object_. In the latter case, uses a heuristic that may give false positives.
+ *
+ * Unlike [KClass.objectInstance], this can be called before or while the class or object are being initialized.
+ */
+val <T : Any> KClass<T>.isObject: Boolean get() =
+        isCompanion || objectInstanceField != null
+
+/**
  * The static [Field] of this _object_ class that refers to the singular instance, if any.
  *
  * Unlike [KClass.objectInstance], this can be called before or while the class or object are being initialized.

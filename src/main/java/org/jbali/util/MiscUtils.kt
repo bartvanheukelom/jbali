@@ -42,7 +42,12 @@ inline fun <T> Iterable<T>.forEachWrappingExceptions(action: (T) -> Unit) {
     }
     for (x in this) {
         try {
-            action(x)
+            try {
+                action(x)
+            } catch (ae: AssertionError) {
+                // this catch exists only for setting a breakpoint
+                throw ae
+            }
         } catch (e: Throwable) {
             val xs =
                     try {

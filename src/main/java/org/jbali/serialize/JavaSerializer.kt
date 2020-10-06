@@ -67,6 +67,20 @@ object JavaSerializer {
         return osc
     }
 
+
+    private val ObjectStreamClass_hasWriteReplaceMethod: Method =
+            ObjectStreamClass::class.java.getDeclaredMethod("hasWriteReplaceMethod")
+                    .apply { isAccessible = true }
+
+    fun assertWriteReplace(clazz: Class<*>): ObjectStreamClass {
+        val osc = ObjectStreamClass.lookup(clazz)
+        val hasReRe = ObjectStreamClass_hasWriteReplaceMethod.invoke(osc) as Boolean
+        if (!hasReRe) {
+            throw AssertionError("$clazz does not have a correct writeReplace method")
+        }
+        return osc
+    }
+
     @Suppress("UNCHECKED_CAST")
     @JvmStatic
     /**

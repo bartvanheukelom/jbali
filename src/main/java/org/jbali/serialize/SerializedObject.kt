@@ -33,7 +33,7 @@ class SerializedObject(
 
 abstract class SerializableObject : Serializable {
 
-    protected fun writeReplace(): Any =
+    protected fun writeReplace(): SerializedObject =
             SerializedObject(javaClass.name)
 
 }

@@ -6,7 +6,7 @@ import org.jbali.collect.ListSet
  * Optimized [Map] implementation that contains a value for each entry of the [HumValue] denoted by [type].
  */
 class HumMap<K : HumValue<K>, out V>(
-        val type: HumRoot<K>,
+        val type: HumTree<K, K>,
         override val values: List<V>
 ) : Map<K, V>, List<V> by values {
 

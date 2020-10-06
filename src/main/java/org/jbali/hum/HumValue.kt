@@ -1,10 +1,5 @@
 package org.jbali.hum
 
-import org.jbali.reflect.kClass
-import org.jbali.reflect.objectInstanceField
-import org.jbali.serialize.SerializableObject
-import kotlin.reflect.KClass
-
 /**
  * Base class for hierarchical enumerations.
  */
@@ -12,25 +7,14 @@ abstract class HumValue<R : HumValue<R>>(
         /** The root class of this hierarchical enumeration, e.g. `Animalia::class`. */
         val root: HumRoot<R>
 ) :
-        SerializableObject(),
+        HumTree<R, R>(root.rootClass), // TODO G
+//        SerializableObject(),
         Comparable<R>
 {
 
-    private val rootClass: KClass<R> get() = root.rootClass
-
-    operator fun contains(element: R): Boolean =
+    // optimization (I think) that's functionally the same
+    override operator fun contains(element: R): Boolean =
             element == this
-
-    init {
-
-        // TODO check parent is sealed (once per parent, so lazy)
-
-        // require each leaf to be an object
-        require(kClass.objectInstanceField != null) {
-            throw AssertionError("INSTANCE not found on $javaClass. It should be an object.")
-        }
-
-    }
 
     val ordinal: Int by lazy {
         root.values.indexOf(this).also {
@@ -39,16 +23,6 @@ abstract class HumValue<R : HumValue<R>>(
             }
         }
     }
-
-    /**
-     * The name for this [HumValue], which equals the qualified class name with the qualified [rootClass] name prefix removed,
-     * e.g. `Animalia.Carnivora.Felidae.FCatus.name == "Carnivora.Felidae.FCatus"`
-     */
-    val name =
-            kClass.qualifiedName!!.removePrefix(rootClass.qualifiedName!! + ".")
-
-    override fun toString() =
-            name
 
     override fun compareTo(other: R) =
             ordinal.compareTo(other.ordinal)
@@ -60,7 +34,7 @@ abstract class HumValue<R : HumValue<R>>(
     companion object {
 
         @JvmStatic
-        fun getGroup(type: Class<*>): HumGroup<*, *> =
+        fun getGroup(type: Class<*>): HumTree<*, *> =
                 type.kotlin.forceHumGroup
 
     }
