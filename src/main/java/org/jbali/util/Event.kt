@@ -1,5 +1,6 @@
 package org.jbali.util
 
+import org.jbali.util.OnceEvent.NotWaitingException
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.lang.ref.WeakReference
@@ -25,7 +26,7 @@ typealias ListenerErrorCallback<P> = ((l: EventListener<out P>, e: Throwable) ->
  */
 // TODO make Event a delegate provider, enables:
 // val onBla: Event<Foo> by Event
-class EventDelegate<P> : ReadOnlyProperty<Any?, Event<P>> {
+open class EventDelegate<P> : ReadOnlyProperty<Any?, Event<P>> {
     private val constructed = AtomicReference<Event<P>>()
     override operator fun getValue(thisRef: Any?, property: KProperty<*>): Event<P> {
         val c = constructed.get()
@@ -42,9 +43,9 @@ class EventDelegate<P> : ReadOnlyProperty<Any?, Event<P>> {
  * Allows an event property to be declared like:
  * val onChange by OnceEventDelegate<ChangeInfo>()
  */
-class OnceEventDelegate<P> {
+class OnceEventDelegate<P> : ReadOnlyProperty<Any?, OnceEvent<P>> {
     private val constructed = AtomicReference<OnceEvent<P>>()
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): OnceEvent<P> {
+    override operator fun getValue(thisRef: Any?, property: KProperty<*>): OnceEvent<P> {
         val c = constructed.get()
         return if (c != null) c else {
             // cannot use Lazy because this constructor requires the property
@@ -56,6 +57,7 @@ class OnceEventDelegate<P> {
 }
 
 interface Listenable<P> {
+
     fun listen(name: String?, callback: (arg: P) -> Unit): EventListener<P>
     // TODO @JvmDefault but require JVM 1.8
     fun listen(callback: (arg: P) -> Unit) = listen(null, callback)
@@ -210,13 +212,19 @@ open class Event<P>(
 }
 
 /**
- * An Event that can be dispatched only once.
+ * An [Event] that can be dispatched only once.
  * Afterwards, all listeners will be automatically detached.
- * During and after this single dispatch, it will disallow adding new listeners by throwing NotWaitingException.
+ * During and after this single dispatch, it will disallow adding new listeners by throwing [NotWaitingException].
+ * However, it does offer the extra method [listenOrHandle] which can be used to run a callback exactly once.
  */
 class OnceEvent<P>(
         name: String? = null
 ): Event<P>(name) {
+
+//    companion object {
+//        fun <P> provideDelegate(thisRef: Any?, property: KProperty<*>) =
+//            OnceEventDelegate<P>()
+//    }
 
     class NotWaitingException(m: String) : IllegalStateException(m)
 
@@ -233,6 +241,8 @@ class OnceEvent<P>(
     // mutable state with their lock
     private val lock = ReentrantReadWriteLock()
     private var pState = State.WAITING
+    // Any? because P can neither be null nor lateinit, and don't want to use a Box just for this
+    private var arg: Any? = null
 
     val state get() = lock.read { pState }
 
@@ -243,12 +253,30 @@ class OnceEvent<P>(
                 super.listen(name, callback)
             }
 
+    /**
+     * If this event has been (or is being) dispatched, immediately call [callback]
+     * with the event data. Otherwise, attach it as listener.
+     *
+     * If [callback] is invoked immediately, it is done so in the current thread, and any exceptions are not caught.
+     */
+    @JvmOverloads
+    fun listenOrHandle(name: String? = null, callback: (arg: P) -> Unit) =
+            lock.read {
+                if (pState != State.WAITING) {
+                    @Suppress("UNCHECKED_CAST")
+                    callback(arg as P)
+                } else {
+                    listen(name, callback)
+                }
+            }
+
     override fun dispatch(data: P, errCb: ListenerErrorCallback<P>) {
         lock.write {
             if (pState != State.WAITING)
                 throw IllegalStateException("Cannot dispatch $this, it's $pState")
 
             pState = State.IN_DISPATCH
+            arg = data
             try { // no exceptions should be thrown, but eh
                 super.dispatch(data, errCb)
                 detachListeners()
