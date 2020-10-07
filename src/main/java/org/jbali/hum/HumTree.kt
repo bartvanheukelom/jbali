@@ -19,22 +19,42 @@ import kotlin.reflect.KClass
 import kotlin.reflect.full.companionObjectInstance
 import kotlin.reflect.full.isSubclassOf
 
-abstract class HumRoot<R : HumValue<R>>(rootClass: KClass<R>)
-    : HumTree<R, R>(rootClass, rootClass)
 
-interface HumTreeOut<out G> {
+/**
+ * Some subtree of a hierarchical enum.
+ * @param G all values in the subtree are of this type, but not all possible values of this type may be in the subtree.
+ */
+interface HumTreeOut<out G> : ListSet<G> {
+
+    @Deprecated("use direct")
     val values: ListSet<G>
+
+//    /**
+//     * Note that you would normally use:
+//     * - `hv is Animalia.Carnivora`
+//     * instead of:
+//     * - `hv in Animalia.Carnivora`
+//     * but this allows something like:
+//     * - `hv in dynamicGroup`
+//     */
+//    operator fun contains(element: @UnsafeVariance G): Boolean
+
 }
+
 
 /**
  * Represent a single subtree of a hierarchical enum, which includes the option of representing a single value,
  * or the entire tree.
+ *
+ * Every _object_ in a hierarchical enum definition is a subclass of [HumTree]. That is, every value object, and every (sealed) group companion.
+ *
+ * @param G all values in the subtree are of this type AND all possible values of this type are in the subtree.
  */
-abstract class HumTree<R : HumValue<R>, G : R>(
+sealed class HumTree<R : HumValue<R>, G : R>(
         val rootClass: KClass<R>,
         gc: KClass<G>?
 ) :
-        HumTreeOut<G>,
+        HumTreeOut<R>, // TODO allow G
         KSerializer<G>,
         // TODO KSerializer<HumGroup>
         Externalizable
@@ -95,16 +115,18 @@ abstract class HumTree<R : HumValue<R>, G : R>(
     override fun deserialize(decoder: Decoder): G = ser.deserialize(decoder)
     override fun serialize(encoder: Encoder, value: G) = ser.serialize(encoder, value)
 
-    /**
-     * Note that you would normally use:
-     * - `hv is Animalia.Carnivora`
-     * instead of:
-     * - `hv in Animalia.Carnivora`
-     * but this allows something like:
-     * - `hv in dynamicGroup`
-     */
-    open operator fun contains(element: R): Boolean =
+    private fun containsImpl(element: Any?) =
             groupClass.isInstance(element)
+
+    override fun contains(element: R) =
+            containsImpl(element)
+
+    override fun containsAll(elements: Collection<R>): Boolean =
+            when (elements) {
+                is HumTree<R, *> -> contains(elements)
+                is HumValue<R> -> containsImpl(elements)
+                else -> elements.all { it in this }
+            }
 
     operator fun contains(tree: HumTree<R, *>): Boolean =
             tree.groupClass.isSubclassOf(groupClass)
@@ -129,13 +151,99 @@ abstract class HumTree<R : HumValue<R>, G : R>(
     override val values: ListSet<G> get() = late.values
     val byName: Map<String, G> get() = late.allByName
 
-//    fun <G, V> associateWith(valueGetter: (G) -> V): Map<G, V> =
+    override val size: Int
+        get() = late.values.size
+
+    override fun get(index: Int): R = late.values.get(index)
+    override fun indexOf(element: R): Int = late.values.indexOf(element)
+    override fun isEmpty(): Boolean = late.values.isEmpty()
+    override fun iterator(): Iterator<R> = late.values.iterator()
+    override fun lastIndexOf(element: R): Int = late.values.lastIndexOf(element)
+    override fun listIterator(): ListIterator<R> = late.values.listIterator()
+    override fun listIterator(index: Int): ListIterator<R> = late.values.listIterator(index)
+    override fun subList(fromIndex: Int, toIndex: Int): List<R> = late.values.subList(fromIndex, toIndex)
+
+    //    fun <G, V> associateWith(valueGetter: (G) -> V): Map<G, V> =
 //            HumMap<G, V>(
 //                    type = this,
 //                    values = values.map(valueGetter)
 //            )
 
 }
+
+sealed class HumGroup<R : HumValue<R>, G : R>(
+        rootClass: KClass<R>,
+        groupClass: KClass<G>
+)
+    : HumTree<R, G>(rootClass, groupClass) {
+
+    init {
+        require(kClass.isSealed)
+    }
+
+}
+
+
+
+// ==================================== base classes for implementations ================================= //
+
+
+/**
+ * Base class for hierarchical enumeration root companions.
+ */
+abstract class HumRoot<R : HumValue<R>>(rootClass: KClass<R>)
+    : HumGroup<R, R>(rootClass, rootClass)
+
+
+/**
+ * Base class for hierarchical enumeration subgroup companions.
+ */
+abstract class HumBranch<R : HumValue<R>, G : R>(
+        rootClass: KClass<R>,
+        groupClass: KClass<G>
+)
+    : HumGroup<R, G>(rootClass, groupClass)
+
+
+/**
+ * Base class for hierarchical enumeration values.
+ */
+abstract class HumValue<R : HumValue<R>>(
+        /** The root class of this hierarchical enumeration, e.g. `Animalia::class`. */
+        val root: HumRoot<R>
+) :
+        HumTree<R, R>(root.rootClass), // TODO G
+        Comparable<R>
+{
+
+    // optimization (I think) that's functionally the same
+    override operator fun contains(element: R): Boolean =
+            element == this
+
+    val ordinal: Int by lazy {
+        root.indexOf(this).also {
+            if (it < 0) {
+                throw AssertionError("$this !in ${root.toSet()}")
+            }
+        }
+    }
+
+    override fun compareTo(other: R) =
+            ordinal.compareTo(other.ordinal)
+
+    companion object {
+
+        @JvmStatic
+        fun getGroup(type: Class<*>): HumTree<*, *> =
+                type.kotlin.forceHumGroup
+
+    }
+
+}
+
+
+
+// ========================= dynamic shenanigans ========================= //
 
 val <R : HumValue<R>> KClass<R>.humRoot: HumRoot<R>
     get() {
