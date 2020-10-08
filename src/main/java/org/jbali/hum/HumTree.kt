@@ -65,9 +65,11 @@ sealed class HumTree<R : HumValue<R>, G : R>(
     val groupClass: KClass<G> = gc ?: kClass as KClass<G>
 
     init {
-        require(groupClass.isSubclassOf(rootClass))
+        require(groupClass.isSubclassOf(rootClass)) {
+            "$groupClass is not a subclass of $rootClass"
+        }
         require(kClass.isObject) {
-            throw AssertionError("$kClass should be a (companion) object")
+            "$kClass should be a (companion) object"
         }
     }
 
@@ -171,6 +173,9 @@ sealed class HumTree<R : HumValue<R>, G : R>(
 
 }
 
+/**
+ * Base class for companions of enum root or subdivision.
+ */
 sealed class HumGroup<R : HumValue<R>, G : R>(
         rootClass: KClass<R>,
         groupClass: KClass<G>
@@ -178,7 +183,9 @@ sealed class HumGroup<R : HumValue<R>, G : R>(
     : HumTree<R, G>(rootClass, groupClass) {
 
     init {
-        require(kClass.isSealed)
+        require(groupClass.isSealed) {
+            "$groupClass is not sealed"
+        }
     }
 
 }
