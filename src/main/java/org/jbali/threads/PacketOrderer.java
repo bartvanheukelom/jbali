@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Thread-safe utility class that takes incoming packets in any order, then queues and orders
@@ -36,7 +37,7 @@ public class PacketOrderer<P> {
 		this.orderedConsumer = orderedConsumer;
 	}
 	
-	public class Status {
+	public static class Status {
 		public final int waitingCount;
 		public final Instant waitingSince;
 		public final long lastSeq;
@@ -52,7 +53,16 @@ public class PacketOrderer<P> {
 			return new Status(waiting.size(), waitingSince, lastSeq);
 		}
 	}
-	
+
+	public PacketOrdererState<P> saveState() {
+		synchronized (lock) {
+			return new PacketOrdererState<>(
+					lastSeq,
+					waiting.values().stream().collect(Collectors.toList()),
+					waitingSince
+			);
+		}
+	}
 
 	public void setLastSeq(long ls) {
 		synchronized (lock) {
