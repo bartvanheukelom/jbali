@@ -1,11 +1,12 @@
 package org.jbali.threads;
 
 import com.google.common.base.Preconditions;
-import org.jbali.collect.Maps;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -24,17 +25,35 @@ public class PacketOrderer<P> {
 	private final Object lock = new Object();
 
 	// state
-	private long lastSeq = 0;
-	private final Map<Long, P> waiting = Maps.createHash();
-	private Instant waitingSince = null;
+	private long lastSeq;
+	private final Map<Long, P> waiting;
+	private Instant waitingSince;
 	
 	// callbacks
 	private final Function<P, Long> seqGetter;
 	private final Consumer<P> orderedConsumer;
 
 	public PacketOrderer(Function<P, Long> seqGetter, Consumer<P> orderedConsumer) {
+		this(seqGetter, orderedConsumer, null);
+	}
+
+	public PacketOrderer(
+			Function<P, Long> seqGetter, Consumer<P> orderedConsumer,
+			@Nullable PacketOrdererState<P> state
+	) {
 		this.seqGetter = seqGetter;
 		this.orderedConsumer = orderedConsumer;
+
+		waiting = new HashMap<>();
+
+		if (state == null) {
+			lastSeq = 0;
+			waitingSince = null;
+		} else {
+			lastSeq = state.getLastSeq();
+			waitingSince = state.getWaitingSince();
+		}
+
 	}
 	
 	public static class Status {
