@@ -2,11 +2,9 @@ package org.jbali.rest
 
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
+import io.ktor.http.HttpMethod
 import io.ktor.request.receive
-import io.ktor.routing.Route
-import io.ktor.routing.createRouteFromPath
-import io.ktor.routing.get
-import io.ktor.routing.put
+import io.ktor.routing.*
 import org.jbali.ktor.respondNoContent
 import org.jbali.util.ReifiedType
 import org.jbali.util.reifiedTypeOf
@@ -92,6 +90,32 @@ open class RestObject<T>(
                 impl(call, call.receive(inputType.type))
             }
             call.respondNoContent()
+        }
+    }
+
+
+    // ---------------------------- PATCH ---------------------------- //
+
+    inline fun <reified I : Any> patch(
+            noinline impl: suspend (ApplicationCall, I) -> Unit
+    ) {
+        put(
+                inputType = reifiedTypeOf(),
+                impl = impl
+        )
+    }
+
+    fun <I : Any> patch(
+            inputType: ReifiedType<I>,
+            impl: suspend (ApplicationCall, I) -> Unit
+    ) {
+        route.route("", HttpMethod.Patch) {
+            handle {
+                rawHandle(ReifiedType.unit) {
+                    impl(call, call.receive(inputType.type))
+                }
+                call.respondNoContent()
+            }
         }
     }
 
