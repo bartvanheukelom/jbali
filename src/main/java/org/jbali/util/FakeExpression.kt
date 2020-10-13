@@ -12,6 +12,9 @@ object FakeExpression {
     fun <T> errorForTest(name: String = "Expression"): T =
         throw Error("$name throws a fake error for testing")
 
+    @JvmStatic fun TODO_TRUE(): Boolean = true
+    @JvmStatic fun TODO_FALSE(): Boolean = false
+
 }
 
 /**

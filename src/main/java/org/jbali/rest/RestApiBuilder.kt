@@ -36,8 +36,20 @@ interface RestApiContext {
     val jsonFormat: Json
 }
 
-class RestException(val statusCode: HttpStatusCode, cause: Throwable) :
-        RuntimeException("Rest exception $statusCode: $cause", cause)
+class RestException(val statusCode: HttpStatusCode, message: String? = null, cause: Throwable? = null) :
+        RuntimeException(
+                buildString {
+                    append("Rest exception $statusCode")
+                    message?.let { append(": $it") }
+                    cause?.let { append(": $it") }
+                },
+                cause
+        ) {
+
+    constructor(statusCode: HttpStatusCode, cause: Throwable) : this(statusCode, null, cause)
+    constructor(statusCode: HttpStatusCode, message: String) : this(statusCode, message, null)
+
+}
 
 data class RestApi(
         val oas: OpenAPI
@@ -77,6 +89,7 @@ data class RestApiBuilder(
                                 else -> HttpStatusCode.InternalServerError
                             },
                             contentType = ContentType.Text.Plain,
+                            // TODO hide
                             text = e.stackTraceString
                     ))
                 }

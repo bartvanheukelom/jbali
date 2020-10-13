@@ -2,9 +2,12 @@ package org.jbali.rest
 
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
+import io.ktor.request.receive
 import io.ktor.routing.Route
 import io.ktor.routing.createRouteFromPath
 import io.ktor.routing.get
+import io.ktor.routing.put
+import org.jbali.ktor.respondNoContent
 import org.jbali.util.ReifiedType
 import org.jbali.util.reifiedTypeOf
 
@@ -38,6 +41,8 @@ open class RestObject<T>(
         route = route
 ) {
 
+    // ---------------------------- GET ---------------------------- //
+
     inline fun <reified I : Any> get(
             noinline impl: suspend I.(ApplicationCall) -> T
     ) {
@@ -66,13 +71,28 @@ open class RestObject<T>(
         }
     }
 
-//    fun <T : Any> put(
-//            type: ReifiedType<T>,
-//            impl: suspend PipelineContext<Unit, A>(ApplicationCall) -> T
-//    ) {
-//        get(inputType = ReifiedType.unit) {
-//            impl(it)
-//        }
-//    }
+
+    // ---------------------------- PUT ---------------------------- //
+
+    inline fun <reified I : Any> put(
+            noinline impl: suspend (ApplicationCall, I) -> Unit
+    ) {
+        put(
+                inputType = reifiedTypeOf(),
+                impl = impl
+        )
+    }
+
+    fun <I : Any> put(
+            inputType: ReifiedType<I>,
+            impl: suspend (ApplicationCall, I) -> Unit
+    ) {
+        route.put("") {
+            rawHandle(ReifiedType.unit) {
+                impl(call, call.receive(inputType.type))
+            }
+            call.respondNoContent()
+        }
+    }
 
 }

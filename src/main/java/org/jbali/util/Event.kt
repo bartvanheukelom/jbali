@@ -246,29 +246,50 @@ class OnceEvent<P>(
 
     val state get() = lock.read { pState }
 
-    override fun listen(name: String?, callback: (arg: P) -> Unit) =
-            lock.read {
-                if (pState != State.WAITING)
-                    throw NotWaitingException("Cannot listen to $this, it's $pState")
-                super.listen(name, callback)
-            }
+    override fun listen(name: String?, callback: (arg: P) -> Unit): EventListener<P> =
+            listenImpl(name, callback, orHandle = false)!!
 
     /**
      * If this event has been (or is being) dispatched, immediately call [callback]
-     * with the event data. Otherwise, attach it as listener.
+     * with the event data, and return `null`.
+     *
+     * Otherwise, attach it as listener, which is returned.
      *
      * If [callback] is invoked immediately, it is done so in the current thread, and any exceptions are not caught.
      */
     @JvmOverloads
-    fun listenOrHandle(name: String? = null, callback: (arg: P) -> Unit) =
-            lock.read {
-                if (pState != State.WAITING) {
-                    @Suppress("UNCHECKED_CAST")
-                    callback(arg as P)
+    fun listenOrHandle(name: String? = null, callback: (arg: P) -> Unit): EventListener<P>? =
+            listenImpl(name, callback, orHandle = true)
+
+    private fun listenImpl(name: String?, callback: (arg: P) -> Unit, orHandle: Boolean): EventListener<P>? {
+
+        var ret: EventListener<P>? = null
+        lateinit var post: () -> Unit
+
+        lock.read {
+            if (pState != State.WAITING) {
+                if (orHandle) {
+                    throw NotWaitingException("Cannot listen to $this, it's $pState")
                 } else {
-                    listen(name, callback)
+                    post = {
+                        @Suppress("UNCHECKED_CAST")
+                        callback(arg as P)
+                    }
+                    ret = null
                 }
+            } else {
+                post = {}
+                ret = super.listen(name, callback)
             }
+        }
+
+        post()
+
+        return ret
+    }
+
+    // for JVM only
+    fun listenOrHandleVoid(callback: Runnable) = listenOrHandle { callback.run() }
 
     override fun dispatch(data: P, errCb: ListenerErrorCallback<P>) {
         lock.write {
@@ -276,6 +297,8 @@ class OnceEvent<P>(
                 throw IllegalStateException("Cannot dispatch $this, it's $pState")
 
             pState = State.IN_DISPATCH
+            // TODO the IN_DISPATCH state is useless if the lock is not released here
+
             arg = data
             try { // no exceptions should be thrown, but eh
                 super.dispatch(data, errCb)
