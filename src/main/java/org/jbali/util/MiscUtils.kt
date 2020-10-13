@@ -168,24 +168,6 @@ fun formatTTime(time: Long): String = "T+${formatMsTime(time)}"
  */
 const val stringToBeUnmarshalled = "stringToBeUnmarshalled"
 
-
-/**
- * Very simple wrapper around any value.
- * Can for instance be used to have nested nullability, i.e. a `Box<Int?>?` to distinguish between:
- * - `null`
- * - `Box(null)`
- * - `Box(12)`
- *
- * A box is equal to another box if the contents are also equal. This is in contrast to [ObjectIdentity].
- */
-data class Box<out T>(val contents: T) {
-    // this version complements .boxed()
-    fun unboxed() = contents
-}
-
-fun <T> T.boxed() = Box(this)
-
-
 /**
  * Wraps an object giving it identity-based equals and hashCode,
  * even if it normally has value-based versions of them.

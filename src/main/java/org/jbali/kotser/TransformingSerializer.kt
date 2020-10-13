@@ -64,11 +64,12 @@ interface Transformer<T, B> {
 @OptIn(ImplicitReflectionSerializer::class, ExperimentalStdlibApi::class)
 inline fun <reified T : Any, reified B> transformingSerializer(
         serialName: String = typeOf<T>().toString(),
+        backend: KSerializer<B> = serializer(),
         transformer: Transformer<T, B>
 ): KSerializer<T> =
         object : TransformingSerializer<T, B>(
                 serialName = serialName,
-                backend = serializer()
+                backend = backend
         ) {
             override fun toString(): String =
                     "Serializer<${descriptor.serialName}>"
