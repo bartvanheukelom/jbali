@@ -268,7 +268,7 @@ class OnceEvent<P>(
 
         lock.read {
             if (pState != State.WAITING) {
-                if (orHandle) {
+                if (!orHandle) {
                     throw NotWaitingException("Cannot listen to $this, it's $pState")
                 } else {
                     post = {
