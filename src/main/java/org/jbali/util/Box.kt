@@ -49,7 +49,7 @@ fun <T> T.boxed() = Box(this)
  * Otherwise returns `null`.
  */
 @OptIn(ExperimentalContracts::class)
-fun <T, R> Box<T>?.letUnboxed(block: (T) -> R): R? {
+inline fun <T, R> Box<T>?.letUnboxed(block: (T) -> R): R? {
     contract {
         callsInPlace(block, InvocationKind.AT_MOST_ONCE)
 //        returnsNotNull() implies (this@letUnboxed != null) // TODO
