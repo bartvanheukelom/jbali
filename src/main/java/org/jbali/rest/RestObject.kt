@@ -99,7 +99,7 @@ open class RestObject<T>(
     inline fun <reified I : Any> patch(
             noinline impl: suspend (ApplicationCall, I) -> Unit
     ) {
-        put(
+        patch(
                 inputType = reifiedTypeOf(),
                 impl = impl
         )
