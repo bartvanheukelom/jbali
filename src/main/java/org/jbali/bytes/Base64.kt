@@ -53,6 +53,7 @@ interface StringEncoding<V, E : StringEncoding<V, E>> {
 infix fun <V, E : StringEncoding<V, E>> V.encodedAs(e: StringEncoding<V, E>): StringEncoded<V, E> =
         e.encodeToString(this)
 
+// TODO when serialization supports inline class, serialize this as the contents
 inline class StringEncoded<V, E : StringEncoding<V, E>>(
         @get:Deprecated("string", ReplaceWith("string"))
         val encoded: String
@@ -63,6 +64,11 @@ inline class StringEncoded<V, E : StringEncoding<V, E>>(
 }
 
 typealias Base64String<E> = StringEncoded<ByteArray, E>
+typealias Base64BasicString = Base64String<Base64Encoding.Basic>
+// TODO the other 2
+
+fun Base64BasicString.decode(): ByteArray = Base64Encoding.Basic.decodeString(this)
+// TODO the other 2 (or can this be done with inline tricks?)
 
 /**
  * Container for a URL-safe Base64 string that
