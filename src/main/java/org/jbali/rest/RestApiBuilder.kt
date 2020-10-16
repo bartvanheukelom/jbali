@@ -17,6 +17,7 @@ import kotlinx.serialization.json.json
 import org.jbali.errors.removeCommonStack
 import org.jbali.errors.stackTraceString
 import org.jbali.kotser.DefaultJson
+import org.jbali.ktor.BasicErrorException
 import org.jbali.oas.*
 import org.jbali.util.uuid
 import org.slf4j.Logger
@@ -82,16 +83,29 @@ data class RestApiBuilder(
                     e.removeCommonStack()
                     log.warn("Rest Api Exception ${e.uuid}", e)
 
-                    // TODO serialize to nice JSON
-                    call.respond(TextContent(
-                            status = when (e) {
-                                is RestException -> e.statusCode
-                                else -> HttpStatusCode.InternalServerError
-                            },
-                            contentType = ContentType.Text.Plain,
-                            // TODO hide
-                            text = e.stackTraceString
-                    ))
+                    when (e) {
+
+                        is RestException ->
+                            // TODO serialize to nice JSON (only for JSON requests?)
+                            call.respond(TextContent(
+                                    status = e.statusCode,
+                                    contentType = ContentType.Text.Plain,
+                                    text = e.stackTraceString // TODO hide
+                            ))
+
+                        is BasicErrorException ->
+                            call.respond(e)
+
+                        else ->
+                            // TODO serialize to nice JSON (only for JSON requests?)
+                            call.respond(TextContent(
+                                    status = HttpStatusCode.InternalServerError,
+                                    contentType = ContentType.Text.Plain,
+                                    text = e.stackTraceString // TODO hide
+                            ))
+
+                    }
+
                 }
             }
 
