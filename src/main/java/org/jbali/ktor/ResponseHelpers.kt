@@ -60,7 +60,7 @@ suspend fun ApplicationCall.respondBasicError(
 ) =
         respondText(
                 status = status,
-                text = "Error $status - $message"
+                text = "Error $status\n---------\n$message\n"
         )
 
 suspend fun ApplicationCall.respondBasicNotFound(
