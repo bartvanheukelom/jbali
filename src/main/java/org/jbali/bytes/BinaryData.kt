@@ -35,8 +35,16 @@ class BinaryData(
             data.contentHashCode()
     
     companion object {
-        /** Conveniently create a [BinaryData] from a Base64 basic string, e.g. in unit tests. */
-        fun fromBase64(b: String) = Base64Transformer.detransform(b)
+        /**
+         * Conveniently create a [BinaryData] from a Base64 string.
+         * Whitespace is removed from the input, which must otherwise conform to the Basic Base64 decoding rules.
+         * TODO support URL-safe too.
+         */
+        fun fromBase64(b: String): BinaryData =
+                b.asSequence()
+                        .filterNot { it == '\n' || it == '\r' || it.isWhitespace() }
+                        .joinToString("")
+                        .let(Base64Transformer::detransform)
     }
 
     object Serializer : KSerializer<BinaryData> by transformingSerializer(Base64Transformer)
