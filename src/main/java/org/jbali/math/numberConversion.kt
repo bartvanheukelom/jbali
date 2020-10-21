@@ -1,5 +1,6 @@
 package org.jbali.math
 
+import org.jbali.reflect.kClass
 import java.math.BigDecimal
 import java.math.BigInteger
 
@@ -58,7 +59,23 @@ fun Number.toDoubleExact(): Double =
         when (this) {
             is Double -> this
             is Byte, is Short, is Int -> this.toDouble()
-            is BigDecimal -> this.toDoubleExact()
 
             else -> this.toBigDecimal().toDoubleExact()
+        }
+
+/**
+ * Convert this number to a long without precision loss.
+ * @throws ArithmeticException if precision would be lost.
+ */
+fun Number.toLongExact(): Long =
+        when (this) {
+            is Long -> this
+            is Byte, is Short, is Int -> this.toLong()
+            is BigDecimal -> this.toLongExact()
+            is BigInteger -> this.toLongExact()
+
+            is Float -> this.toDouble().toLongExact()
+            is Double -> this.toLongExact()
+
+            else -> throw ArithmeticException("Cannot do ($this as ${this.kClass.qualifiedName}).toLongExact()")
         }
