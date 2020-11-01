@@ -34,7 +34,9 @@ class TestScheduler(
          * Will log the schedule-time stack when a scheduled task has an error.
          * However, just putting a breakpoint on TaskBodyException is preferred.
          * */
-        private val logScheduleStack: Boolean = false
+        private val logScheduleStack: Boolean = false,
+
+        private val maxDuration: Duration? = null
 ) : Scheduler() {
 
     class TaskBodyException(m: String, e: Throwable) : RuntimeException(m, e)
@@ -44,7 +46,7 @@ class TestScheduler(
 
     inner class PlannedTask(
             task: TaskToSchedule,
-            val time: Long
+            val runAtTimeLocal: Long
     ) : ScheduledTask, Comparable<PlannedTask> {
 
         val seq = seqqer++
@@ -56,11 +58,11 @@ class TestScheduler(
         private val schedTime = formatMsTime(currentTimeLocal)
         private val stack = Thread.currentThread().stackTrace.joinToString("\n")
 
-        private val timeStr get() = "#${seq.toString().padStart(5)}  ${formatMsTime(time)} (-${(time - currentTimeLocal).toString().padStart(6)})"
+        private val timeStr get() = "#${seq.toString().padStart(5)}  ${formatMsTime(runAtTimeLocal)} (-${(runAtTimeLocal - currentTimeLocal).toString().padStart(6)})"
 
         override val currentDelay: Duration?
             get() = when (state) {
-                ScheduledTask.State.SCHEDULED -> Duration.ofMillis(max(0, time - currentTimeLocal))
+                ScheduledTask.State.SCHEDULED -> Duration.ofMillis(max(0, runAtTimeLocal - currentTimeLocal))
                 ScheduledTask.State.RUNNING,
                 ScheduledTask.State.COMPLETED,
                 ScheduledTask.State.ERRORED -> Duration.ZERO
@@ -70,8 +72,11 @@ class TestScheduler(
         override fun toString() = "$timeStr = $name"
 
         override fun compareTo(other: PlannedTask) =
-                if (time == other.time) seq.compareTo(other.seq)
-                else time.compareTo(other.time)
+                if (runAtTimeLocal == other.runAtTimeLocal) {
+                    seq.compareTo(other.seq)
+                } else {
+                    runAtTimeLocal.compareTo(other.runAtTimeLocal)
+                }
 
         override var state = ScheduledTask.State.SCHEDULED
             private set
@@ -121,10 +126,11 @@ class TestScheduler(
                 }
     }
 
-    /** Simulated time in ms */
+    /** Simulated time since start in ms */
     var currentTimeLocal = 0L
         private set
 
+    /** Simulated current instant */
     override val currentTime: Instant get() = firstTime.plusMillis(currentTimeLocal)
 
     private val tasks = TreeSet<PlannedTask>()
@@ -151,38 +157,52 @@ class TestScheduler(
      */
     fun step(): Boolean {
 
-        if (Thread.interrupted()) throw InterruptedException()
+        if (Thread.interrupted()) {
+            throw InterruptedException()
+        }
 
         // get the next upcoming task
-        val t = tasks.pollFirst()
-        return if (t == null) false else {
+        return when (val task = tasks.pollFirst()) {
+            null -> false
+            else -> {
 
-            // advance to that time in simulated 1-second intervals
-            while (currentTimeLocal < t.time) {
-                if (actualSleepFactor != 0.0) Thread.sleep((1000.0 * actualSleepFactor).toLong())
+                if (maxDuration != null) {
+                    check(task.runAtTimeLocal <= maxDuration.toMillis()) {
+                        "Won't run task scheduled > maxDuration $maxDuration. Process under test seems stuck in a non-progression state."
+                    }
+                }
 
-                val left = t.time - currentTimeLocal
-                System.err.println("... ${formatTTime(currentTimeLocal)} (-${left / 1000.0}) ...")
+                // advance to that time in simulated 1-second intervals
+                while (currentTimeLocal < task.runAtTimeLocal) {
+                    if (actualSleepFactor != 0.0) {
+                        Thread.sleep((1000.0 * actualSleepFactor).toLong())
+                    }
 
-                currentTimeLocal += min(1000, left)
-                if (currentTimeLocal != t.time) currentTimeLocal = floor(currentTimeLocal / 1000.0).toLong() * 1000
-            }
+                    val left = task.runAtTimeLocal - currentTimeLocal
+                    log.info("... ${formatTTime(currentTimeLocal)} (-${left / 1000.0}) ...")
 
-            runWithThreadName(
-                    if (putTimeInThreadName) "${formatTTime(currentTimeLocal)} = ${t.seq.toString().padStart(5)}"
-                    else null
-            ) {
+                    currentTimeLocal += min(1000, left)
+                    if (currentTimeLocal != task.runAtTimeLocal) {
+                        currentTimeLocal = floor(currentTimeLocal / 1000.0).toLong() * 1000
+                    }
+                }
 
-                // GO!
-                log.info("""
+                runWithThreadName(
+                        if (putTimeInThreadName) "${formatTTime(currentTimeLocal)} = ${task.seq.toString().padStart(5)}"
+                        else null
+                ) {
+
+                    // GO!
+                    log.info("""
                     |
-                    |   Step: $t
+                    |   Step: $task
                     |""".trimMargin())
-                t.run()
+                    task.run()
 
+                }
+
+                true
             }
-
-            true
         }
     }
 
