@@ -7,8 +7,6 @@ import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantReadWriteLock
-import java.util.function.Consumer
-import java.util.function.Supplier
 import javax.annotation.PreDestroy
 import kotlin.concurrent.read
 import kotlin.concurrent.write
@@ -194,9 +192,15 @@ open class Event<P>(
     }
 
     @JvmOverloads
-    inline fun dispatch(noinline errCb: ListenerErrorCallback<P> = Listenable.defaultLogErrorCallback, lazyData: () -> P) {
+    inline fun dispatch(
+            noinline errCb: ListenerErrorCallback<P> = Listenable.defaultLogErrorCallback,
+            lazyData: () -> P
+    ) {
         if (hasListeners()) {
-            dispatch(lazyData(), errCb)
+            dispatch(
+                    data = lazyData(),
+                    errCb = errCb
+            )
         }
     }
 
@@ -376,145 +380,4 @@ fun Event<Unit>.dispatch() {
 }
 fun EventListener<Unit>.call(errCb: ListenerErrorCallback<Unit> = Listenable.defaultLogErrorCallback) {
     call(Unit, errCb)
-}
-
-// Ovservables TODO move to own file and I guess rename because of java.util.Observable
-
-interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T>, ReadOnlyProperty<Any?, T> {
-    val onChange: Event<Change<T>>
-    val onNewValue: Event<T>
-
-    override fun listen(name: String?, callback: (arg: T) -> Unit) =
-            onNewValue.listen(name, callback)
-
-    override operator fun invoke() = get()
-
-    override fun getValue(thisRef: Any?, property: KProperty<*>): T =
-            get()
-
-    /**
-     * Register a handler that will be called immediately with the current value,
-     * and whenever the value changes.
-     */
-    fun bind(handler: (T) -> Unit): EventListener<T> =
-            onNewValue.listen(handler).apply { call(get()) }
-
-    fun bindChange(handler: (before: T?, after: T) -> Unit): EventListener<Change<T>> {
-        handler(null, get())
-        return onChange.listen {
-            handler(it.before, it.after)
-        }
-    }
-
-    fun bindj(handler: Consumer<T>): EventListener<T> =
-            bind { handler.accept(it) }
-
-    /**
-     * Create a derived observable that applies the derivation function to the source value,
-     * and caches the result.
-     */
-    fun <D> derived(derivation: (T) -> D): Observable<D> =
-            DerivedObservable(this, derivation)
-
-    /**
-     * Create a derived observable that applies the getter function to the source value
-     * every time it is accessed (so it should be cheap).
-     */
-    fun <D> sub(getter: (T) -> D): Observable<D> =
-            ObservableSub(this, getter)
-
-}
-
-data class Change<T>(val before: T, val after: T) {
-    val different: Boolean = before != after
-    val afterIfDifferent get() = if (different) after else null
-}
-
-infix fun <T> T.changedTo(after: T): Change<T> =
-        Change(before = this, after = after)
-
-open class MutableObservable<T>(initialValue: T, name: String? = null): Observable<T> {
-
-    val ref = AtomicReference<T>(initialValue)
-
-    /**
-     * Setter: update the value, and if it is not equal to the current value,
-     * will dispatch the onChange event with the new value.
-     */
-    var value: T
-        get() = ref.get()
-        set(n) { updateValue(n) }
-
-    fun updateValue(n: T, throwAsAssert: Boolean = false) {
-        val o = ref.getAndSet(n)
-        if (n != o) {
-            onChange.dispatch(Change(o, n), throwAsAssert)
-        }
-    }
-
-    final override val onChange: Event<Change<T>> = Event("${name ?: "MutableObservable"}.onChange")
-    final override val onNewValue: Event<T> = Event("${name ?: "MutableObservable"}.onNewValue")
-
-    init {
-        onChange.listen { onNewValue.dispatch(it.after) }
-    }
-
-    override fun get() = value
-    fun readOnly(): Observable<T> = this
-
-    @PreDestroy
-    open fun destroy() {
-        onChange.detachListeners()
-        onNewValue.detachListeners()
-    }
-
-}
-
-class ObservableSub<I, O>(
-        val source: Observable<I>,
-        val getter: (I) -> O
-): Observable<O> {
-
-    override val onChange: Event<Change<O>> = Event(this::onChange)
-    override val onNewValue: Event<O> = Event(this::onNewValue)
-
-    override fun get() = getter(source())
-
-    val listeners =
-            listOf(
-                    source.onChange.listen {
-                        onChange.dispatch {
-                            Change(getter(it.before), getter(it.after))
-                        }
-                    },
-                    source.onNewValue.listen {
-                        onNewValue.dispatch {
-                            getter(it)
-                        }
-                    }
-            )
-
-    @PreDestroy fun destroy() {
-        listeners.detach()
-        onChange.detachListeners()
-        onNewValue.detachListeners()
-    }
-
-}
-
-open class DerivedObservable<I, O>(
-        source: Observable<I>,
-        derivation: (I) -> O
-): MutableObservable<O>(derivation(source())) {
-
-    val listener = source.listen {
-        value = derivation(it)
-    }
-
-    @PreDestroy
-    override fun destroy() {
-        listener.detach()
-        super.destroy()
-    }
-
 }
