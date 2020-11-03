@@ -1,6 +1,5 @@
 package org.jbali.kotser.std
 
-import kotlinx.serialization.UnstableDefault
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
 import kotlinx.serialization.modules.SerialModule
@@ -26,7 +25,6 @@ val stdSerializationContext = SerializersModule {
  * If you don't require that context, prefer using [org.jbali.kotser.DefaultJson],
  * or [org.jbali.kotser.BasicJson] if sufficient.
  */
-@OptIn(UnstableDefault::class)
 object StdJSON {
     val plain = Json(JsonConfiguration(useArrayPolymorphism=true), stdSerializationContext)
     val indented = Json(JsonConfiguration(useArrayPolymorphism=true, prettyPrint = true), stdSerializationContext)

@@ -1,6 +1,6 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.*
+import kotlinx.serialization.*; import kotlinx.serialization.encoding.*
 import kotlinx.serialization.builtins.serializer
 import org.jbali.util.PartialObject
 import kotlin.reflect.KClass

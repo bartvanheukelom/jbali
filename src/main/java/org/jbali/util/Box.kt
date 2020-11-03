@@ -2,7 +2,6 @@ package org.jbali.util
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.list
 import org.jbali.kotser.Transformer
 import org.jbali.kotser.transformingSerializer
 import kotlin.contracts.ExperimentalContracts

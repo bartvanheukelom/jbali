@@ -1,6 +1,6 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.*
+import kotlinx.serialization.*; import kotlinx.serialization.encoding.*
 
 /**
  * Copy of [kotlinx.serialization.internal.EnumSerializer] that is not internal,

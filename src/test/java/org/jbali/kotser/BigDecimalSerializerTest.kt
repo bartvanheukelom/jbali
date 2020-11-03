@@ -1,12 +1,10 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.UnstableDefault
 import org.jbali.kotser.std.BigDecimalSerializer
 import java.math.BigDecimal
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-@OptIn(UnstableDefault::class)
 class BigDecimalSerializerTest {
 
     @Test

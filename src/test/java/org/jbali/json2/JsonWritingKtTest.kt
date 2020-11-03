@@ -27,7 +27,7 @@ class JsonWritingKtTest {
                 "is this... \n line two??",
                 ""
         ).forEachWrappingExceptions {
-            val exp = BasicJson.plain.stringify(String.serializer(), it)
+            val exp = BasicJson.plain.encodeToString(String.serializer(), it)
             val act = it.jsonQuote()
             println("$it -> $act")
             assertEquals(

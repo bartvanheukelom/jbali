@@ -1,6 +1,6 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.*
+import kotlinx.serialization.*; import kotlinx.serialization.encoding.*
 import kotlinx.serialization.builtins.set
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonLiteral
@@ -98,7 +98,6 @@ class StdJSONTest {
 
     }
 
-    @OptIn(UnstableDefault::class)
     @Test
     fun testLiteral() {
         val j = DefaultJson.plain
