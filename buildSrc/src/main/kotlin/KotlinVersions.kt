@@ -5,9 +5,10 @@ package org.jbali.gradle
  */
 object KotlinVersions {
 
-    // TODO earlier
 
-    val V1_3_0  = KotlinVersion(1, 3, 0)
+    // ================== 1.3 ================= //
+
+    val V1_3_0  = KotlinVersion(1, 3,  0)
 
     val V1_3_10 = KotlinVersion(1, 3, 10)
     val V1_3_11 = KotlinVersion(1, 3, 11)
@@ -29,4 +30,11 @@ object KotlinVersions {
     val V1_3_70 = KotlinVersion(1, 3, 70)
     val V1_3_71 = KotlinVersion(1, 3, 71)
     val V1_3_72 = KotlinVersion(1, 3, 72)
+
+
+    // ================== 1.4 ================= //
+
+    val V1_4_0  = KotlinVersion(1, 4,  0)
+    val V1_4_10 = KotlinVersion(1, 4, 10)
+
 }

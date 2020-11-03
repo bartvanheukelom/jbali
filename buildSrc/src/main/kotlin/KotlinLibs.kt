@@ -25,6 +25,10 @@ object Kotlin {
 }
 
 object KotlinX {
+    object Serialization {
+        const val json = "org.jetbrains.kotlinx:kotlinx-serialization-json"
+    }
+
     object SerializationRuntime {
         const val common = "org.jetbrains.kotlinx:kotlinx-serialization-runtime-common"
         const val js = "org.jetbrains.kotlinx:kotlinx-serialization-runtime-js"
