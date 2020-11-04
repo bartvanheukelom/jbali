@@ -2,6 +2,7 @@ package org.jbali.util
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
 import org.jbali.kotser.Transformer
 import org.jbali.kotser.transformingSerializer
 import kotlin.contracts.ExperimentalContracts
@@ -25,7 +26,7 @@ data class Box<out T>(val contents: T) : java.io.Serializable {
 
     class Serializer<T>(contentSerializer: KSerializer<T>) :
             KSerializer<Box<T>> by transformingSerializer<Box<T>, List<T>>(
-                    backend = contentSerializer.list,
+                    backend = ListSerializer(contentSerializer),
                     transformer = object : Transformer<Box<T>, List<T>> {
                         override fun transform(obj: Box<T>): List<T> =
                                 listOf(obj.contents)

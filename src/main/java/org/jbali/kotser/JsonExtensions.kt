@@ -1,40 +1,19 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.*; import kotlinx.serialization.encoding.*
+import kotlinx.serialization.*
 import kotlinx.serialization.json.*
-import kotlinx.serialization.modules.SerialModule
-import kotlin.reflect.typeOf
 
-// TODO contribute to kotlinserialization lib
 
-fun JsonConfiguration.format(): Json =
-        Json(this)
 
 /**
- * Serializes [value] into an equivalent JSON using the default serializer for reified type [T].
- * @throws [JsonException] if given value can not be encoded
- * @throws [SerializationException] if given value can not be serialized
+ * Json instance with configuration equivalent to the old `JsonConfiguration.Stable` in pre 1.0 versions of kotlinx-serialization.
  */
-@OptIn(ExperimentalStdlibApi::class)
-@ImplicitReflectionSerializer
-// extension could theoretically be attached to StringFormat instead of Json, but that's of little added value.
-inline fun <reified T> Json.stringify(value: T) =
-        stringify(
-                serializer = try {
-                    serializer<T>()
-                } catch (e: Exception) {
-                    throw SerializationException("Error getting static serializer for ${typeOf<T>()}: $e", e)
-                },
-                value = value
-        )
+val alphaStableJson = Json {
+    allowStructuredMapKeys = true
+}
 
-@ImplicitReflectionSerializer
-// extension could theoretically be attached to StringFormat instead of Json, but that's of little added value.
-inline fun <reified T> Json.parse(string: String): T =
-        parse(
-                deserializer = serializer(),
-                string = string
-        )
+
+
 /**
  * Alternative to toJson that doesn't bug
  * TODO does it still bug in latest version?
@@ -70,8 +49,8 @@ val JsonArray.Companion.empty get() = emptyJsonArray
 val jsonTrue = JsonPrimitive(true)
 val jsonFalse = JsonPrimitive(false)
 
-fun jsonString(string: String) = JsonLiteral(string)
-fun jsonString(value: Any?) = JsonLiteral(value.toString())
+fun jsonString(string: String) = JsonPrimitive(string)
+fun jsonString(value: Any?) = JsonPrimitive(value.toString())
 
 @Suppress("NOTHING_TO_INLINE")
 inline fun JsonPrimitive.Companion.bool(b: Boolean): JsonPrimitive =

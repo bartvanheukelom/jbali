@@ -1,24 +1,20 @@
 package org.jbali.rest
 
-import io.ktor.application.call
-import io.ktor.application.install
-import io.ktor.features.ContentNegotiation
-import io.ktor.features.StatusPages
-import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.content.TextContent
-import io.ktor.response.respond
+import io.ktor.application.*
+import io.ktor.features.*
+import io.ktor.http.*
+import io.ktor.http.content.*
+import io.ktor.response.*
 import io.ktor.routing.Route
 import io.ktor.routing.get
 import io.ktor.routing.route
-import io.ktor.serialization.serialization
+import io.ktor.serialization.*
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.json
+import kotlinx.serialization.json.buildJsonObject
 import org.jbali.errors.removeCommonStack
 import org.jbali.errors.stackTraceString
 import org.jbali.kotser.DefaultJson
 import org.jbali.ktor.BasicErrorException
-import org.jbali.oas.*
 import org.jbali.util.uuid
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -53,7 +49,8 @@ class RestException(val statusCode: HttpStatusCode, message: String? = null, cau
 }
 
 data class RestApi(
-        val oas: OpenAPI
+        val tmpFiller: Int = 1
+//        val oas: OpenAPI
 )
 
 @OptIn(ExperimentalStdlibApi::class)
@@ -67,7 +64,7 @@ data class RestApiBuilder(
 
     override val context get() = this
 
-    private val oasPaths = mutableMapOf<String, PathItem>()
+//    private val oasPaths = mutableMapOf<String, PathItem>()
 
     init {
         route.apply {
@@ -109,30 +106,30 @@ data class RestApiBuilder(
                 }
             }
 
-            oasPaths["/"] = PathItem(
-                get = Operation(
-                        responses = mapOf(
-                                HttpStatusCode.OK.value.toString() to Response(
-                                        description = "root hi",
-                                        content = json {
-                                            ContentType.Application.Json.contentType to json {
-                                                "schema" to json {
-                                                    "type" to "object"
-                                                    "properties" to json {
-                                                        "hello" to json {
-                                                            "type" to "string"
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                )
-                        )
-                )
-            )
+//            oasPaths["/"] = PathItem(
+//                get = Operation(
+//                        responses = mapOf(
+//                                HttpStatusCode.OK.value.toString() to Response(
+//                                        description = "root hi",
+//                                        content = buildJsonObject {
+//                                            ContentType.Application.Json.contentType to buildJsonObject {
+//                                                "schema" to buildJsonObject {
+//                                                    "type" to "object"
+//                                                    "properties" to buildJsonObject {
+//                                                        "hello" to buildJsonObject {
+//                                                            "type" to "string"
+//                                                        }
+//                                                    }
+//                                                }
+//                                            }
+//                                        }
+//                                )
+//                        )
+//                )
+//            )
 
             get("") {
-                respondObject(json {
+                respondObject(buildJsonObject {
                     "hello" to "this is api"
                 })
             }
@@ -140,18 +137,18 @@ data class RestApiBuilder(
     }
 
     fun build(): RestApi {
-        val oas = OpenAPI(
-                openapi = "3.0.3",
-                info = Info(
-                        title = "rest api",
-                        version = "0.1"
-                ),
-                paths = oasPaths
-        )
-
-        route.get("oas") {
-            respondObject(oas)
-        }
+//        val oas = OpenAPI(
+//                openapi = "3.0.3",
+//                info = Info(
+//                        title = "rest api",
+//                        version = "0.1"
+//                ),
+//                paths = oasPaths
+//        )
+//
+//        route.get("oas") {
+//            respondObject(oas)
+//        }
 
         // default to 404 if no matches
         route.route("{...}") {
@@ -164,7 +161,7 @@ data class RestApiBuilder(
         }
 
         return RestApi(
-                oas = oas
+//                oas = oas
         )
     }
 

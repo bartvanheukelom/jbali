@@ -5,6 +5,7 @@ import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.jbali.kotser.BasicJson
+import org.jbali.kotser.parseJson
 import org.jbali.kotser.stringify
 
 
@@ -24,7 +25,7 @@ inline class JSONString(
      * TODO make an extension in kotser package.
      */
     fun <T> parse(jsonFormat: Json, deserializer: DeserializationStrategy<T>) =
-            jsonFormat.parse(deserializer, string)
+            jsonFormat.decodeFromString(deserializer, string)
 
     fun parse(): JsonElement =
             BasicJson.parse(string)
@@ -39,7 +40,7 @@ inline class JSONString(
          * TODO make an extension in kotser package.
          */
         fun <T> stringify(jsonFormat: Json, serializer: SerializationStrategy<T>, obj: T): JSONString =
-                JSONString(jsonFormat.stringify(serializer, obj))
+                JSONString(jsonFormat.encodeToString(serializer, obj))
 
         fun stringify(element: JsonElement, prettyPrint: Boolean = true): JSONString =
                 JSONString(BasicJson.stringify(element, prettyPrint = prettyPrint))

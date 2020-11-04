@@ -3,7 +3,7 @@ package org.jbali.hum
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.SerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
 import org.jbali.collect.ListSet
 import org.jbali.collect.toListSet
 import org.jbali.kotser.StringBasedSerializer
@@ -113,7 +113,8 @@ sealed class HumTree<R : HumValue<R>, G : R>(
         throw AssertionError("should have been writeReplace'd")
     }
 
-    override val descriptor: SerialDescriptor get() = ser.descriptor
+    override val descriptor get() = ser.descriptor
+
     override fun deserialize(decoder: Decoder): G = ser.deserialize(decoder)
     override fun serialize(encoder: Encoder, value: G) = ser.serialize(encoder, value)
 

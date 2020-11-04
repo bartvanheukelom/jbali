@@ -41,13 +41,15 @@ fun Number.toBigDecimal(): BigDecimal =
 
 /**
  * Convert this [BigDecimal] to a double without precision loss.
- * @throws ArithmeticException if precision would be lost.
+ * @throws ArithmeticException if @OptIn(ExperimentalSerializationApi::class)precision would be lost.
  */
 @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN") // kotlin.Number does not declare doubleValue
 fun BigDecimal.toDoubleExact(): Double =
         (this as java.lang.Number).doubleValue().also { d ->
-            if (BigDecimal(d) != this) {
-                throw ArithmeticException("$this is not representable as double (conversion yields $d)")
+            val bd = BigDecimal(d)
+            // (12.0).compareTo(12) returns 0, equals returns false
+            if (bd.compareTo(this) != 0) {
+                throw ArithmeticException("BigDecimal($this) is not representable as double (conversion yields $d -> BigDecimal($bd))")
             }
         }
 

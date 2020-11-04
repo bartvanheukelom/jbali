@@ -1,12 +1,9 @@
 package org.jbali.kotser
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonDecodingException
 import org.jbali.json2.KVON
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
 
 class KVONDeserializerTest {
 
@@ -26,10 +23,9 @@ class KVONDeserializerTest {
             val optional: String = "hello"
     )
 
-    private fun fooReader(lenient: Boolean) =
+    private fun fooReader() =
             KVONDeserializer(
-                    deserializer = Foo.serializer(),
-                    jsonFormat = DefaultJson.plainConfig.copy(isLenient = lenient).format()
+                    deserializer = Foo.serializer()
             ) {
                 println(it)
             }
@@ -56,19 +52,8 @@ class KVONDeserializerTest {
                         ),
                         optional = "hello"
                 ),
-                actual = fooReader(lenient = true).deserialize(fooInput)
+                actual = fooReader().deserialize(fooInput)
         )
-    }
-
-    @Test
-    fun testFooStrict() {
-        val r = fooReader(lenient = false)
-        assertFailsWith<JsonDecodingException> {
-            r.deserialize(fooInput)
-        }.also { e ->
-            e.printStackTrace()
-            assertTrue("Expected start of the unquoted boolean literal" in e.message!!)
-        }
     }
 
 }

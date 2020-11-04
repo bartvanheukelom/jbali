@@ -112,8 +112,8 @@ class JWTManager<P : Any>(
                 alg = signer.alg
         )
 
-        val hs = JSONString(json.stringify(Header.serializer(), h)).base64()
-        val ps = JSONString(json.stringify(payloadSerializer, payload)).base64()
+        val hs = JSONString(json.encodeToString(Header.serializer(), h)).base64()
+        val ps = JSONString(json.encodeToString(payloadSerializer, payload)).base64()
 
         val sig = signer.sign(hs, ps)
 

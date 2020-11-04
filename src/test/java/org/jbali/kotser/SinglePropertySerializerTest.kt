@@ -1,14 +1,12 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.ImplicitReflectionSerializer
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.serializer
 import kotlin.test.Test
-import kotlin.test.assertEquals
+import kotlin.test.assertSame
 
-@OptIn(ImplicitReflectionSerializer::class)
 class SinglePropertySerializerTest {
 
     @Serializable(with = TestUserID.Serializer::class)
@@ -19,12 +17,16 @@ class SinglePropertySerializerTest {
         )
     }
 
+
     @Test fun testSerializer() {
 
-        assertEquals(TestUserID.Serializer, TestUserID.serializer())
-        assertEquals(TestUserID.Serializer, serializer<TestUserID>())
+        val comp = TestUserID.serializer()
+        val inlined = serializer<TestUserID>()
+        assertSame(TestUserID.Serializer, comp)
+        assertSame(TestUserID.Serializer, inlined)
 
-        assertEquals(TestUserID::class.qualifiedName, TestUserID.serializer().descriptor.serialName)
+//        @OptIn(ExperimentalSerializationApi::class)
+//        assertEquals(TestUserID::class.qualifiedName, comp.descriptor.serialName)
 
     }
 

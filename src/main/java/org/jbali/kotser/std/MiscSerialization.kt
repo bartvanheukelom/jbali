@@ -2,10 +2,8 @@ package org.jbali.kotser.std
 
 import com.google.common.net.HostAndPort
 import com.google.common.net.InetAddresses
-import kotlinx.serialization.Serializer
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
-import kotlinx.serialization.modules.serializersModuleOf
 import org.jbali.kotser.StringBasedSerializer
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -27,18 +25,26 @@ object HostAndPortSerializer : StringBasedSerializer<HostAndPort>(HostAndPort::c
 // --- InetAddress
 
 @Suppress("UnstableApiUsage") // InetAddresses
-@Serializer(forClass = InetAddress::class)
 object InetAddressSerializer : StringBasedSerializer<InetAddress>(InetAddress::class) {
     override fun fromString(s: String): InetAddress = InetAddresses.forString(s)
     override fun toString(o: InetAddress): String = InetAddresses.toAddrString(o)
 }
+@Suppress("UnstableApiUsage") // InetAddresses
+object Inet4AddressSerializer : StringBasedSerializer<Inet4Address>(Inet4Address::class) {
+    override fun fromString(s: String): Inet4Address = InetAddresses.forString(s) as Inet4Address
+    override fun toString(o: Inet4Address): String = InetAddresses.toAddrString(o)
+}
+@Suppress("UnstableApiUsage") // InetAddresses
+object Inet6AddressSerializer : StringBasedSerializer<Inet6Address>(Inet6Address::class) {
+    override fun fromString(s: String): Inet6Address = InetAddresses.forString(s) as Inet6Address
+    override fun toString(o: Inet6Address): String = InetAddresses.toAddrString(o)
+}
 
-// TODO what happens when reading e.g. an ipv6 address as an Inet4Addres?
-val inetAddressSerModule = serializersModuleOf(mapOf(
-        InetAddress::class  to InetAddressSerializer,
-        Inet4Address::class to InetAddressSerializer,
-        Inet6Address::class to InetAddressSerializer
-))
+val inetAddressSerModule = SerializersModule {
+    contextual(InetAddressSerializer)
+    contextual(Inet4AddressSerializer)
+    contextual(Inet6AddressSerializer)
+}
 
 
 // --- BigDecimal

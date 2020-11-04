@@ -453,7 +453,10 @@ object WebSockets {
 
     sealed class ReadMessageResult {
         data class Actual(val msg: Message) : ReadMessageResult()
-        data class Close(val code: UShort?, val msg: String?) : ReadMessageResult()
+        data class Close(val code: UShort?, val msg: String?) : ReadMessageResult() {
+            @JvmName("getCode")
+            fun getCodeJvm() = code?.toShort()
+        }
     }
 
     @JvmStatic

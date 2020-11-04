@@ -5,19 +5,12 @@ import org.jbali.json2.JsonableList
 import org.jbali.json2.JsonableLiteral
 import org.jbali.json2.JsonableMap
 import org.jbali.json2.JsonableValue
-import org.jbali.math.toDoubleExact
 
 
 // ====== reading from JsonElement ====== //
 
-/**
- * This element as [JsonLiteral] if it is one.
- * @throws [JsonException] if it's not one.
- */
-val JsonElement.literal: JsonLiteral
-    get() =
-        this as? JsonLiteral ?: throw JsonException("${this::class} is not a JsonLiteral")
 
+// TODO report bug in JsonPrimitive doc, about content returning `null` instead of "null"
 
 /**
  * Get the content of this element as a [JsonableValue]?, or `null`.
@@ -32,60 +25,48 @@ fun JsonElement.unwrap(): JsonableValue? =
         when (this) {
             is JsonObject -> this.mapValues { it.value.unwrap() }
             is JsonArray -> this.map { it.unwrap() }
-            is JsonLiteral -> unwrap()
-            is JsonNull -> null
+            is JsonPrimitive -> unwrap()
         }
 
 /**
- * Get the contents of a [JsonLiteral], which takes care of dealing with its awkward API.
+ * Get the content of a [JsonPrimitive].
  * @throws IllegalArgumentException if the literal is invalid.
- * @throws ArithmeticException if the literal contains a number not representable as double.
  */
-fun JsonLiteral.unwrap(): JsonableLiteral =
-        when (val b = body) {
+fun JsonPrimitive.unwrap(): JsonableLiteral? =
+        when {
 
-            is Boolean,
-            is Double -> b
+            this is JsonNull -> null
 
-            is String -> when {
-                isString -> b
-                else -> when {
-                    // from StringOps.kt, String.toBooleanStrictOrNull
-                    b.equals("true", ignoreCase = true) -> true
-                    b.equals("false", ignoreCase = true) -> false
+            isString -> content
 
-                    // body can be any string, but number is the only legal JSON type left
-                    else ->
-                        try {
-                            b.toDouble()
-                        } catch (e: NumberFormatException) {
-                            IllegalArgumentException("'$this' appears to be an invalid JSON literal")
-                        }
-                }
-            }
+            content.equals("true", ignoreCase = true) -> true
+            content.equals("false", ignoreCase = true) -> false
 
-            is Number -> b.toDoubleExact()
+            doubleOrNull != null -> double
 
-            else -> throw IllegalArgumentException("'$this' has a body of unexpected type ${body.javaClass.name}")
+            else -> throw IllegalArgumentException("'$this' appears to be an invalid JSON literal")
+
         }
 
+// TODO contribute to lib
 /**
  * This element's [String] value if it's a [JsonLiteral] that represent a string.
- * @throws [JsonException] if not.
+ * @throws [IllegalArgumentException] if not.
  */
 val JsonElement.string: String get() =
-    literal.body as? String ?: throw JsonException("${this::class} is not a string")
+    jsonPrimitive.takeIf { it.isString }?.content
+        ?: throw IllegalArgumentException("${this::class} is not a string")
 
 
 
 // ====== constructing JsonElement ====== //
 
-fun String.toJsonElement() = JsonLiteral(this)
-fun Double.toJsonElement() = JsonLiteral(this)
-fun Boolean.toJsonElement() = JsonLiteral(this)
+fun String.toJsonElement() = JsonPrimitive(this)
+fun Double.toJsonElement() = JsonPrimitive(this)
+fun Boolean.toJsonElement() = JsonPrimitive(this)
 
 fun JsonableMap.toJsonElement() =
-        json {
+        buildJsonObject {
             entries.forEach { (k, v) ->
                 k to v.toJsonElement()
             }
@@ -108,7 +89,7 @@ fun JsonableValue?.toJsonElement(): JsonElement =
             is String -> toJsonElement()
 
             is Map<*, *> ->
-                json {
+                buildJsonObject {
                     entries.forEach { (k, v) ->
                         val sk = k as? String
                                 ?: throw IllegalArgumentException("$this is not a valid JsonableMap, it has non-string key: $k")
@@ -119,7 +100,7 @@ fun JsonableValue?.toJsonElement(): JsonElement =
             is List<*> ->
                 // IntelliJ doesn't require this cast, but compiler does (though it shouldn't?)
                 (this as Iterable<*>).toJsonArray {
-                    +it.toJsonElement()
+                    add(it.toJsonElement())
                 }
 
             else -> throw IllegalArgumentException("$this is not a valid JsonableValue")
@@ -134,9 +115,9 @@ fun JsonableValue?.toJsonElement(): JsonElement =
  * The default [adder] simply maps each item using [toJsonElement].
  */
 inline fun <T> Iterable<T>.toJsonArray(
-        crossinline adder: JsonArrayBuilder.(T) -> Unit = { +it.toJsonElement() }
+        crossinline adder: JsonArrayBuilder.(T) -> Unit = { add(it.toJsonElement()) }
 ): JsonArray =
-        jsonArray {
+        buildJsonArray {
             forEach {
                 adder(it)
             }

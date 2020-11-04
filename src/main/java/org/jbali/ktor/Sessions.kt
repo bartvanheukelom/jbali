@@ -1,9 +1,6 @@
 package org.jbali.ktor
 
-import io.ktor.sessions.CurrentSession
-import io.ktor.sessions.SessionSerializer
-import io.ktor.sessions.get
-import io.ktor.sessions.set
+import io.ktor.sessions.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import org.jbali.kotser.DefaultJson
@@ -19,12 +16,17 @@ inline fun <reified T : Any> CurrentSession.createOrUpdate(
                 setter = { set(it) }
         )
 
+/**
+ * KTOR [SessionSerializer] implementation using kotlinx.serialization.
+ *
+ * KXS = KotlinX.Serialization
+ */
 class KXSSessionSerializer<S : Any>(
         private val serializer: KSerializer<S>,
         private val jsonFormat: Json = DefaultJson.plain
 ) : SessionSerializer<S> {
         override fun serialize(session: S) =
-                jsonFormat.stringify(serializer, session)
+                jsonFormat.encodeToString(serializer, session)
         override fun deserialize(text: String) =
-                jsonFormat.parse(serializer, text)
+                jsonFormat.decodeFromString(serializer, text)
 }

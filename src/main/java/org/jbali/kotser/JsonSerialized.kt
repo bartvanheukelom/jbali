@@ -1,6 +1,5 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.ImplicitReflectionSerializer
 import kotlinx.serialization.serializer
 import org.jbali.json2.JSONString
 import org.jbali.util.stringToBeUnmarshalled
@@ -13,7 +12,6 @@ import java.io.ObjectOutput
  * This container is [Externalizable] and can be passed through Java's serialization mechanism.
  * It does not contain type information, the receiver must know the type to deserialize to.
  */
-@OptIn(ExperimentalStdlibApi::class, ImplicitReflectionSerializer::class)
 class JsonSerialized<T : Any>
 constructor(
         var json: JSONString

@@ -1,14 +1,10 @@
 package org.jbali.rest
 
-import io.ktor.application.ApplicationCall
-import io.ktor.application.call
-import io.ktor.http.ContentType
-import io.ktor.http.Parameters
-import io.ktor.response.ApplicationResponse
-import io.ktor.response.header
-import io.ktor.util.flattenEntries
-import io.ktor.util.pipeline.PipelineContext
-import kotlinx.serialization.ImplicitReflectionSerializer
+import io.ktor.application.*
+import io.ktor.http.*
+import io.ktor.response.*
+import io.ktor.util.*
+import io.ktor.util.pipeline.*
 import kotlinx.serialization.json.Json
 import org.jbali.json2.KVON
 import org.jbali.kotser.KVONDeserializer
@@ -39,7 +35,6 @@ val Parameters.kvon get() =
     KVON.Pairs(flattenEntries())
 
 
-@OptIn(ImplicitReflectionSerializer::class, ExperimentalStdlibApi::class)
 fun <I : Any> PipelineContext<Unit, ApplicationCall>.readInput(type: ReifiedType<I>, jsonFormat: Json): I =
         try {
             when (type) {

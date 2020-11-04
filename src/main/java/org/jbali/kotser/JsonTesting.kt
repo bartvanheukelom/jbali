@@ -1,6 +1,5 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.ImplicitReflectionSerializer
 import kotlinx.serialization.json.JsonElement
 import org.jbali.json2.JSONString
 import kotlin.test.assertEquals
@@ -43,7 +42,11 @@ fun assertJsonEquals(expected: JSONString, actual: JSONString, message: String? 
  */
 fun <T> JsonSerializer<T>.assertSerialization(obj: T, expectJson: JSONString): T {
 
-    val actualJson: JSONString = stringify(obj)
+    val actualJson: JSONString = try {
+        stringify(obj)
+    } catch (e: Throwable) {
+        throw AssertionError("Error while serializing $obj: $e", e)
+    }
     assertJsonEquals(expectJson, actualJson, "stringify($obj)")
 
     val back = parse(actualJson)
@@ -64,6 +67,5 @@ fun <T> JsonSerializer<T>.assertSerialization(obj: T, expectJson: String): T =
         assertSerialization(obj, JSONString(expectJson))
 
 
-@ImplicitReflectionSerializer
 inline infix fun <reified T> T.shouldSerializeTo(expectJson: JsonElement): T =
         jsonSerializer<T>().assertSerialization(this, expectJson)

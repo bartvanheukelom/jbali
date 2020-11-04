@@ -1,5 +1,6 @@
 package org.jbali.kotser
 
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 
 /**
@@ -7,12 +8,11 @@ import kotlinx.serialization.json.*
  * (de)serialization of [JsonElement] objects, as well as static utilities for doing that.
  */
 object BasicJson {
-    val plain = Json(JsonConfiguration.Stable.copy(
-            prettyPrint = false
-    ))
-    val indented = Json(JsonConfiguration.Stable.copy(
-            prettyPrint = true
-    ))
+
+    val plain = alphaStableJson
+    val indented = Json(plain) {
+        prettyPrint = true
+    }
 
     fun parse(string: String): JsonElement =
             when (string) {
@@ -23,7 +23,7 @@ object BasicJson {
                 "null" -> JsonNull
                 // TODO 0 and 1?
 //                "" -> TODO throw
-                else -> plain.parseJson(string)
+                else -> plain.parseToJsonElement(string)
             }
 
     fun stringify(element: JsonElement, prettyPrint: Boolean = true): String =
@@ -35,5 +35,6 @@ object BasicJson {
 
 }
 
+@Deprecated("", ReplaceWith("encodeToString(value)", "kotlinx.serialization.encodeToString"))
 fun Json.stringify(value: JsonElement): String =
-        stringify(JsonElement.serializer(), value)
+        encodeToString(value)

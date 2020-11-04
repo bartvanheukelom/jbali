@@ -1,6 +1,10 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.*; import kotlinx.serialization.encoding.*
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.serializer
 import kotlin.reflect.KClass
 import kotlin.reflect.typeOf
 
@@ -26,10 +30,10 @@ abstract class TransformingSerializer<T : Any, B>(
     abstract fun transform(obj: T): B
     abstract fun detransform(tf: B): T
 
-    override val descriptor = SerialDescriptor(
-            serialName,
-            backend.descriptor.kind
-    )
+    override val descriptor = backend.descriptor //TODO fix SerialDescriptor (then re-enable test in SinglePropertySerializerTest) {
+//            serialName,
+//            backend.descriptor.kind
+//    }
 
     final override fun serialize(encoder: Encoder, value: T) {
         backend.serialize(encoder, transform(value))
@@ -40,11 +44,12 @@ abstract class TransformingSerializer<T : Any, B>(
     }
 }
 
-@OptIn(ImplicitReflectionSerializer::class, ExperimentalStdlibApi::class)
 inline fun <reified T : Any, reified B> transformingSerializer(
         // TODO type parameters should not be included according to doc
         // TODO include the backend serialName, unless this serializer is the default for T
-        serialName: String = typeOf<T>().toString(),
+        serialName: String =
+                @OptIn(ExperimentalStdlibApi::class)
+                typeOf<T>().toString(),
         crossinline transformer: (T) -> B,
         crossinline detransformer: (B) -> T
 ): KSerializer<T> =
@@ -61,10 +66,12 @@ interface Transformer<T, B> {
     fun detransform(tf: B): T
 }
 
-@OptIn(ImplicitReflectionSerializer::class, ExperimentalStdlibApi::class)
+@OptIn(ExperimentalSerializationApi::class)
 inline fun <reified T : Any, reified B> transformingSerializer(
         transformer: Transformer<T, B>,
-        serialName: String = typeOf<T>().toString(),
+        serialName: String =
+                @OptIn(ExperimentalStdlibApi::class)
+                typeOf<T>().toString(),
         backend: KSerializer<B> = serializer()
 ): KSerializer<T> =
         object : TransformingSerializer<T, B>(

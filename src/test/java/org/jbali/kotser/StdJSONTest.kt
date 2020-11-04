@@ -1,10 +1,12 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.*; import kotlinx.serialization.encoding.*
-import kotlinx.serialization.builtins.set
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationStrategy
+import kotlinx.serialization.builtins.SetSerializer
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonLiteral
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 import org.jbali.kotser.std.InetAddressSerializer
 import org.jbali.kotser.std.StdJSON
 import org.junit.Test
@@ -30,15 +32,14 @@ class StdJSONTest {
 
     private val serrer = StdJSON.indented
 
-    @OptIn(ImplicitReflectionSerializer::class)
     private inline fun <reified T : Any> assertJson(json: JSON, v: T, ser: SerializationStrategy<T>? = null) {
 
         val expectParse: JsonElement = json.parse()
         val actualJson =
                 try {
                     JSON(
-                            if (ser == null) serrer.stringify(v)
-                            else serrer.stringify(ser, v)
+                            if (ser == null) serrer.encodeToString(v)
+                            else serrer.encodeToString(ser, v)
                     )
                 } catch (e: Throwable) {
                     throw AssertionError("Error stringifying test object $v of type ${v.javaClass}: $e", e)
@@ -71,7 +72,7 @@ class StdJSONTest {
                     ]
                 """.J,
                 listOf("1.1.1.1", "::1").map(InetAddress::getByName).toSet(),
-                InetAddressSerializer.set
+                SetSerializer(InetAddressSerializer)
         )
 
         // class IPSetHolder { ips: Set<InetAddress> }
@@ -103,27 +104,27 @@ class StdJSONTest {
         val j = DefaultJson.plain
 
 
-        val constructedTrue = JsonLiteral(true)
-        val constructedFalse = JsonLiteral(false)
-        val constructedNumber = JsonLiteral(12)
-        val constructedString = JsonLiteral("foo")
-        val constructedNumberString = JsonLiteral("12")
-        val constructedTrueString = JsonLiteral("true")
+        val constructedTrue = JsonPrimitive(true)
+        val constructedFalse = JsonPrimitive(false)
+        val constructedNumber = JsonPrimitive(12)
+        val constructedString = JsonPrimitive("foo")
+        val constructedNumberString = JsonPrimitive("12")
+        val constructedTrueString = JsonPrimitive("true")
 
 
         j.parseJson("null") as JsonNull
 
-        val parsedTrue = j.parseJson("true") as JsonLiteral
-        val parsedFalse = j.parseJson("false") as JsonLiteral
-        val parsedFalseWeird = j.parseJson("FaLSe") as JsonLiteral
-        val parsedTrueString = j.parseJson("\"true\"") as JsonLiteral
+        val parsedTrue = j.parseJson("true") as JsonPrimitive
+        val parsedFalse = j.parseJson("false") as JsonPrimitive
+        val parsedFalseWeird = j.parseJson("FaLSe") as JsonPrimitive
+        val parsedTrueString = j.parseJson("\"true\"") as JsonPrimitive
 
-        val parsedNumber = j.parseJson("12") as JsonLiteral
-        val parsedNumberString = j.parseJson("\"12\"") as JsonLiteral
+        val parsedNumber = j.parseJson("12") as JsonPrimitive
+        val parsedNumberString = j.parseJson("\"12\"") as JsonPrimitive
 
-        val parsedString = j.parseJson("\"foo\"") as JsonLiteral
+        val parsedString = j.parseJson("\"foo\"") as JsonPrimitive
 
-        val parsedNullString = j.parseJson("\"null\"") as JsonLiteral
+        val parsedNullString = j.parseJson("\"null\"") as JsonPrimitive
 
 
         // the following assertions don't test our code, they document JsonLiteral
@@ -136,6 +137,9 @@ class StdJSONTest {
         assertEquals(constructedTrueString, parsedTrueString)
 
 
+
+        // these belong in a new JsonElementIOTest
+
         assertEquals(true, constructedTrue.unwrap())
         assertEquals(true, parsedTrue.unwrap())
         assertEquals(false, constructedFalse.unwrap())
@@ -143,7 +147,7 @@ class StdJSONTest {
         assertEquals(false, parsedFalseWeird.unwrap())
         assertEquals("true", parsedTrueString.unwrap())
 
-        assertEquals(12, constructedNumber.unwrap())
+        assertEquals(12.0, constructedNumber.unwrap())
         assertEquals(12.0, parsedNumber.unwrap())
         assertEquals("12", parsedNumberString.unwrap())
 

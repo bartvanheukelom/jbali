@@ -37,11 +37,11 @@ public class JavaJsonSerializerTest {
 						// to assert equal, this order must be preserved and the number must be an int
 						"missingno", JsonNull.INSTANCE,
 						"obj", new JsonObject(MapsKt.emptyMap()),
-						"foo", new JsonLiteral("bar"),
-						"blub", new JsonLiteral(12),
+						"foo", JsonElementKt.JsonPrimitive("bar"),
+						"blub", JsonElementKt.JsonPrimitive(12),
 						"arrrrrrr", new JsonArray(Arrays.asList(
-								new JsonLiteral("you are"),
-								new JsonLiteral("a pirate")
+								JsonElementKt.JsonPrimitive("you are"),
+								JsonElementKt.JsonPrimitive("a pirate")
 						))
 				))
 //				Maybe.definitely(12), Maybe.unknown()

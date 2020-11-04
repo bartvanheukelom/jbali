@@ -1,18 +1,13 @@
 package org.jbali.rest
 
-import io.ktor.application.ApplicationCall
-import io.ktor.application.call
-import io.ktor.http.ContentType
-import io.ktor.http.HttpMethod
-import io.ktor.http.HttpStatusCode
+import io.ktor.application.*
+import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.http.content.OutgoingContent.ByteArrayContent
-import io.ktor.http.content.TextContent
-import io.ktor.request.httpMethod
-import io.ktor.response.etag
-import io.ktor.response.respond
-import io.ktor.routing.Route
-import io.ktor.routing.createRouteFromPath
-import io.ktor.util.pipeline.PipelineContext
+import io.ktor.request.*
+import io.ktor.response.*
+import io.ktor.routing.*
+import io.ktor.util.pipeline.*
 import kotlinx.serialization.KSerializer
 import org.jbali.bytes.Hex
 import org.jbali.bytes.encodedAs
@@ -35,7 +30,7 @@ abstract class RestRoute : RestApiContext {
             by StoredExtensionProperty {
                 val obj = this
                 weakKeyLoadingCache<KSerializer<T>, String> { ser ->
-                    jsonFormat.stringify(ser, obj)
+                    jsonFormat.encodeToString(ser, obj)
                 }
             }
 

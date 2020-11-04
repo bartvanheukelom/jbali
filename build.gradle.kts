@@ -7,11 +7,11 @@ plugins {
     kotlin("plugin.serialization")
 }
 
-initProject(
+initKotlinProject(
         group = JBali.group,
         name = JBali.aJbali,
         acceptableKotlinVersions = setOf(
-                KotlinVersions.V1_3_72
+                KotlinVersions.V1_4_10
         )
 )
 
@@ -29,13 +29,13 @@ libDependencies {
 
     jcenter()
 
-    val ksr = "0.20.0"
+    val ksr = "1.0.1"
     val slf4j = "1.7.25"
-    val ktor = "1.3.2"
+    val ktor = "1.4.1"
 
     compileAndTest(Kotlin.StdLib.jdk8)
     compileAndTest(Kotlin.reflect)
-    compileAndTest(KotlinX.SerializationRuntime.jvm, ksr)
+    compileAndTest(KotlinX.Serialization.json, ksr)
 
     // TODO https://docs.gradle.org/current/userguide/feature_variants.html
     compileAndTest(Ktor.Server.core, ktor)
