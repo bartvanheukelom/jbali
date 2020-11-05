@@ -10,13 +10,14 @@ plugins {
 initKotlinProject(
         group = JBali.group,
         name = JBali.aJbali,
-        acceptableKotlinVersions = setOf(
-                KotlinVersions.V1_4_10
-        )
+//        acceptableKotlinVersions = setOf(
+//                KotlinVersions.V1_4_10
+//        )
+        acceptableKotlinVersionStrings = setOf("1.4.20-RC")
 )
 
 // TODO centralize
-check("$kotlinVersion" == KotlinCompilerVersion.VERSION)
+check(kotlinVersionString == KotlinCompilerVersion.VERSION)
 
 tasks.withType<KotlinCompile> {
     kotlinOptions {

@@ -19,29 +19,44 @@ private object ProjectInited {
 fun Project.initKotlinProject(
         group: String,
         name: String,
-        acceptableKotlinVersions: Set<KotlinVersion>? = null
+        acceptableKotlinVersions: Set<KotlinVersion>? = null,
+        acceptableKotlinVersionStrings: Set<String>? = null
 ) {
 
-    // get kotlinVersion to check consistency between declared and plugin version
-    val kv = kotlinVersion
+    try {
 
-    if (acceptableKotlinVersions != null) {
-        check(kv in acceptableKotlinVersions) {
-            "kotlinVersion $kv is not in acceptableKotlinVersions $acceptableKotlinVersions"
+        // get kotlinVersion to check consistency between declared and plugin version
+        kotlinVersion
+
+        val akvs = mutableSetOf<String>()
+        acceptableKotlinVersions?.let {
+            akvs += it.map { it.toString() }
         }
+        acceptableKotlinVersionStrings?.let {
+            akvs += it
+        }
+
+        if (!akvs.isEmpty()) {
+            check(kotlinVersionString in akvs) {
+                "kotlinVersionString $kotlinVersionString is not in acceptableKotlinVersions $akvs"
+            }
+        }
+
+        this.group = group
+
+        check(this.name == name) {
+            "Name of $this should be '$name'. The project name is taken from the directory name, but can be overriden in `settings.gradle.*`."
+        }
+
+        tasks.withType(Jar::class.java).forEach {
+            it.archiveFileName.set("$group.$name.jar")
+        }
+
+        extensions.extraProperties.set(ProjectInited.PROP, ProjectInited)
+
+    } catch (e: Throwable) {
+        throw RuntimeException("Error in initKotlinProject $group:$name : $e", e)
     }
-
-    this.group = group
-
-    check(this.name == name) {
-        "Name of $this should be '$name'. The project name is taken from the directory name, but can be overriden in `settings.gradle.*`."
-    }
-
-    tasks.withType(Jar::class.java).forEach {
-        it.archiveFileName.set("$group.$name.jar")
-    }
-
-    extensions.extraProperties.set(ProjectInited.PROP, ProjectInited)
 
 }
 
@@ -49,8 +64,14 @@ fun Project.initKotlinProject(
 fun Project.initProject(
         group: String,
         name: String,
-        acceptableKotlinVersions: Set<KotlinVersion>? = null
-) = initKotlinProject(group = group, name = name, acceptableKotlinVersions = acceptableKotlinVersions)
+        acceptableKotlinVersions: Set<KotlinVersion>? = null,
+        acceptableKotlinVersionStrings: Set<String>? = null
+) = initKotlinProject(
+        group = group,
+        name = name,
+        acceptableKotlinVersions = acceptableKotlinVersions,
+        acceptableKotlinVersionStrings = acceptableKotlinVersionStrings
+)
 
 fun Project.checkInited() {
     try {
