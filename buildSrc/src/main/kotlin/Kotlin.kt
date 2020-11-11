@@ -48,20 +48,20 @@ enum class Experimentals(val featureName: String) {
     RequiresOptIn("kotlin.RequiresOptIn")
 }
 
-fun KotlinJvmOptions.use(feature: Experimentals) {
+fun KotlinCommonToolOptions.use(feature: Experimentals) {
     useExperimental(feature.featureName)
 }
 
-fun KotlinJvmOptions.useExperimental(feature: String) {
+fun KotlinCommonToolOptions.useExperimental(feature: String) {
     freeCompilerArgs += "-Xuse-experimental=$feature"
 }
 
-fun KotlinJvmOptions.optIn(feature: Experimentals) {
+fun KotlinCommonToolOptions.optIn(feature: Experimentals) {
     freeCompilerArgs += "-Xopt-in=${feature.featureName}"
 }
 
 // doesn't appear like it can be used, will complain "this class can only be used as..."
-inline fun <reified C : Any> KotlinJvmOptions.useExperimental() {
+inline fun <reified C : Any> KotlinCommonToolOptions.useExperimental() {
     freeCompilerArgs += "-Xuse-experimental=${C::class.qualifiedName}"
 }
 
