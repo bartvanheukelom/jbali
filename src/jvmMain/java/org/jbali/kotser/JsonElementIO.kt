@@ -80,6 +80,7 @@ fun JsonableList.toJsonElement() =
  * Deeply, for [Map] and [List].
  * @throws IllegalArgumentException if this is not a valid [JsonableValue].
  */
+// TODO since this is just Any, this extension is at high risk of being imported accidentally. rename all these functions
 fun JsonableValue?.toJsonElement(): JsonElement =
         when (this) {
             null -> JsonNull
