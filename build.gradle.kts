@@ -1,6 +1,7 @@
 import org.jbali.gradle.*
 import org.jetbrains.kotlin.config.KotlinCompilerVersion
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
 
 plugins {
     kotlin("multiplatform")
@@ -54,6 +55,14 @@ fun commonConfig() {
 
         }
     }
+
+    tasks.withType<KotlinCompile<*>> {
+        kotlinOptions {
+            inlineClasses()
+            use(Experimentals.RequiresOptIn)
+        }
+    }
+
 }
 
 fun jvmConfig() {
@@ -113,15 +122,6 @@ fun jvmConfig() {
 
             }
 
-        }
-    }
-
-
-    // TODO also for JS/common
-    tasks.withType<KotlinCompile> {
-        kotlinOptions {
-            inlineClasses()
-            use(Experimentals.RequiresOptIn)
         }
     }
 
@@ -289,7 +289,7 @@ fun rootProjectConfig() {
 
         val javaVersion = JavaVersion.VERSION_1_8
 
-        tasks.withType<KotlinCompile> {
+        tasks.withType<KotlinJvmCompile> {
             kotlinOptions {
                 jvmTarget = javaVersion.toString()
             }
