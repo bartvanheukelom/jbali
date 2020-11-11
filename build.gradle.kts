@@ -178,63 +178,63 @@ fun jsConfig() {
     //
     // -------------------------------------------------------------- //
 
-    val jsUsageTestDir = "js/usage_test"
-
-    tasks {
-
-        fun Task.common() {
-            group = "js usage test"
-        }
-
-        val jsUsageTestNpmInstall by registering(Exec::class) {
-            common()
-
-            workingDir(jsUsageTestDir)
-            commandLine("npm", "i")
-
-            inputs.file("$jsUsageTestDir/package.json")
-            outputs.file("$jsUsageTestDir/package-lock.json")
-            outputs.dir("$jsUsageTestDir/node_modules")
-        }
-
-        val jsUsageTestTsc by registering(Exec::class) {
-            common()
-
-            dependsOn(
-                    jsBuildPackage,
-                    jsUsageTestNpmInstall
-            )
-
-            inputs.dir("$jsUsageTestDir/node_modules")
-            inputs.dir("$jsUsageTestDir/src")
-            inputs.file("$jsUsageTestDir/tsconfig.json")
-
-            outputs.file("$jsUsageTestDir/index.js")
-            outputs.dir("$jsUsageTestDir/out")
-
-
-            workingDir(jsUsageTestDir)
-            commandLine("tsc")
-        }
-
-        val jsUsageTest by registering(Exec::class) {
-            common()
-
-            dependsOn(jsUsageTestTsc)
-
-            inputs.dir("$jsUsageTestDir/node_modules")
-            inputs.dir("$jsUsageTestDir/out")
-            outputs.upToDateWhen { true }
-
-            workingDir("$jsUsageTestDir/out")
-            commandLine("node", "--enable-source-maps", ".")
-        }
-
-        val check by existing {
-            dependsOn(jsUsageTest)
-        }
-
-    }
+//    val jsUsageTestDir = "js/usage_test"
+//
+//    tasks {
+//
+//        fun Task.common() {
+//            group = "js usage test"
+//        }
+//
+//        val jsUsageTestNpmInstall by registering(Exec::class) {
+//            common()
+//
+//            workingDir(jsUsageTestDir)
+//            commandLine("npm", "i")
+//
+//            inputs.file("$jsUsageTestDir/package.json")
+//            outputs.file("$jsUsageTestDir/package-lock.json")
+//            outputs.dir("$jsUsageTestDir/node_modules")
+//        }
+//
+//        val jsUsageTestTsc by registering(Exec::class) {
+//            common()
+//
+//            dependsOn(
+//                    jsBuildPackage,
+//                    jsUsageTestNpmInstall
+//            )
+//
+//            inputs.dir("$jsUsageTestDir/node_modules")
+//            inputs.dir("$jsUsageTestDir/src")
+//            inputs.file("$jsUsageTestDir/tsconfig.json")
+//
+//            outputs.file("$jsUsageTestDir/index.js")
+//            outputs.dir("$jsUsageTestDir/out")
+//
+//
+//            workingDir(jsUsageTestDir)
+//            commandLine("tsc")
+//        }
+//
+//        val jsUsageTest by registering(Exec::class) {
+//            common()
+//
+//            dependsOn(jsUsageTestTsc)
+//
+//            inputs.dir("$jsUsageTestDir/node_modules")
+//            inputs.dir("$jsUsageTestDir/out")
+//            outputs.upToDateWhen { true }
+//
+//            workingDir("$jsUsageTestDir/out")
+//            commandLine("node", "--enable-source-maps", ".")
+//        }
+//
+//        val check by existing {
+//            dependsOn(jsUsageTest)
+//        }
+//
+//    }
 
 }
 

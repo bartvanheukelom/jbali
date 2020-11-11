@@ -7,3 +7,6 @@ operator fun String.div(rhs: String) =
             append('/')
             append(rhs)
         }
+
+actual fun codePointToString(cp: Int) =
+        String(intArrayOf(cp), 0, 1)
