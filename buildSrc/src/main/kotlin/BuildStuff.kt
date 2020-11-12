@@ -15,6 +15,14 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.primaryConstructor
 
+/**
+ * Setting a breakpoint in a build.gradle.kts file doesn't always work correctly in IntelliJ,
+ * (TODO report that bug)
+ * but you can insert a call to this function, and put a (permanent) breakpoint in here.
+ */
+fun debugBreakpoint() {
+    println("debugger")
+}
 
 /**
  * Add the given dependency to the `compileOnly` and `testImplementation` configurations.
