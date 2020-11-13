@@ -1,8 +1,6 @@
 @file:JsExport
 package org.jbali.kjs
 
-import kotlin.js.JsExport
-
 // utility wrappers to deal with Kotlin collections in JavaScript code
 
 data class KtMap<K, out V>(
@@ -21,15 +19,22 @@ data class KtIterable<out T>(
         val ite: Iterable<T>
 ) {
 
-    fun <T> ktForEach(ite: Iterable<T>, action: (T) -> Unit) {
+    fun forEach(action: (T) -> Unit) {
         ite.forEach(action)
     }
 
-    fun <T> iterableToArray(ite: Iterable<T>): Array<T> {
-        @Suppress("UNUSED_VARIABLE")
-        val al = if (ite is ArrayList) ite else ArrayList<T>().also { it.addAll(ite) }
-        return js("al.toArray()")
-    }
+    /**
+     * Get the contents of the iterable as a native JavaScript array.
+     * Possibly returns a reference to the existing array that holds the iterable's data,
+     * so be careful about mutating the return value.
+     */
+    fun toArray(): Array<@UnsafeVariance T> =
+            // NOTE: this implementation in fact always returns a copy,
+            //       but the doc should still reserve the right to change that
+            when (ite) {
+                is Collection -> ite.toTypedArray()
+                else -> ite.toList().toTypedArray()
+            }
 
 }
 
