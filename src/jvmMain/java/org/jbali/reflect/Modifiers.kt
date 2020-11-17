@@ -24,5 +24,6 @@ val Class<*>.classModifiers get() = Modifiers(modifiers)
 val Member.memberModifiers get() = Modifiers(modifiers)
 
 // TODO add the others
+val Member.isPrivate get() = memberModifiers.isPrivate
 val Member.isStatic get() = memberModifiers.isStatic
 val Member.isFinal get() = memberModifiers.isFinal
