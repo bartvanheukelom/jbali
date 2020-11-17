@@ -54,6 +54,17 @@ fun Project.initKotlinProject(
 
         extensions.extraProperties.set(ProjectInited.PROP, ProjectInited)
 
+        if (isRoot) {
+
+            // consolidate build dirs
+            val rootBuildDir = buildDir
+            allprojects { p ->
+                println("buildDir = $rootBuildDir / $p.path")
+                p.buildDir = rootBuildDir / p.path.replace(":", "_")
+            }
+
+        }
+
     } catch (e: Throwable) {
         throw RuntimeException("Error in initKotlinProject $group:$name : $e", e)
     }
