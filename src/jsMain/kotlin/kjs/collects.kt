@@ -3,6 +3,8 @@
 
 package org.jbali.kjs
 
+import org.jbali.util.WorksAroundBaseNameMangling
+
 // utility wrappers to deal with Kotlin collections in JavaScript code
 
 data class KtMap<K, out V>(
@@ -13,13 +15,37 @@ data class KtMap<K, out V>(
 ) {
 
     @Deprecated("", ReplaceWith("kMap"))
-    val map get() = kMap
+    @JsName("map")
+    val deprecatedMap get() = kMap
 
-    fun forEach(action: (K, V) -> Unit) {
+    override fun toString(): String =
+            "KtMap$kMap"
+
+    @JsName("forEach")
+    // TODO feature request: let key and value names be output to d.ts, or no names (but not p0 etc)
+    fun forEach(action: (key: K, value: V) -> Unit) {
         kMap.forEach {
             action(it.key, it.value)
         }
     }
+
+    /**
+     * Get the contents of the iterable as a native JavaScript array of [key, value] tuples.
+     * Possibly returns a reference to the existing array that holds the map data,
+     * so be careful about mutating the return value.
+     *
+     * TODO patch the generated d.ts to add proper typing to the tuples
+     */
+    @JsName("toArray") // is this required because of the non-exportable return type?
+    fun toArray(): Array<Array<Any?>> =
+            // NOTE: this implementation in fact always returns a copy,
+            //       but the doc should still reserve the right to change that
+            kMap.entries.asSequence()
+                    .map { (k, v) ->
+                        arrayOf(k, v)
+                    }
+                    .toList()
+                    .toTypedArray()
 
     /**
      * Get the contents of the map as a plain native JavaScript object.
@@ -28,14 +54,31 @@ data class KtMap<K, out V>(
      * Possibly returns a reference to the existing object that holds the map data,
      * so be careful about mutating the return value.
      */
-    fun toObject(): dynamic =
-            // NOTE: this implementation in fact always returns a copy,
-            //       but the doc should still reserve the right to change that
-            js("({})").also { o ->
-                kMap.forEach { (k, v) ->
-                    o[k.toString()] = v
-                }
-            }
+    @JsName("toObject")
+    fun toObject(): dynamic {
+        val o = js("({})")
+        kMap.forEach { (k, v) ->
+            o[k.toString()] = v
+        }
+        return o
+    }
+
+
+    @JsName("empty")
+    constructor() : this(emptyMap())
+
+    /**
+     * Create a map from a native JavaScript array of [key, value] tuples.
+     *
+     * From JavaScript: `KtMap.fromArray([["foo", 1], ["bar", 2], ...])`
+     *
+     * TODO patch the generated d.ts to add proper typing to the tuples
+     */
+    @JsName("fromArray")
+    constructor(array: Array<Array<*>>) : this(array.associate {
+        @Suppress("UNCHECKED_CAST")
+        Pair(it[0] as K, it[1] as V)
+    })
 
 }
 
@@ -46,14 +89,29 @@ open class KtIterable<out T>(
         val kIterable: Iterable<T>
 ) {
 
+    protected open val variant: String get() = "KtIterable"
+
     @Deprecated("", ReplaceWith("kIterable"))
     @JsName("ite")
     val deprecatedIte get() = kIterable
 
+    override fun toString(): String =
+            "${variant}${kIterable}"
+
+    override fun equals(other: Any?) =
+            when (other) {
+                is KtIterable<*> -> other.variant == variant && other.kIterable == kIterable
+                else -> false
+            }
+
+    override fun hashCode(): Int =
+            kIterable.hashCode()
+
     /**
      * Performs the given [action] on each element.
      */
-    fun forEach(action: (T) -> Unit) {
+    @JsName("forEach") @WorksAroundBaseNameMangling
+    fun forEach(action: (element: T) -> Unit) {
         kIterable.forEach(action)
     }
 
@@ -62,6 +120,7 @@ open class KtIterable<out T>(
      * Possibly returns a reference to the existing array that holds the iterable's data,
      * so be careful about mutating the return value.
      */
+    @JsName("toArray") @WorksAroundBaseNameMangling
     fun toArray(): Array<@UnsafeVariance T> =
             // NOTE: this implementation in fact always returns a copy,
             //       but the doc should still reserve the right to change that
@@ -73,12 +132,14 @@ open class KtIterable<out T>(
     /**
      * Returns a [List] containing all elements. May or may not be a copy of [kIterable].
      */
+    @JsName("toKList") @WorksAroundBaseNameMangling
     open fun toKList() = kIterable.toList()
 
     /**
      * Returns a [Set] containing all elements. May or may not be a copy of [kIterable].
      * Duplicate elements are silently discarded.
      */
+    @JsName("toKSet") @WorksAroundBaseNameMangling
     open fun toKSet() = kIterable.toSet()
 
 }
@@ -86,6 +147,8 @@ open class KtIterable<out T>(
 class KtList<out T>(
         kList: List<T>
 ) : KtIterable<T>(kList) {
+
+    override val variant: String get() = "KtList"
 
     /**
      * [kIterable], cast to [List].
@@ -113,6 +176,8 @@ class KtList<out T>(
 class KtSet<out T>(
         kSet: Set<T>
 ) : KtIterable<T>(kSet) {
+
+    override val variant: String get() = "KtSet"
 
     /**
      * [kIterable], cast to [Set].
