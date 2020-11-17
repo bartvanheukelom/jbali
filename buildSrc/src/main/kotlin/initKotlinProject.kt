@@ -59,7 +59,7 @@ fun Project.initKotlinProject(
             // consolidate build dirs
             val rootBuildDir = buildDir
             allprojects { p ->
-                println("buildDir = $rootBuildDir / $p.path")
+//                println("buildDir = $rootBuildDir / $p.path")
                 p.buildDir = rootBuildDir / p.path.replace(":", "_")
             }
 
