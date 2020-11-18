@@ -11,3 +11,9 @@ annotation class WorksAroundNonStaticCompanionDTS
  */
 @Retention(AnnotationRetention.SOURCE)
 annotation class WorksAroundBaseNameMangling
+
+/**
+ * Apply to code that only serves as a workaround for the bug [KT-37916](https://youtrack.jetbrains.com/issue/KT-37916)
+ */
+@Retention(AnnotationRetention.SOURCE)
+annotation class WorksAroundUnexportableEnum

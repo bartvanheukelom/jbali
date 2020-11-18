@@ -7,6 +7,15 @@ import org.jbali.util.WorksAroundBaseNameMangling
 
 // utility wrappers to deal with Kotlin collections in JavaScript code
 
+
+/**
+ * Wrap this around a Kotlin [Map] to make it easier to process from JavaScript code, or to convert it to a JavaScript object or array.
+ *
+ * Static methods of this class can be used to create a new map, e.g. an empty one, or from an array.
+ *
+ * Note that instances of this class aren't a [Map] themselves, and can't be passed to functions requiring one.
+ * Instead, pass them [kMap].
+ */
 data class KtMap<K, out V>(
         /**
          * The Kotlin [Map] that this wraps around.
@@ -16,7 +25,7 @@ data class KtMap<K, out V>(
 
     @Deprecated("", ReplaceWith("kMap"))
     @JsName("map")
-    val deprecatedMap get() = kMap
+    val deprecatedMap: Nothing get() = throw NotImplementedError("this property will be removed, use kMap")
 
     override fun toString(): String =
             "KtMap$kMap"
@@ -93,7 +102,7 @@ open class KtIterable<out T>(
 
     @Deprecated("", ReplaceWith("kIterable"))
     @JsName("ite")
-    val deprecatedIte get() = kIterable
+    val deprecatedIte: Nothing get() = throw NotImplementedError("this property will be removed, use kIterable")
 
     override fun toString(): String =
             "${variant}${kIterable}"
@@ -144,6 +153,14 @@ open class KtIterable<out T>(
 
 }
 
+/**
+ * Wrap this around a Kotlin [List] to make it easier to process from JavaScript code, or to convert it to a JavaScript array.
+ *
+ * Static methods of this class can be used to create a new list, e.g. an empty one, or from an array.
+ *
+ * Note that instances of this class aren't a [List] themselves, and can't be passed to functions requiring one.
+ * Instead, pass them [kList].
+ */
 class KtList<out T>(
         kList: List<T>
 ) : KtIterable<T>(kList) {
@@ -173,6 +190,14 @@ class KtList<out T>(
 
 }
 
+/**
+ * Wrap this around a Kotlin [Set] to make it easier to process from JavaScript code, or to convert it to a JavaScript array.
+ *
+ * Static methods of this class can be used to create a new set, e.g. an empty one, or from an array.
+ *
+ * Note that instances of this class aren't a [Set] themselves, and can't be passed to functions requiring one.
+ * Instead, pass them [kSet].
+ */
 class KtSet<out T>(
         kSet: Set<T>
 ) : KtIterable<T>(kSet) {
@@ -211,5 +236,5 @@ class KtSet<out T>(
 /**
  * JavaScript replacement: `KtList.empty().kList`
  */
-@Deprecated("", ReplaceWith("KtList<T>()", "org.jbali.kjs.KtList"))
+@Deprecated("", ReplaceWith("KtList<T>().kList", "org.jbali.kjs.KtList"))
 fun <T> emptyKtList() = KtList<T>()
