@@ -6,6 +6,7 @@ package org.jbali.kjs
 import org.jbali.util.WorksAroundBaseNameMangling
 
 // utility wrappers to deal with Kotlin collections in JavaScript code
+// TODO add docs to classes. mention they are just wrappers, not List etc themselves
 
 
 /**
