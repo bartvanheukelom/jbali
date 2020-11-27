@@ -6,6 +6,16 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
 plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
+    id("org.jetbrains.dokka")
+}
+
+// check gradle version, for when not running with the included wrapper (e.g. included in another project)
+val supportedGradleVersions = setOf(
+        "6.2.2",
+        "6.7.1"
+)
+check(org.gradle.util.GradleVersion.current().version in supportedGradleVersions) {
+    "This build script is untested with Gradle version ${org.gradle.util.GradleVersion.current()}. Tested versions are $supportedGradleVersions"
 }
 
 initKotlinProject(

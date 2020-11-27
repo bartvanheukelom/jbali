@@ -1,17 +1,40 @@
 pluginManagement {
-    val kotlinVersion = KotlinVersion(1, 3, 72)
+    val kotlinVersion = KotlinVersion(1, 4, 20)
+    val kotlinEAPSuffix = null
+
+    plugins {
+        id("org.jetbrains.dokka") version "1.4.10.2"
+    }
 
     // ============ shared TODO find way to share this =========== //
 
-    (gradle as ExtensionAware).extra["kotlinVersion"] = kotlinVersion
-    val kserLegacyPlugin = !kotlinVersion.isAtLeast(1, 3, 50)
+    val kotlinVersionString = "$kotlinVersion${kotlinEAPSuffix ?: ""}"
+    @Suppress("SENSELESS_COMPARISON")
+    val kotlinEAP = kotlinEAPSuffix != null
+
+    (gradle as ExtensionAware).extra.let { e ->
+
+        // TODO make wrapper class with suffix included
+        // this one preserves it as KotlinVersion
+        check(!e.has("kotlinVersion"))
+        e["kotlinVersion"] = kotlinVersion
+        // but this one includes the suffix
+        check(!e.has("kotlinVersionString"))
+        e["kotlinVersionString"] = kotlinVersionString
+
+        check(!e.has("kotlinEAP"))
+        e["kotlinEAP"] = kotlinEAP
+
+    }
 
     repositories {
-        // for kser
-        if (kserLegacyPlugin) {
-            maven(url = "https://dl.bintray.com/kotlin/kotlin-eap")
-        }
+        jcenter()
         gradlePluginPortal()
+
+        if (kotlinEAP) {
+            maven("https://dl.bintray.com/kotlin/kotlin-eap")
+            maven("https://kotlin.bintray.com/kotlinx")
+        }
     }
 
     plugins {
@@ -20,21 +43,10 @@ pluginManagement {
                 "org.jetbrains.kotlin.multiplatform",
                 "org.jetbrains.kotlin.plugin.serialization"
         ).forEach {
-            id(it) version "$kotlinVersion"
+            id(it) version kotlinVersionString
         }
     }
 
-    // https://youtrack.jetbrains.com/issue/KT-27612
-    if (!kotlinVersion.isAtLeast(1, 3, 50)) {
-        resolutionStrategy {
-            eachPlugin {
-                when (requested.id.id) {
-                    "org.jetbrains.kotlin.plugin.serialization" -> "org.jetbrains.kotlin:kotlin-serialization:$kotlinVersion"
-                    else -> null
-                }?.let(::useModule)
-            }
-        }
-    }
 }
 
 commonSettings(
