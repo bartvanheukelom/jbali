@@ -53,6 +53,8 @@ commonSettings(
         projectName = "jbali"
 )
 
+includeBuild("gradle-tools")
+
 // ============ shared TODO find way to share this =========== //
 
 fun commonSettings(

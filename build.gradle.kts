@@ -3,6 +3,16 @@ import org.jetbrains.kotlin.config.KotlinCompilerVersion
 import org.jetbrains.kotlin.gradle.dsl.KotlinCompile
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
 
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        // supplied by included build `gradle-tools`
+        "classpath"("org.jbali:jbali-gradle-tools")
+    }
+}
+
 plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
@@ -11,7 +21,6 @@ plugins {
 
 // check gradle version, for when not running with the included wrapper (e.g. included in another project)
 val supportedGradleVersions = setOf(
-        "6.2.2",
         "6.7.1"
 )
 check(org.gradle.util.GradleVersion.current().version in supportedGradleVersions) {
@@ -23,8 +32,7 @@ initKotlinProject(
         name = JBali.aJbali,
         acceptableKotlinVersions = setOf(
                 KotlinVersions.V1_4_20
-        ),
-        acceptableKotlinVersionStrings = setOf("1.4.20-RC")
+        )
 )
 
 // TODO centralize
@@ -248,11 +256,6 @@ fun jsConfig() {
 
 }
 
-/**
- * Configuration that only applies if this project is built
- * standalone, i.e. is the root project.
- * // TODO should be in a separate file, but that's harder with KTS than with Groovy.
- */
 fun rootProjectConfig() {
 
     val ksr = "1.0.1"
@@ -338,16 +341,6 @@ fun rootProjectConfig() {
                         }
                     }
 
-                    // substitute submodules
-                    dependencySubstitution {
-//                        submodules.forEach { sub ->
-//                            val moduleName = "${sub.group}:${sub.name}"
-//                            val projectPath = sub.path
-////                        println("substitute $moduleName -> $projectPath")
-//                            substitute(module(moduleName))
-//                                    .with(project(projectPath))
-//                        }
-                    }
                 }
 
                 // install gradle dependency constraints everywhere
