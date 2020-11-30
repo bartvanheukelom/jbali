@@ -12,9 +12,9 @@ class BigDecimalSerializerTest {
         assertEquals(""""10"""", DefaultJson.plain.stringify(BigDecimalSerializer, BigDecimal(10)))
         assertEquals(""""12.30"""", DefaultJson.plain.stringify(BigDecimalSerializer, BigDecimal(1230).scaleByPowerOfTen(-2)))
 
-        assertEquals(BigDecimal(1234).scaleByPowerOfTen(-2), DefaultJson.plain.parse(BigDecimalSerializer, """"12.34""""))
-        assertEquals(BigDecimal(1230).scaleByPowerOfTen(-2), DefaultJson.plain.parse(BigDecimalSerializer, """"12.30""""))
-        assertComparesEqual(BigDecimal(1230).scaleByPowerOfTen(-2), DefaultJson.plain.parse(BigDecimalSerializer, """"12.3""""))
+        assertEquals(BigDecimal(1234).scaleByPowerOfTen(-2), DefaultJson.plain.decodeFromString(BigDecimalSerializer, """"12.34""""))
+        assertEquals(BigDecimal(1230).scaleByPowerOfTen(-2), DefaultJson.plain.decodeFromString(BigDecimalSerializer, """"12.30""""))
+        assertComparesEqual(BigDecimal(1230).scaleByPowerOfTen(-2), DefaultJson.plain.decodeFromString(BigDecimalSerializer, """"12.3""""))
     }
 }
 

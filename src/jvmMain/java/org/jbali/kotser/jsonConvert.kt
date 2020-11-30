@@ -11,7 +11,7 @@ fun JsonElement.convertToLegacy() =
 
 fun jsonElementFromLegacy(legacyElement: Any?): JsonElement {
     val str = JSONArray(listOf(legacyElement)).toString()
-    return DefaultJson.plain.parse(JsonElement.serializer(), str.substring(1, str.length-1))
+    return DefaultJson.plain.decodeFromString(JsonElement.serializer(), str.substring(1, str.length - 1))
 }
 
 

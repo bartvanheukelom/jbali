@@ -294,8 +294,8 @@ fun rootProjectConfig() {
                 "com.google.code.gson:gson:2.8.6",
                 "org.apache.activemq:activemq-client:5.11.1",
                 "commons-codec:commons-codec:1.10",
-                "org.apache.httpcomponents:httpclient:4.4",
-                "org.apache.httpcomponents:httpcore:4.4",
+                "org.apache.httpcomponents:httpclient:4.5.13",
+                "org.apache.httpcomponents:httpcore:4.4.13",
                 "commons-codec:commons-codec:1.10",
                 "org.threeten:threeten-extra:1.5.0"
         )
@@ -345,7 +345,7 @@ fun rootProjectConfig() {
 
                 // install gradle dependency constraints everywhere
                 standAloneVersions.forEach {
-                    dependencies.constraints.add(conf.name, "$it!!")
+                    dependencies.constraints.add(conf.name, it)
                 }
 //                excludedDependencies.forEach {
 //                    val s = it.split(":")
