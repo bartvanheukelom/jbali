@@ -31,7 +31,8 @@ initKotlinProject(
         group = JBali.group,
         name = JBali.aJbali,
         acceptableKotlinVersions = setOf(
-                KotlinVersions.V1_4_20
+                KotlinVersions.V1_4_20,
+                KotlinVersions.V1_4_21
         )
 )
 
@@ -39,51 +40,58 @@ initKotlinProject(
 check(kotlinVersionString == KotlinCompilerVersion.VERSION)
 
 
+
+repositories {
+    jcenter()
+}
+
+kotlin {
+
+    sourceSets {
+
+        commonMain {
+            dependencies {
+                api(KotlinX.Serialization.json, "1.0.1")
+            }
+        }
+
+        commonTest {
+            dependencies {
+                implementation(kotlin("test-common"))
+                implementation(kotlin("test-annotations-common"))
+            }
+        }
+
+    }
+}
+
+tasks.withType<KotlinCompile<*>> {
+    kotlinOptions {
+        inlineClasses()
+        use(Experimentals.RequiresOptIn)
+    }
+}
+
+forbidDependencies(
+        // these conflict with the new KotlinX.Serialization.json,
+        // but somebody may try to pull them in transitively
+        KotlinX.SerializationRuntime.common,
+        KotlinX.SerializationRuntime.jvm,
+        KotlinX.SerializationRuntime.js
+)
+
+
+
 // determine which platforms to include
 val jsOnly = System.getProperty("$name.jsOnly") == "true"
 val doJvm = System.getProperty("$name.doJvm") == "true" || !jsOnly
 val doJs = System.getProperty("$name.doJs") != "false" || jsOnly
 
-commonConfig()
-if (doJvm) jvmConfig()
-if (doJs) jsConfig()
 
-if (project.isRoot) {
-    rootProjectConfig()
-}
 
-fun commonConfig() {
+// ===================================== JVM ================================ //
 
-    kotlin {
-
-        sourceSets {
-
-            commonMain {
-                dependencies {
-                    implementation(KotlinX.Serialization.json)
-                }
-            }
-
-            commonTest {
-                dependencies {
-                    implementation(kotlin("test-common"))
-                    implementation(kotlin("test-annotations-common"))
-                }
-            }
-
-        }
-    }
-
-    tasks.withType<KotlinCompile<*>> {
-        kotlinOptions {
-            inlineClasses()
-            use(Experimentals.RequiresOptIn)
-        }
-    }
-
-}
-
-fun jvmConfig() {
+if (doJvm) {
 
     kotlin {
 
@@ -92,31 +100,37 @@ fun jvmConfig() {
             withJava()
 
             sourceSets {
+
+                val vKtor = "1.4.1"
+                val vSlf4j = "1.7.30"
+
                 val jvmMain by existing {
                     dependencies {
-                        implementation(Kotlin.reflect)
+                        api(Kotlin.reflect)
 
-                        implementation(Arrow.core)
+                        api(Arrow.core, "0.10.5")
+                        api("org.jetbrains:annotations", "15.0")
 
-                        implementation("com.google.guava:guava")
-                        implementation("org.slf4j:slf4j-api")
+                        api("com.google.guava:guava", "29.0-jre")
+                        api("org.slf4j:slf4j-api", vSlf4j)
 
-                        implementation("commons-codec:commons-codec")
-                        implementation("org.apache.httpcomponents:httpclient")
-                        implementation("org.apache.httpcomponents:httpcore")
-                        implementation("org.threeten:threeten-extra")
+                        api("commons-codec:commons-codec", "1.10")
+                        api("org.apache.httpcomponents:httpclient", "4.5.13")
+                        api("org.apache.httpcomponents:httpcore", "4.4.13")
+                        api("org.threeten:threeten-extra", "1.5.0")
 
                         // for test library code used in other projects' actual tests
                         compileOnly(Kotlin.Test.jvm)
 
                         // TODO extract these to own modules or features, see
                         //      https://docs.gradle.org/current/userguide/feature_variants.html
-                        compileOnly(Ktor.Server.core)
-                        compileOnly(Ktor.websockets)
-                        compileOnly(Ktor.Client.cio)
-                        compileOnly("io.ktor:ktor-serialization")
-                        compileOnly("com.google.code.gson:gson")
-                        compileOnly("org.apache.activemq:activemq-client")
+                        compileOnly(Ktor.Client.cio,    vKtor)
+                        compileOnly(Ktor.Server.core,   vKtor)
+                        compileOnly(Ktor.serialization, vKtor)
+                        compileOnly(Ktor.websockets,    vKtor)
+
+                        compileOnly("com.google.code.gson:gson", "2.8.6")
+                        compileOnly("org.apache.activemq:activemq-client", "5.11.1")
 
                     }
                 }
@@ -124,10 +138,9 @@ fun jvmConfig() {
                     dependencies {
                         implementation(Kotlin.Test.jvm)
                         implementation(Kotlin.Test.junit)
-                        implementation("org.slf4j:jul-to-slf4j")
-                        implementation("org.slf4j:jcl-over-slf4j")
-                        implementation("org.slf4j:slf4j-simple")
-                        implementation("junit:junit")
+                        implementation("org.slf4j:jul-to-slf4j",   vSlf4j)
+                        implementation("org.slf4j:jcl-over-slf4j", vSlf4j)
+                        implementation("org.slf4j:slf4j-simple",   vSlf4j)
 
                         // add those dependencies that are not transitively included
                         configurations
@@ -144,12 +157,30 @@ fun jvmConfig() {
     }
 
     tasks.withType<JavaCompile> {
-        options.compilerArgs.add("-parameters")
+        options.storeParameterNames()
+    }
+
+    // TODO make KotlinJvmTarget extension
+    val javaVersion = JavaVersion.VERSION_1_8
+    tasks.withType<JavaCompile> {
+        sourceCompatibility = javaVersion.toString()
+        targetCompatibility = sourceCompatibility
+    }
+    tasks.withType<KotlinJvmCompile> {
+        kotlinOptions {
+            jvmTarget = javaVersion.toString()
+        }
     }
 
 }
 
-fun jsConfig() {
+
+
+
+
+// ===================================== JavaScript ================================ //
+
+if (doJs) {
 
     kotlin {
 
@@ -178,183 +209,5 @@ fun jsConfig() {
 
     }
 
-    val jsMainClasses by tasks.existing
-    val jsTestClasses by tasks.existing
-
-    val jsPublicPackageJson by tasks.existing
-    val jsProductionLibraryCompileSync by tasks.existing
-
-    // TODO find out which built-in task is equivalent (surely one is?)
-    val jsBuildPackage by tasks.registering {
-        dependsOn(jsPublicPackageJson, jsProductionLibraryCompileSync)
-    }
-
-    // ------------------------ jsUsageTest ------------------------- //
-    //
-    // Test whether the exported module is usable as a library in an
-    // example TypeScript project.
-    //
-    // -------------------------------------------------------------- //
-
-//    val jsUsageTestDir = "js/usage_test"
-//
-//    tasks {
-//
-//        fun Task.common() {
-//            group = "js usage test"
-//        }
-//
-//        val jsUsageTestNpmInstall by registering(Exec::class) {
-//            common()
-//
-//            workingDir(jsUsageTestDir)
-//            commandLine("npm", "i")
-//
-//            inputs.file("$jsUsageTestDir/package.json")
-//            outputs.file("$jsUsageTestDir/package-lock.json")
-//            outputs.dir("$jsUsageTestDir/node_modules")
-//        }
-//
-//        val jsUsageTestTsc by registering(Exec::class) {
-//            common()
-//
-//            dependsOn(
-//                    jsBuildPackage,
-//                    jsUsageTestNpmInstall
-//            )
-//
-//            inputs.dir("$jsUsageTestDir/node_modules")
-//            inputs.dir("$jsUsageTestDir/src")
-//            inputs.file("$jsUsageTestDir/tsconfig.json")
-//
-//            outputs.file("$jsUsageTestDir/index.js")
-//            outputs.dir("$jsUsageTestDir/out")
-//
-//
-//            workingDir(jsUsageTestDir)
-//            commandLine("tsc")
-//        }
-//
-//        val jsUsageTest by registering(Exec::class) {
-//            common()
-//
-//            dependsOn(jsUsageTestTsc)
-//
-//            inputs.dir("$jsUsageTestDir/node_modules")
-//            inputs.dir("$jsUsageTestDir/out")
-//            outputs.upToDateWhen { true }
-//
-//            workingDir("$jsUsageTestDir/out")
-//            commandLine("node", "--enable-source-maps", ".")
-//        }
-//
-//        val check by existing {
-//            dependsOn(jsUsageTest)
-//        }
-//
-//    }
-
 }
 
-fun rootProjectConfig() {
-
-    val ksr = "1.0.1"
-    val ktor = "1.4.1"
-    val slf4j = "1.7.30"
-
-    val standAloneVersions = mutableListOf(
-            "${KotlinX.Serialization.json}:$ksr"
-    )
-
-    val forbiddenDependencies = listOf(
-            // these conflict with the new KotlinX.Serialization.json,
-            // but somebody may try to pull them in transitively
-            KotlinX.SerializationRuntime.common,
-            KotlinX.SerializationRuntime.jvm,
-            KotlinX.SerializationRuntime.js
-    )
-
-    if (doJvm) {
-        standAloneVersions += listOf(
-
-                "org.slf4j:slf4j-api:$slf4j",
-                "org.slf4j:jul-to-slf4j:$slf4j",
-                "org.slf4j:jcl-over-slf4j:$slf4j",
-                "org.slf4j:slf4j-simple:$slf4j",
-
-                "${Ktor.Server.core}:$ktor",
-                "${Ktor.websockets}:$ktor",
-                "${Ktor.Client.cio}:$ktor",
-                "io.ktor:ktor-serialization:$ktor",
-
-                "${Arrow.core}:0.10.5",
-
-                "com.google.guava:guava:29.0-jre",
-                "org.jetbrains:annotations:15.0",
-                "com.google.code.gson:gson:2.8.6",
-                "org.apache.activemq:activemq-client:5.11.1",
-                "commons-codec:commons-codec:1.10",
-                "org.apache.httpcomponents:httpclient:4.5.13",
-                "org.apache.httpcomponents:httpcore:4.4.13",
-                "commons-codec:commons-codec:1.10",
-                "org.threeten:threeten-extra:1.5.0"
-        )
-
-        val javaVersion = JavaVersion.VERSION_1_8
-
-        tasks.withType<KotlinJvmCompile> {
-            kotlinOptions {
-                jvmTarget = javaVersion.toString()
-            }
-        }
-
-        tasks.withType<JavaCompile> {
-            sourceCompatibility = javaVersion.toString()
-            targetCompatibility = sourceCompatibility
-        }
-
-    }
-
-    configure(allprojects) {
-        repositories {
-            jcenter()
-        }
-    }
-
-    gradle.projectsEvaluated {
-
-        allprojects {
-
-            configurations.forEach { conf ->
-
-                conf.resolutionStrategy {
-
-                    // TODO would be nice but is quite strict
-//                    failOnVersionConflict()
-//                    @Suppress("UnstableApiUsage")
-//                    failOnNonReproducibleResolution()
-
-                    eachDependency {
-                        val dep = requested.group + ":" + requested.name
-                        require(dep !in forbiddenDependencies) {
-                            "$dep in forbiddenDependencies"
-                        }
-                    }
-
-                }
-
-                // install gradle dependency constraints everywhere
-                standAloneVersions.forEach {
-                    dependencies.constraints.add(conf.name, it)
-                }
-//                excludedDependencies.forEach {
-//                    val s = it.split(":")
-//                    conf.exclude(s[0], s[1])
-//                }
-            }
-
-        }
-
-    }
-
-}
