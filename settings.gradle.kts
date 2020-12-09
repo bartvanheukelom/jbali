@@ -3,7 +3,7 @@ pluginManagement {
     val kotlinEAPSuffix = null
 
     plugins {
-        id("org.jetbrains.dokka") version "1.4.10.2"
+        id("org.jetbrains.dokka") version "1.4.20"
     }
 
     // ============ shared TODO find way to share this =========== //

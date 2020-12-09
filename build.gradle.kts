@@ -81,6 +81,19 @@ forbidDependencies(
 )
 
 
+// configure `dokkaHtml` to run as part of `build`, but last
+tasks {
+    val dokkaHtml by existing {
+        shouldRunAfter(
+                check,
+                assemble
+        )
+    }
+    build {
+        dependsOn(dokkaHtml)
+    }
+}
+
 
 // determine which platforms to include
 val jsOnly = System.getProperty("$name.jsOnly") == "true"
