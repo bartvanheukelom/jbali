@@ -65,7 +65,7 @@ kotlin {
     }
 }
 
-tasks.withType<KotlinCompile<*>> {
+tasks.withType<KotlinCompile<*>>().configureEach {
     kotlinOptions {
         inlineClasses()
         use(Experimentals.RequiresOptIn)
@@ -169,17 +169,17 @@ if (doJvm) {
         }
     }
 
-    tasks.withType<JavaCompile> {
+    tasks.withType<JavaCompile>().configureEach {
         options.storeParameterNames()
     }
 
     // TODO make KotlinJvmTarget extension
     val javaVersion = JavaVersion.VERSION_1_8
-    tasks.withType<JavaCompile> {
+    tasks.withType<JavaCompile>().configureEach {
         sourceCompatibility = javaVersion.toString()
         targetCompatibility = sourceCompatibility
     }
-    tasks.withType<KotlinJvmCompile> {
+    tasks.withType<KotlinJvmCompile>().configureEach {
         kotlinOptions {
             jvmTarget = javaVersion.toString()
         }
