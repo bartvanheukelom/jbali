@@ -54,9 +54,10 @@ class OnceEventDelegate<P> : ReadOnlyProperty<Any?, OnceEvent<P>> {
     }
 }
 
-interface Listenable<P> {
+interface Listenable<out P> {
 
-    fun listen(name: String?, callback: (arg: P) -> Unit): EventListener<P>
+    // TODO fix UnsafeVariance
+    fun listen(name: String?, callback: (arg: P) -> Unit): EventListener<@UnsafeVariance P>
     // TODO @JvmDefault but require JVM 1.8
     fun listen(callback: (arg: P) -> Unit) = listen(null, callback)
 
