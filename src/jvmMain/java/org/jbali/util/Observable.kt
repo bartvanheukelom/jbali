@@ -1,14 +1,11 @@
 package org.jbali.util
 
-import org.slf4j.LoggerFactory
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Consumer
 import java.util.function.Supplier
 import javax.annotation.PreDestroy
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
-
-private val log = LoggerFactory.getLogger(Observable::class.java)!!
 
 // Ovservables TODO I guess rename because of java.util.Observable (and put in own package, or with events)
 
@@ -35,10 +32,19 @@ interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T>, ReadOnlyPrope
      * Register a handler that will be called immediately with the current value,
      * and whenever the value changes.
      */
-    fun bind(handler: (T) -> Unit): EventListener<T> =
-            onNewValue.listen(handler).apply { call(get()) }
+    fun bind(handler: (T) -> Unit): ListenerReference =
+            onNewValue.listen(handler).apply {
+                EventHandler.callWithErrorHandling(
+                    handler = object : EventHandler<T> {
+                        override val name: String get() = "bind"
+                        override val event: Event<T> get() = onNewValue
+                    },
+                    callback = handler,
+                    data = get()
+                )
+            }
 
-    fun bindChange(handler: (before: T?, after: T) -> Unit): EventListener<Change<T>> {
+    fun bindChange(handler: (before: T?, after: T) -> Unit): ListenerReference {
         handler(null, get())
         return onChange.listen {
             handler(it.before, it.after)
@@ -51,7 +57,7 @@ interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T>, ReadOnlyPrope
      *
      * For use by Java code only.
      */
-    fun bindj(handler: Consumer<T>): EventListener<T> =
+    fun bindj(handler: Consumer<T>): ListenerReference =
             bind { handler.accept(it) }
 
     /**
@@ -174,7 +180,7 @@ private class ObservableSub<I, O>(
 
     private val sourceListener =
             source.onChange.listen {
-                onChange.dispatch(errCb = Listenable.errorCallback(it.throwListenerExceptions)) {
+                onChange.dispatch(errCb = ListenerErrorCallbacks.create(it.throwListenerExceptions)) {
                     Change(getter(it.before), getter(it.after), it.throwListenerExceptions)
                 }
             }
