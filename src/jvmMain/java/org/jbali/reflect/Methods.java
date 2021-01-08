@@ -46,7 +46,7 @@ public class Methods {
 	}
 	
 	/**
-	 * Return wheter two methods have the same name. Currently only accepts methods without parameters.
+	 * Return whether two methods have the same name. Currently only accepts methods without parameters.
 	 * TODO compare parameters
 	 */
 	public static boolean equivalent(Method a, Method b) {
@@ -66,10 +66,14 @@ public class Methods {
 	public static ImmutableMap<String, Method> mapMethodsByName(Method[] methods) {
 		Map<String, Method> map = Maps.newHashMap();
 		for (Method m : methods) {
+
 			if (m.getDeclaringClass() == Object.class) continue;
 			if (isStatic(m)) continue;
+			if (m.isDefault()) continue;
+
 			if (map.put(m.getName(), m) != null)
 				throw new IllegalStateException("Duplicate method " + m.getName() + " (this one declared in " + m.getDeclaringClass().getCanonicalName() + ")");
+
 			m.setAccessible(true);
 		}
 		return ImmutableMap.copyOf(map);
