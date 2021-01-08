@@ -69,7 +69,7 @@ public class Methods {
 			if (m.getDeclaringClass() == Object.class) continue;
 			if (isStatic(m)) continue;
 			if (map.put(m.getName(), m) != null)
-				throw new IllegalStateException("Duplicate method " + m.getName());
+				throw new IllegalStateException("Duplicate method " + m.getName() + " (this one declared in " + m.getDeclaringClass().getCanonicalName() + ")");
 			m.setAccessible(true);
 		}
 		return ImmutableMap.copyOf(map);
