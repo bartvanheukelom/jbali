@@ -24,10 +24,14 @@ interface ReadOnlyPropertyProvider<in R, out T> {
 
 /**
  * Read-only property delegate that returns the given fixed value.
+ * TODO rename to Constant..?
  */
 data class FixedValueDelegate<T>(val value: T) : ReadOnlyProperty<Any?, T> {
     override fun getValue(thisRef: Any?, property: KProperty<*>): T = value
 }
+
+fun <T> T.asDelegate() = FixedValueDelegate(this)
+
 
 /**
  * Property delegate provider that calls [initer] with a reference to the property and
