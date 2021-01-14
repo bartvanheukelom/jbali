@@ -36,13 +36,15 @@ class TestScheduler(
          * */
         private val logScheduleStack: Boolean = false,
 
-        private val maxDuration: Duration? = null
+        private val maxDuration: Duration? = null,
+
+        private val silent: Boolean = false,
 ) : Scheduler() {
 
     class TaskBodyException(m: String, e: Throwable) : RuntimeException(m, e)
 
     private var seqqer = 0
-    private val log = LoggerFactory.getLogger("${TestScheduler::class.java.name}[$name]")
+    private val log = if (silent) null else LoggerFactory.getLogger("${TestScheduler::class.java.name}[$name]")
 
     inner class PlannedTask(
             task: TaskToSchedule,
@@ -90,7 +92,7 @@ class TestScheduler(
             } catch (e: Throwable) {
                 state = ScheduledTask.State.ERRORED
                 val ref: String
-                if (logScheduleStack) {
+                if (logScheduleStack && log != null) {
                     ref = "[ref ${Random.nextInt(10000, 100000)}] "
                     log.warn("${ref}Task was scheduled from:\n${stack.prependIndent()}")
                 } else {
@@ -106,7 +108,7 @@ class TestScheduler(
         override fun cancel(interrupt: Boolean, allowWhileRunning: Boolean) =
                 when (state) {
                     ScheduledTask.State.SCHEDULED -> {
-                        log.info("-Cancel  $this")
+                        log?.info("-Cancel  $this")
                         state = ScheduledTask.State.CANCELLED
                         tasks.remove(this)
 
@@ -143,7 +145,7 @@ class TestScheduler(
 
         val st = PlannedTask(t, targetTime)
 
-        log.info("Schedule $st")
+        log?.info("Schedule $st")
         tasks.add(st)
 
         return st
@@ -179,7 +181,7 @@ class TestScheduler(
                     }
 
                     val left = task.runAtTimeLocal - currentTimeLocal
-                    log.info("... ${formatTTime(currentTimeLocal)} (-${left / 1000.0}) ...")
+                    log?.info("... ${formatTTime(currentTimeLocal)} (-${left / 1000.0}) ...")
 
                     currentTimeLocal += min(1000, left)
                     if (currentTimeLocal != task.runAtTimeLocal) {
@@ -193,7 +195,7 @@ class TestScheduler(
                 ) {
 
                     // GO!
-                    log.info("""
+                    log?.info("""
                     |
                     |   Step: $task
                     |""".trimMargin())
@@ -207,7 +209,7 @@ class TestScheduler(
     }
 
     fun logQueue() {
-        log.info("\n\tCurrent queue:\n" +
+        log?.info("\n\tCurrent queue:\n" +
             tasks.joinToString(separator = "\n") {
                 "\t\t$it"
             })
