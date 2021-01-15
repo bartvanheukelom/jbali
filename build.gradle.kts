@@ -95,11 +95,12 @@ tasks {
 }
 
 
-// determine which platforms to include
-val jsOnly = System.getProperty("$name.jsOnly") == "true"
-val doJvm = System.getProperty("$name.doJvm") == "true" || !jsOnly
-val doJs = System.getProperty("$name.doJs") != "false" || jsOnly
-
+// determine which platforms to include - TODO fix or remove
+//val jsOnly = System.getProperty("$name.jsOnly") == "true"
+//val doJvm = System.getProperty("$name.doJvm") == "true" || !jsOnly
+//val doJs = System.getProperty("$name.doJs") != "false" || jsOnly
+val doJvm = true
+val doJs = true
 
 
 // ===================================== JVM ================================ //
