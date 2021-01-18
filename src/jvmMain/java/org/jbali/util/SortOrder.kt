@@ -24,3 +24,11 @@ enum class SortOrder(
                 DESCENDING -> maxOf(a, b)
             }
 }
+
+/**
+ * Depending on the value of [order], is equivalent to the stdlib functions:
+ * - [SortOrder.ASCENDING] -> [Iterable.sortedBy]
+ * - [SortOrder.DESCENDING] -> [Iterable.sortedByDescending]
+ */
+fun <T, K : Comparable<K>> Iterable<T>.sortedInOrderBy(order: SortOrder, selector: (T) -> K): List<T> =
+    sortedWith(compareBy(order.comparator(), selector))
