@@ -24,3 +24,9 @@ fun Random.nextPaddedNum(digits: Int): String =
             }
             toString()
         }
+
+fun Random.nextDigit(): Char =
+    nextInt('0'.toInt(), '9'.toInt()).toChar()
+
+fun Random.nextUpperCaseLetter(): Char =
+    nextInt('A'.toInt(), 'Z'.toInt()).toChar()

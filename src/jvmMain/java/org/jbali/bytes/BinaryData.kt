@@ -21,7 +21,10 @@ class BinaryData(
 ) {
 
     override fun toString(): String =
-            "BinaryData(${data.toHexString()})"
+            "BinaryData(${toHexString()})"
+
+    fun toHexString() =
+        data.toHexString()
 
     override fun equals(other: Any?): Boolean =
             when {
