@@ -68,7 +68,13 @@ abstract class Scheduler {
             val body: TaskBody,
             val name: String,
             val roundToSecond: Boolean = false
-    )
+    ) {
+        init {
+            require(delay >= Duration.ZERO) {
+                "Cannot schedule $this in the past"
+            }
+        }
+    }
 
     fun after(delay: Duration) = After(delay)
 
