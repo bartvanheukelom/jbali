@@ -118,8 +118,8 @@ class TestScheduler(
                         true
                     }
 
-                    ScheduledTask.State.RUNNING -> if (!allowWhileRunning) {
-                        throw AssertionError("Cancel while running? Are you using TestScheduler from multiple threads?")
+                    ScheduledTask.State.RUNNING -> if (interrupt && !allowWhileRunning) {
+                        throw AssertionError("Trying to interrupt $this while it's running, which you have not allowed")
                     } else true
 
                     ScheduledTask.State.COMPLETED,

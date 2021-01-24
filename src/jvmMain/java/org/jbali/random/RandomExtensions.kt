@@ -1,6 +1,11 @@
 package org.jbali.random
 
+import kotlinx.serialization.Serializable
 import org.jbali.math.powerOf10
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.log10
+import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
@@ -30,3 +35,22 @@ fun Random.nextDigit(): Char =
 
 fun Random.nextUpperCaseLetter(): Char =
     nextInt('A'.toInt(), 'Z'.toInt()).toChar()
+
+fun Random.nextNormalDouble(): Double =
+    sqrt(-2 * log10(nextDouble())) * cos(2 * PI * nextDouble())
+
+fun Random.nextNormalDouble(mean: Double, sd: Double): Double =
+    (nextNormalDouble() * sd) + mean
+
+@Serializable
+data class NormalDistribution(
+    val mean: Double,
+    val sd: Double
+) {
+    companion object {
+        val standard = NormalDistribution(mean = 0.0, sd = 1.0)
+    }
+}
+
+fun Random.nextNormalDouble(distribution: NormalDistribution): Double =
+    nextNormalDouble(distribution.mean, distribution.sd)
