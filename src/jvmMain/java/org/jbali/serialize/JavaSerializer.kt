@@ -58,11 +58,26 @@ object JavaSerializer {
             ObjectStreamClass::class.java.getDeclaredMethod("hasReadResolveMethod")
                 .apply { isAccessible = true }
 
+    /**
+     * Assert that the given class has a correct `readResolve` method for Java serialization.
+     *
+     * Such a method MUST:
+     * - be named `readResolve`
+     * - have JVM return type [Object], nothing more specific
+     *
+     * It MAY:
+     * - be private
+     * - omit declaring [ObjectStreamException]
+     * - make the return type `@NotNull Object`, or [Any] in Kotlin
+     *
+     * [https://docs.oracle.com/javase/7/docs/platform/serialization/spec/input.html#5903]
+     */
+    // TODO implement this check as an annotation processor
     fun assertReadResolve(clazz: Class<*>): ObjectStreamClass {
         val osc = ObjectStreamClass.lookup(clazz)
         val hasReRe = ObjectStreamClass_hasReadResolveMethod.invoke(osc) as Boolean
         if (!hasReRe) {
-            throw AssertionError("$clazz does not have a correct readResolve method")
+            throw AssertionError("$clazz does not have a conformant readResolve method. See assertReadResolve method doc for requirements.")
         }
         return osc
     }
@@ -76,7 +91,7 @@ object JavaSerializer {
         val osc = ObjectStreamClass.lookup(clazz)
         val hasReRe = ObjectStreamClass_hasWriteReplaceMethod.invoke(osc) as Boolean
         if (!hasReRe) {
-            throw AssertionError("$clazz does not have a correct writeReplace method")
+            throw AssertionError("$clazz does not have a conformant writeReplace method")
         }
         return osc
     }
