@@ -14,12 +14,12 @@ data class CachedTransform<out I, out O>(
 class CachingTransform<out I, O>(
         private val input: () -> I,
         private val transform: (I) -> O
-) {
+): () -> O {
     private val cache = AtomicReference<CachedTransform<I,O>>()
 
     val cached get() = cache.get() ?: null
 
-    operator fun invoke() = cache.updateAndGet { cached ->
+    override operator fun invoke() = cache.updateAndGet { cached ->
         val newIn = input()
         if (cached?.input == newIn) cached
         else CachedTransform(newIn, transform(newIn))
