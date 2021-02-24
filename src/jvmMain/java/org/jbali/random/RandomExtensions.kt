@@ -1,6 +1,6 @@
 package org.jbali.random
 
-import kotlinx.serialization.Serializable
+import org.jbali.math.NormalDistribution
 import org.jbali.math.powerOf10
 import kotlin.math.PI
 import kotlin.math.cos
@@ -41,16 +41,6 @@ fun Random.nextNormalDouble(): Double =
 
 fun Random.nextNormalDouble(mean: Double, sd: Double): Double =
     (nextNormalDouble() * sd) + mean
-
-@Serializable
-data class NormalDistribution(
-    val mean: Double,
-    val sd: Double
-) {
-    companion object {
-        val standard = NormalDistribution(mean = 0.0, sd = 1.0)
-    }
-}
 
 fun Random.nextNormalDouble(distribution: NormalDistribution): Double =
     nextNormalDouble(distribution.mean, distribution.sd)
