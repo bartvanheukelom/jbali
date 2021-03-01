@@ -1,9 +1,8 @@
 package org.jbali.hum
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.descriptors.SerialDescriptor
 import org.jbali.collect.ListSet
 import org.jbali.collect.toListSet
 import org.jbali.kotser.StringBasedSerializer
@@ -96,7 +95,19 @@ sealed class HumTree<R : HumValue<R>, G : R>(
             name
 
     fun fromString(s: String): G =
-            byName.getValue(s)
+            byName[s] ?: throw NoSuchElementException("$this has no value named '$s'. Did you mean '${closestMatch(s)}'?")
+
+    fun closestMatch(s: String): G =
+        values.minByOrNull { nameDistance(it.name, s) }
+            ?: throw NoSuchElementException("$this has no values?")
+
+    // TODO levenshtein
+    private fun nameDistance(canonical: String, s: String): Int =
+        when {
+            s == canonical -> 0
+            s.trim().equals(canonical, ignoreCase = true) -> 1
+            else -> 100
+        }
 
     fun toString(o: G) =
             o.name
