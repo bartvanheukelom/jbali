@@ -170,7 +170,7 @@ class TestScheduler(
 
                 if (maxDuration != null) {
                     check(task.runAtTimeLocal <= maxDuration.toMillis()) {
-                        "Won't run task scheduled > maxDuration $maxDuration. Process under test seems stuck in a non-progression state."
+                        "Won't run task $task which is scheduled after $maxDuration. Is the process under test stuck in an infinite loop?"
                     }
                 }
 
