@@ -104,7 +104,7 @@ fun Logger.invocation(func: KCallable<*>, vararg args: Any?) {
 }
 
 val KType.simplified: String by StoredExtensionProperty {
-    val str = this.toString()
+    val str = this().toString()
     if (str.count { it == '.' } == 1) {
         str.removePrefix("kotlin.")
     } else {
@@ -114,7 +114,7 @@ val KType.simplified: String by StoredExtensionProperty {
 
 val KClass<*>.kotlinReferenceLink: String by StoredExtensionProperty {
     "https://kotlinlang.org/api/latest/jvm/stdlib/" +
-            (qualifiedName ?: "kotlin.Nothing").let {
+            (this().qualifiedName ?: "kotlin.Nothing").let {
                 val ld = it.lastIndexOf('.')
                 val pack = it.substring(0, ld)
                 val name = it.substring(ld + 1)

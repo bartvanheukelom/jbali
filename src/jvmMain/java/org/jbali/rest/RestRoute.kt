@@ -17,20 +17,33 @@ import org.jbali.util.ReifiedType
 import org.jbali.util.StoredExtensionProperty
 import org.jbali.util.reifiedTypeOf
 import org.jbali.util.weakKeyLoadingCache
+import java.lang.ref.WeakReference
 import kotlin.contracts.ExperimentalContracts
 
 abstract class RestRoute : RestApiContext {
 
     abstract val route: Route
 
+    /**
+     * For the given object, returns a function C that, when called with a [KSerializer],
+     * returns the JSON representation of the object, using that serializer, and the [jsonFormat] of this route.
+     *
+     * _Memory_
+     *
+     * - 1 instance of [StoredExtensionProperty] per [RestRoute].
+     * - 1 instance of C for each instance of [T] in each [StoredExtensionProperty].
+     * - Each C refers to another cache, which associates (WeakReferenced) [KSerializer]s with JSON.
+     */
     // TODO cache TextContent, or at least the bytes.
     // TODO the assumption made the in StoredExtensionProperty implementation, that the delegates themselves are basically
     //      static, is now proven false. theoretically, could leak memory if rest routes are created and removed repeatedly.
-    val <T> T.asJsonCache: (KSerializer<T>) -> String
+    private val <T> T.jsonCache: (KSerializer<T>) -> String
             by StoredExtensionProperty {
-                val obj = this
+                val obj: WeakReference<T> = this.weakReference()
                 weakKeyLoadingCache<KSerializer<T>, String> { ser ->
-                    jsonFormat.encodeToString(ser, obj)
+                    val o = obj.get()
+                        ?: throw IllegalStateException("Object collected while using its jsonCache???")
+                    jsonFormat.encodeToString(ser, o)
                 }
             }
 
@@ -77,7 +90,7 @@ abstract class RestRoute : RestApiContext {
     ) {
 
         // serialize return value
-        val returnJson: String = returnVal.asJsonCache.invoke(returnType.serializer)
+        val returnJson: String = returnVal.jsonCache.invoke(returnType.serializer)
 
         // instruct client how to deserialize the response
         // TODO instead, set contentType to application/vnd.$returnType+json... but how to deal with nullability and type parameters
@@ -146,7 +159,7 @@ inline operator fun <T, R> T.div(block: (T) -> R): R {
 }
 
 private val ByteArrayContent.etag: String by StoredExtensionProperty {
-    bytes() /
+    this().bytes() /
             { it.sha256 } /
             { it encodedAs Hex.Lower } /
             { it.string }

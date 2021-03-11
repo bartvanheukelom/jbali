@@ -132,5 +132,8 @@ inline fun <reified T> reifiedTypeOf(): ReifiedType<T> {
 }
 
 val KType.cachedReifiedType: ReifiedType<*> by StoredExtensionProperty {
-    ReifiedType<Any?>(type = this)
+    // TODO this leaks! the following ref chain is never GC'ed:
+    //      cache -> _: WeakEntry -> value: ReifiedType -> type: KType
+    //      just remove the cache in the next update, it probably only negatively affects performance.
+    ReifiedType<Any?>(type = this.steal())
 }

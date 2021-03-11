@@ -10,7 +10,7 @@ import kotlin.reflect.full.memberProperties
  * Doesn't copy anything, it's just a facade over the given object,
  * so it inherits mutability and thread-safety from that object.
  */
-class ObjMap<T : Any>(
+class ObjMap<T : Any> private constructor(
         private val clazz: ClassMapInfo<T>,
         val obj: T
 ) : Map<String, Any?> { // TODO MutableMap
@@ -109,7 +109,7 @@ val <T : Any> T.asMap: Map<String, Any?> get() = ObjMap(this)
 /**
  * Caches the per-class information used by [ObjMap].
  */
-data class ClassMapInfo<T : Any>(val clazz: KClass<T>) {
+private class ClassMapInfo<T : Any>(clazz: KClass<T>) {
 
     val props: Map<String, KProperty1<T, *>> =
             clazz.memberProperties
@@ -159,5 +159,7 @@ data class ClassMapInfo<T : Any>(val clazz: KClass<T>) {
 
 }
 
-val <T : Any> KClass<T>.classMapInfo: ClassMapInfo<T>
-        by StoredExtensionProperty(::ClassMapInfo)
+private val <T : Any> KClass<T>.classMapInfo: ClassMapInfo<T>
+        by StoredExtensionProperty {
+            ClassMapInfo(this())
+        }

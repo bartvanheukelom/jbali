@@ -69,7 +69,7 @@ data class PrintingFixedValueDelegate<T>(val value: T): ReadOnlyPropertyProvider
  */
 // TODO ask if there isn't any simpler way
 @Suppress("NOTHING_TO_INLINE")
-inline fun <R, T> (() -> T).ignoringReceiver(): (R.() -> T) {
+inline fun <R, T> (() -> T).withIgnoredReceiver(): (R.() -> T) {
     val t: () -> T = this
     return { t() }
 }
