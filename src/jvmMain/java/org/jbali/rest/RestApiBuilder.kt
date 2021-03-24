@@ -9,11 +9,14 @@ import io.ktor.routing.Route
 import io.ktor.routing.get
 import io.ktor.routing.route
 import io.ktor.serialization.*
+import io.ktor.util.pipeline.*
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.buildJsonObject
 import org.jbali.errors.removeCommonStack
 import org.jbali.errors.stackTraceString
 import org.jbali.kotser.DefaultJson
+import org.jbali.kotser.jsonString
 import org.jbali.ktor.BasicErrorException
 import org.jbali.util.uuid
 import org.slf4j.Logger
@@ -65,6 +68,8 @@ data class RestApiBuilder(
     override val context get() = this
 
 //    private val oasPaths = mutableMapOf<String, PathItem>()
+
+    var errorResponseAugmenter: JsonObjectBuilder.(PipelineContext<Unit, ApplicationCall>) -> Unit = {}
 
     init {
         route.apply {
@@ -153,9 +158,13 @@ data class RestApiBuilder(
         // default to 404 if no matches
         route.route("{...}") {
             handle {
+                val plc = this
                 respondObject(
                         status = HttpStatusCode.NotFound,
-                        returnVal = "Not Found"
+                        returnVal = buildJsonObject {
+                            put("message", jsonString("Not Found (RestApi)"))
+                            errorResponseAugmenter(plc)
+                        }
                 )
             }
         }
