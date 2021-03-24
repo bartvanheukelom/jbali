@@ -1,14 +1,9 @@
 package org.jbali.ktor
 
-import io.ktor.application.ApplicationCall
-import io.ktor.application.call
-import io.ktor.routing.PathSegmentParameterRouteSelector
-import io.ktor.routing.Route
-import io.ktor.util.AttributeKey
-import io.ktor.util.Attributes
-import io.ktor.util.KtorExperimentalAPI
-import io.ktor.util.getOrFail
-import io.ktor.util.pipeline.PipelineContext
+import io.ktor.application.*
+import io.ktor.routing.*
+import io.ktor.util.*
+import io.ktor.util.pipeline.*
 
 /**
  * Create a child [Route] where the first path segment is captured as a parameter, named [name].
@@ -27,6 +22,14 @@ fun Route.pathParameter(
         build(getParameterValue)
     }
 }
+
+fun Route.toStringWithChildren(): String =
+    buildString {
+        appendLine(this@toStringWithChildren)
+        children.forEach {
+            append(it.toStringWithChildren().prependIndent("  "))
+        }
+    }
 
 operator fun <T : Any> Attributes.set(key: AttributeKey<T>, value: T) {
     put(key, value)
