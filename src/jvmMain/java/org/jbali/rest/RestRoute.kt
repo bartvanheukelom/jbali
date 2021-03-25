@@ -26,7 +26,11 @@ abstract class RestRoute : RestApiContext {
 
     private val log = LoggerFactory.getLogger(RestRoute::class.java)
 
-    abstract val route: Route
+    internal abstract val route: Route
+
+    @Suppress("DeprecatedCallableAddReplaceWith")
+    @Deprecated("")
+    val ktorRouteForHacks get() = route
 
     /**
      * For the given object, returns a function C that, when called with a [KSerializer],
@@ -72,7 +76,13 @@ abstract class RestRoute : RestApiContext {
                 throw RestException(HttpStatusCode.BadRequest, e)
             }
 
-    suspend fun <T> PipelineContext<Unit, ApplicationCall>.rawHandle(
+    /**
+     * Let [impl] handle this call without any input processing, but do process its return value
+     * as a response object.
+     */
+    @Suppress("DeprecatedCallableAddReplaceWith")
+    @Deprecated("obfuscates too much, provides little value")
+    suspend fun <T> PipelineContext<Unit, ApplicationCall>.handleCustomInput(
             returnType: ReifiedType<T>,
             impl: suspend () -> T
     ) {
@@ -81,6 +91,22 @@ abstract class RestRoute : RestApiContext {
         val returnVal = impl()
 
         respondObject(returnType = returnType, returnVal = returnVal)
+    }
+
+    /**
+     * Let [impl] handle this call without any input processing, but do process its return value
+     * as a response object.
+     */
+    @Suppress("DeprecatedCallableAddReplaceWith")
+    @Deprecated("obfuscates too much, provides little value")
+    suspend inline fun <reified T : Any> PipelineContext<Unit, ApplicationCall>.handleCustomInput(
+        noinline impl: suspend () -> T
+    ) {
+        @Suppress("DEPRECATION")
+        handleCustomInput(
+            returnType = reifiedTypeOf(),
+            impl = impl
+        )
     }
 
     suspend inline fun <reified T> PipelineContext<Unit, ApplicationCall>.respondObject(
@@ -120,7 +146,7 @@ abstract class RestRoute : RestApiContext {
         )
     }
 
-    suspend fun PipelineContext<Unit, ApplicationCall>.respondJson(
+    private suspend fun PipelineContext<Unit, ApplicationCall>.respondJson(
             json: String,
             status: HttpStatusCode = HttpStatusCode.OK,
             contentType: ContentType = ContentType.Application.Json
@@ -145,15 +171,6 @@ abstract class RestRoute : RestApiContext {
         }
 
         call.respond(c)
-    }
-
-    suspend inline fun <reified T : Any> PipelineContext<Unit, ApplicationCall>.rawHandle(
-            noinline impl: suspend () -> T
-    ) {
-        rawHandle(
-                returnType = reifiedTypeOf(),
-                impl = impl
-        )
     }
 
     open class Sub(

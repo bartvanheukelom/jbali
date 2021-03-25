@@ -1,13 +1,8 @@
 package org.jbali.rest
 
-import io.ktor.application.ApplicationCall
-import io.ktor.application.call
-import io.ktor.routing.PathSegmentParameterRouteSelector
-import io.ktor.routing.Route
-import io.ktor.routing.createRouteFromPath
-import io.ktor.routing.get
-import io.ktor.util.KtorExperimentalAPI
-import io.ktor.util.getOrFail
+import io.ktor.application.*
+import io.ktor.routing.*
+import io.ktor.util.*
 import org.jbali.util.ReifiedType
 import org.jbali.util.reifiedTypeOf
 
@@ -63,9 +58,14 @@ class RestCollection(
             impl: suspend I.(ApplicationCall) -> T
     ) {
         route.get("") {
-            rawHandle(returnType) {
-                readInput(type = inputType).impl(call)
-            }
+            readInput(inputType)
+                .let { it.impl(call) }
+                .let { rv ->
+                    respondObject(
+                        returnType = returnType,
+                        returnVal = rv
+                    )
+                }
         }
     }
 
