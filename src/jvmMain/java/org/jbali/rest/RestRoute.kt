@@ -15,6 +15,7 @@ import org.jbali.bytes.encodedAs
 import org.jbali.crypto.sha256
 import org.jbali.kotser.jsonString
 import org.jbali.kotser.serializer
+import org.jbali.ktor.handleExact
 import org.jbali.util.ReifiedType
 import org.jbali.util.StoredExtensionProperty
 import org.jbali.util.reifiedTypeOf
@@ -187,13 +188,12 @@ abstract class RestRoute : RestApiContext {
                 .configure(config)
 
     fun postConfig() {
-        route.createRouteFromPath("").handle {
-            val plc = this
+        route.handleExact {
             respondObject(
                 status = HttpStatusCode.MethodNotAllowed,
                 returnVal = buildJsonObject {
                     put("message", jsonString("Method Not Allowed: ${call.request.httpMethod.value}"))
-                    errorResponseAugmenter(plc)
+                    errorResponseAugmenter(call)
                 }
             )
         }

@@ -7,9 +7,7 @@ import io.ktor.http.content.*
 import io.ktor.response.*
 import io.ktor.routing.Route
 import io.ktor.routing.get
-import io.ktor.routing.route
 import io.ktor.serialization.*
-import io.ktor.util.pipeline.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.buildJsonObject
@@ -18,6 +16,7 @@ import org.jbali.errors.stackTraceString
 import org.jbali.kotser.DefaultJson
 import org.jbali.kotser.jsonString
 import org.jbali.ktor.BasicErrorException
+import org.jbali.ktor.handleAnyPath
 import org.jbali.util.uuid
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -34,7 +33,7 @@ interface RestApiContext {
     val context: RestApiContext
     // useful properties:
     val jsonFormat: Json
-    val errorResponseAugmenter: JsonObjectBuilder.(PipelineContext<Unit, ApplicationCall>) -> Unit
+    val errorResponseAugmenter: JsonObjectBuilder.(ApplicationCall) -> Unit
 }
 
 class RestException(val statusCode: HttpStatusCode, message: String? = null, cause: Throwable? = null) :
@@ -70,7 +69,7 @@ data class RestApiBuilder(
 
 //    private val oasPaths = mutableMapOf<String, PathItem>()
 
-    override var errorResponseAugmenter: JsonObjectBuilder.(PipelineContext<Unit, ApplicationCall>) -> Unit = {}
+    override var errorResponseAugmenter: JsonObjectBuilder.(ApplicationCall) -> Unit = {}
 
     init {
         route.apply {
@@ -157,17 +156,14 @@ data class RestApiBuilder(
 //        }
 
         // default to 404 if no matches
-        route.route("{...}") {
-            handle {
-                val plc = this
-                respondObject(
-                        status = HttpStatusCode.NotFound,
-                        returnVal = buildJsonObject {
-                            put("message", jsonString("Not Found"))
-                            errorResponseAugmenter(plc)
-                        }
-                )
-            }
+        route.handleAnyPath {
+            respondObject(
+                status = HttpStatusCode.NotFound,
+                returnVal = buildJsonObject {
+                    put("message", jsonString("Not Found"))
+                    errorResponseAugmenter(call)
+                }
+            )
         }
 
         return RestApi(
