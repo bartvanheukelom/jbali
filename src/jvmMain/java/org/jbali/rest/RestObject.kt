@@ -27,7 +27,8 @@ fun <T> RestRoute.singleton(
                 context = context,
                 route = route.createRouteFromPath(name),
                 type = type
-        ).apply(config)
+        )
+            .configure(config)
 
 open class RestObject<T>(
         context: RestApiContext,

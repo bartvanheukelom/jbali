@@ -9,9 +9,11 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.json.buildJsonObject
 import org.jbali.bytes.Hex
 import org.jbali.bytes.encodedAs
 import org.jbali.crypto.sha256
+import org.jbali.kotser.jsonString
 import org.jbali.kotser.serializer
 import org.jbali.util.ReifiedType
 import org.jbali.util.StoredExtensionProperty
@@ -20,7 +22,6 @@ import org.jbali.util.weakKeyLoadingCache
 import org.slf4j.LoggerFactory
 import java.lang.ref.WeakReference
 import java.time.Instant
-import kotlin.contracts.ExperimentalContracts
 
 abstract class RestRoute : RestApiContext {
 
@@ -149,10 +150,10 @@ abstract class RestRoute : RestApiContext {
     private suspend fun PipelineContext<Unit, ApplicationCall>.respondJson(
             json: String,
             status: HttpStatusCode = HttpStatusCode.OK,
-            contentType: ContentType = ContentType.Application.Json
+//            contentType: ContentType = ContentType.Application.Json
     ) {
 
-        // disable because that's the caller's own responsibility
+        // disabled because that's the caller's own responsibility
 //        contentType.requireJson()
 
         respond(TextContent(
@@ -183,18 +184,42 @@ abstract class RestRoute : RestApiContext {
                     context = context,
                     route = route.createRouteFromPath(name)
             )
-                    .apply(config)
+                .configure(config)
+
+    fun postConfig() {
+        route.createRouteFromPath("").handle {
+            val plc = this
+            respondObject(
+                status = HttpStatusCode.MethodNotAllowed,
+                returnVal = buildJsonObject {
+                    put("message", jsonString("Method Not Allowed: ${call.request.httpMethod.value}"))
+                    errorResponseAugmenter(plc)
+                }
+            )
+        }
+    }
 
 }
 
-@OptIn(ExperimentalContracts::class)
-inline operator fun <T, R> T.div(block: (T) -> R): R {
+inline fun <R : RestRoute> R.configure(config: R.() -> Unit): R =
+    this
+        .apply(config)
+        .apply(RestRoute::postConfig)
+
+//@OptIn(ExperimentalContracts::class)
+inline operator fun <L, R> L.div(block: (L) -> R): R {
+    // TODO enable when allowed for operator functions:
+//    contract {
+//        callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+//    }
     return block(this)
 }
 
-private val ByteArrayContent.etag: String by StoredExtensionProperty {
-    this().bytes() /
-            { it.sha256 } /
-            { it encodedAs Hex.Lower } /
-            { it.string }
-}
+private val ByteArrayContent.etag: String
+    by StoredExtensionProperty {
+        this()
+            .bytes()
+            .sha256
+            .encodedAs(Hex.Lower)
+            .string
+    }

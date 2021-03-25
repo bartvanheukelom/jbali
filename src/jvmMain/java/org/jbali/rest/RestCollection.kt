@@ -10,7 +10,8 @@ fun RestRoute.collection(name: String, config: RestCollection.() -> Unit): RestC
         RestCollection(
                 context = context,
                 route = route.createRouteFromPath(name)
-        ).apply(config)
+        )
+            .configure(config)
 
 class RestCollection(
         context: RestApiContext,
@@ -87,7 +88,8 @@ class RestCollection(
                     route = route.createChild(PathSegmentParameterRouteSelector("key")),
                     type = type,
                     getKey = { parameters.getOrFail("key") }
-            ).apply(config)
+            )
+                .configure(config)
 
     class Item<T : Any>(
             context: RestApiContext,

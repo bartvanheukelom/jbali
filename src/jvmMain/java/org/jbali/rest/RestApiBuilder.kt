@@ -34,6 +34,7 @@ interface RestApiContext {
     val context: RestApiContext
     // useful properties:
     val jsonFormat: Json
+    val errorResponseAugmenter: JsonObjectBuilder.(PipelineContext<Unit, ApplicationCall>) -> Unit
 }
 
 class RestException(val statusCode: HttpStatusCode, message: String? = null, cause: Throwable? = null) :
@@ -69,7 +70,7 @@ data class RestApiBuilder(
 
 //    private val oasPaths = mutableMapOf<String, PathItem>()
 
-    var errorResponseAugmenter: JsonObjectBuilder.(PipelineContext<Unit, ApplicationCall>) -> Unit = {}
+    override var errorResponseAugmenter: JsonObjectBuilder.(PipelineContext<Unit, ApplicationCall>) -> Unit = {}
 
     init {
         route.apply {
@@ -162,7 +163,7 @@ data class RestApiBuilder(
                 respondObject(
                         status = HttpStatusCode.NotFound,
                         returnVal = buildJsonObject {
-                            put("message", jsonString("Not Found (RestApi)"))
+                            put("message", jsonString("Not Found"))
                             errorResponseAugmenter(plc)
                         }
                 )
