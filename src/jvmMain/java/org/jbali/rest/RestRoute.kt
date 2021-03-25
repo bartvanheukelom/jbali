@@ -17,10 +17,14 @@ import org.jbali.util.ReifiedType
 import org.jbali.util.StoredExtensionProperty
 import org.jbali.util.reifiedTypeOf
 import org.jbali.util.weakKeyLoadingCache
+import org.slf4j.LoggerFactory
 import java.lang.ref.WeakReference
+import java.time.Instant
 import kotlin.contracts.ExperimentalContracts
 
 abstract class RestRoute : RestApiContext {
+
+    private val log = LoggerFactory.getLogger(RestRoute::class.java)
 
     abstract val route: Route
 
@@ -39,10 +43,17 @@ abstract class RestRoute : RestApiContext {
     //      static, is now proven false. theoretically, could leak memory if rest routes are created and removed repeatedly.
     private val <T> T.jsonCache: (KSerializer<T>) -> String
             by StoredExtensionProperty {
+
+                val objStr = toString()
+                val cache = "(created @ ${Instant.now()})"
+
                 val obj: WeakReference<T> = this.weakReference()
                 weakKeyLoadingCache<KSerializer<T>, String> { ser ->
                     val o = obj.get()
-                        ?: throw IllegalStateException("Object collected while using its jsonCache???")
+                        ?: throw IllegalStateException(
+                            "Object collected while using its jsonCache???" +
+                            "; objStr=$objStr, cache=$cache; ser=$ser"
+                        )
                     jsonFormat.encodeToString(ser, o)
                 }
             }
@@ -90,7 +101,13 @@ abstract class RestRoute : RestApiContext {
     ) {
 
         // serialize return value
-        val returnJson: String = returnVal.jsonCache.invoke(returnType.serializer)
+        val returnJson: String =
+            try {
+                returnVal.jsonCache.invoke(returnType.serializer)
+            } catch (e: Throwable) {
+                log.warn("Error invoking jsonCache for returnVal=$returnVal, returnType.serializer=${returnType.serializer}", e)
+                jsonFormat.encodeToString(returnType.serializer, returnVal)
+            }
 
         // instruct client how to deserialize the response
         // TODO instead, set contentType to application/vnd.$returnType+json... but how to deal with nullability and type parameters
