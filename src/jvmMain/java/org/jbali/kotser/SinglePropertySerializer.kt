@@ -7,6 +7,12 @@ import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.typeOf
 
 inline fun <reified T : Any, reified P> singlePropertySerializer(
+        prop: KProperty1<T, P>,
+        crossinline construct: (P) -> T
+): KSerializer<T> =
+        singlePropertySerializer(prop = prop, wrap = construct)
+
+inline fun <reified T : Any, reified P> singlePropertySerializer(
         prop: KProperty1<T, P> = T::class.declaredMemberProperties.single().checkReturnType(),
         serialName: String =
                 @OptIn(ExperimentalStdlibApi::class)
