@@ -1,6 +1,7 @@
 package org.jbali.rest
 
 import io.ktor.application.*
+import io.ktor.http.*
 import io.ktor.routing.*
 import io.ktor.util.*
 import org.jbali.util.ReifiedType
@@ -58,6 +59,7 @@ class RestCollection(
             returnType: ReifiedType<T>,
             impl: suspend I.(ApplicationCall) -> T
     ) {
+        allowedMethods += HttpMethod.Get
         route.get("") {
             readInput(inputType)
                 .let { it.impl(call) }

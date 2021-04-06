@@ -62,6 +62,7 @@ open class RestObject<T>(
             inputType: ReifiedType<I>,
             impl: suspend I.(ApplicationCall) -> T
     ) {
+        allowedMethods += HttpMethod.Get
         route.get("") {
             readInput(inputType)
                 .let { it.impl(call) }
@@ -90,6 +91,7 @@ open class RestObject<T>(
             inputType: ReifiedType<I>,
             impl: suspend (ApplicationCall, I) -> Unit
     ) {
+        allowedMethods += HttpMethod.Put
         route.put("") {
             impl(call, call.receive(inputType.type))
             call.respondNoContent()
@@ -112,6 +114,7 @@ open class RestObject<T>(
             inputType: ReifiedType<I>,
             impl: suspend (ApplicationCall, I) -> Unit
     ) {
+        allowedMethods += HttpMethod.Patch
         route.route("", HttpMethod.Patch) {
             handle {
                 impl(call, call.receive(inputType.type))

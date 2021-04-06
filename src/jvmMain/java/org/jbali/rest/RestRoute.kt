@@ -34,6 +34,8 @@ abstract class RestRoute : RestApiContext {
     @Deprecated("")
     val ktorRouteForHacks get() = route
 
+    protected val allowedMethods = mutableSetOf<HttpMethod>()
+
     /**
      * For the given object, returns a function C that, when called with a [KSerializer],
      * returns the JSON representation of the object, using that serializer, and the [jsonFormat] of this route.
@@ -188,7 +190,18 @@ abstract class RestRoute : RestApiContext {
                 .configure(config)
 
     fun postConfig() {
+        setupMethodNotAllowed()
+    }
+
+    private fun setupMethodNotAllowed() {
+
+        val allowedHeader =
+            allowedMethods.joinToString { it.value }
+
         route.handleExact {
+
+            call.response.header(HttpHeaders.Allow, allowedHeader)
+
             respondObject(
                 status = HttpStatusCode.MethodNotAllowed,
                 returnVal = buildJsonObject {
