@@ -27,7 +27,7 @@ fun Random.nextPaddedNum(digits: Int): String =
             for (d in 0 until digits) {
                 a[d] = DIGIT_CHARS.random(this)
             }
-            toString()
+            String(a)
         }
 
 fun Random.nextDigit(): Char =
