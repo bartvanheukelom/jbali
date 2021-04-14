@@ -73,12 +73,14 @@ inline fun <T> runWithThreadName(name: String?, appendWithSeparator: String? = n
  * if it's false, calls enter, which must invoke its argument (which is a wrapper around inner) and return that result.
  */
 @OptIn(ExperimentalContracts::class)
-inline fun <T> reentrant(entered: ThreadLocal<Boolean>, noinline inner: () -> T, wrapper: (inner: () -> T) -> T): T {
+inline fun <T> reentrant(entered: ThreadLocal<Boolean>, crossinline inner: () -> T, wrapper: (inner: () -> T) -> T): T {
     contract {
         callsInPlace(inner, InvocationKind.EXACTLY_ONCE)
     }
 
-    return if (entered.get()) inner()
+    val outlinedInner = { inner() }
+
+    return if (entered.get()) outlinedInner()
     else {
         try {
             val thread = Thread.currentThread()
@@ -89,7 +91,7 @@ inline fun <T> reentrant(entered: ThreadLocal<Boolean>, noinline inner: () -> T,
                 check(Thread.currentThread() == thread)
                 check(!innerCalled)
                 innerCalled = true
-                inner()
+                outlinedInner()
             }
             check(innerCalled)
             res
