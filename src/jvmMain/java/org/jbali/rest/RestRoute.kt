@@ -132,12 +132,13 @@ abstract class RestRoute : RestApiContext {
 
         // serialize return value
         val returnJson: String =
-            try {
-                returnVal.jsonCache.invoke(returnType.serializer)
-            } catch (e: Throwable) {
-                log.warn("Error invoking jsonCache for returnVal=$returnVal, returnType.serializer=${returnType.serializer}", e)
+            // TODO fix
+//            try {
+//                returnVal.jsonCache.invoke(returnType.serializer)
+//            } catch (e: Throwable) {
+//                log.warn("Error invoking jsonCache for returnVal=$returnVal, returnType.serializer=${returnType.serializer}", e)
                 jsonFormat.encodeToString(returnType.serializer, returnVal)
-            }
+//            }
 
         // instruct client how to deserialize the response
         // TODO instead, set contentType to application/vnd.$returnType+json... but how to deal with nullability and type parameters
