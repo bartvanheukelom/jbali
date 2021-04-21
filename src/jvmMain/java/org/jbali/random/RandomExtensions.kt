@@ -8,6 +8,9 @@ import kotlin.math.log10
 import kotlin.math.sqrt
 import kotlin.random.Random
 
+
+// whole numbers with a given number of decimal digits
+
 /**
  * Generate a long with at most n digits.
  * E.g. nextLongOfDigits(4) will return a number in the range [0, 9999]
@@ -30,11 +33,19 @@ fun Random.nextPaddedNum(digits: Int): String =
             String(a)
         }
 
-fun Random.nextDigit(): Char =
-    nextInt('0'.toInt(), '9'.toInt()).toChar()
 
+// characters
+
+@OptIn(ExperimentalStdlibApi::class)
+fun Random.nextDigit(): Char =
+    nextInt('0'.code, '9'.code).toChar()
+
+@OptIn(ExperimentalStdlibApi::class)
 fun Random.nextUpperCaseLetter(): Char =
-    nextInt('A'.toInt(), 'Z'.toInt()).toChar()
+    nextInt('A'.code, 'Z'.code).toChar()
+
+
+// numbers on normal distribution
 
 fun Random.nextNormalDouble(): Double =
     sqrt(-2 * log10(nextDouble())) * cos(2 * PI * nextDouble())

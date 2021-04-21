@@ -11,8 +11,9 @@ object CharDomain : DiscreteDomain<Char>(), Serializable {
                 else -> value + 1
             }
 
+    @OptIn(ExperimentalStdlibApi::class)
     override fun distance(start: Char, end: Char): Long =
-            end.toLong() - start.toLong()
+            end.code.toLong() - start.code.toLong()
 
 //    override fun offset(origin: Char, distance: Long): Char =
 //            (origin.toLong() + distance).toChar()
