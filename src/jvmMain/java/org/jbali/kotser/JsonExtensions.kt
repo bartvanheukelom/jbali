@@ -19,7 +19,7 @@ val alphaStableJson = Json {
  * TODO does it still bug in latest version?
  */
 fun <T> Json.jsonify(o: T, ser: KSerializer<T>): JsonElement =
-        decodeFromString(JsonElement.serializer(), stringify(ser, o))
+        decodeFromString(JsonElement.serializer(), encodeToString(ser, o))
 
 
 /**
@@ -32,7 +32,7 @@ fun <T> Json.parseDiag(deserializer: DeserializationStrategy<T>, string: String)
                 decodeFromString(deserializer, string)
             } catch (e: Throwable) {
                 // see if the error is caused by JSON syntax (throws if it is)
-                parseJson(string)
+                parseToJsonElement(string)
                 // it's not, so throw the original exception
                 throw e
             }

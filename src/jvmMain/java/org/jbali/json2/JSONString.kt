@@ -2,10 +2,10 @@ package org.jbali.json2
 
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerializationStrategy
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.jbali.kotser.BasicJson
-import org.jbali.kotser.parseJson
 import org.jbali.kotser.stringify
 import kotlin.jvm.JvmInline
 
@@ -52,4 +52,4 @@ value class JSONString(
 }
 
 fun makeJsonPretty(t: String): String =
-        BasicJson.indented.stringify(BasicJson.plain.parseJson(t))
+    BasicJson.indented.encodeToString(BasicJson.plain.parseToJsonElement(t))

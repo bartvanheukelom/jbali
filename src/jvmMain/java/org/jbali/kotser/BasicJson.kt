@@ -15,23 +15,23 @@ object BasicJson {
     }
 
     fun parse(string: String): JsonElement =
-            when (string) {
-                "{}" -> JsonObject.empty
-                "[]" -> JsonArray.empty
-                "true" -> JsonPrimitive.bool(true)
-                "false" -> JsonPrimitive.bool(false)
-                "null" -> JsonNull
-                // TODO 0 and 1?
+        when (string) {
+            "{}" -> JsonObject.empty
+            "[]" -> JsonArray.empty
+            "true" -> JsonPrimitive.bool(true)
+            "false" -> JsonPrimitive.bool(false)
+            "null" -> JsonNull
+            // TODO 0 and 1?
 //                "" -> TODO throw
-                else -> plain.parseToJsonElement(string)
-            }
+            else -> plain.parseToJsonElement(string)
+        }
 
     fun stringify(element: JsonElement, prettyPrint: Boolean = true): String =
-            if (prettyPrint) {
-                indented
-            } else {
-                plain
-            }.stringify(element)
+        (if (prettyPrint) {
+            indented
+        } else {
+            plain
+        }).encodeToString(element)
 
 }
 

@@ -19,7 +19,7 @@ import kotlin.test.assertNotEquals
 
 @JvmInline
 value class JSON(val s: String) {
-    fun parse(): JsonElement = StdJSON.indented.parseJson(s)
+    fun parse(): JsonElement = StdJSON.indented.parseToJsonElement(s)
 }
 
 val String.J get() = JSON(this)
@@ -51,7 +51,7 @@ class StdJSONTest {
         if (expectParse != actualReparse) {
             // if it fails, do this "assertion" that will certainly fail,
             // but that will show the differences prettyPrinted.
-            val expectRestringed = JSON(serrer.stringify(expectParse))
+            val expectRestringed = JSON(serrer.encodeToString(expectParse))
             assertEquals(expectRestringed, actualJson)
 
             throw AssertionError("line before should have thrown")
@@ -113,19 +113,19 @@ class StdJSONTest {
         val constructedTrueString = JsonPrimitive("true")
 
 
-        j.parseJson("null") as JsonNull
+        j.parseToJsonElement("null") as JsonNull
 
-        val parsedTrue = j.parseJson("true") as JsonPrimitive
-        val parsedFalse = j.parseJson("false") as JsonPrimitive
-        val parsedFalseWeird = j.parseJson("FaLSe") as JsonPrimitive
-        val parsedTrueString = j.parseJson("\"true\"") as JsonPrimitive
+        val parsedTrue = j.parseToJsonElement("true") as JsonPrimitive
+        val parsedFalse = j.parseToJsonElement("false") as JsonPrimitive
+        val parsedFalseWeird = j.parseToJsonElement("FaLSe") as JsonPrimitive
+        val parsedTrueString = j.parseToJsonElement("\"true\"") as JsonPrimitive
 
-        val parsedNumber = j.parseJson("12") as JsonPrimitive
-        val parsedNumberString = j.parseJson("\"12\"") as JsonPrimitive
+        val parsedNumber = j.parseToJsonElement("12") as JsonPrimitive
+        val parsedNumberString = j.parseToJsonElement("\"12\"") as JsonPrimitive
 
-        val parsedString = j.parseJson("\"foo\"") as JsonPrimitive
+        val parsedString = j.parseToJsonElement("\"foo\"") as JsonPrimitive
 
-        val parsedNullString = j.parseJson("\"null\"") as JsonPrimitive
+        val parsedNullString = j.parseToJsonElement("\"null\"") as JsonPrimitive
 
 
         // the following assertions don't test our code, they document JsonLiteral
@@ -136,7 +136,6 @@ class StdJSONTest {
         assertEquals(constructedString, parsedString)
         assertEquals(constructedNumberString, parsedNumberString)
         assertEquals(constructedTrueString, parsedTrueString)
-
 
 
         // these belong in a new JsonElementIOTest

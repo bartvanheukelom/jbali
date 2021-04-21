@@ -8,6 +8,7 @@ import io.ktor.http.content.TextContent
 import io.ktor.response.respond
 import io.ktor.response.respondBytes
 import io.ktor.response.respondText
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.jbali.kotser.BasicJson
@@ -31,7 +32,7 @@ fun JsonElement.toHTTPContent(
         encoder: Json = BasicJson.indented
 ) =
         TextContent(
-                text = encoder.stringify(this),
+                text = encoder.encodeToString(this),
                 contentType = ContentType.Application.Json,
                 status = status
         )

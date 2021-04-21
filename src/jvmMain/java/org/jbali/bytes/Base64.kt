@@ -21,7 +21,7 @@ sealed class Base64Encoding<E : Base64Encoding<E>>(
 //            decoder.decode(enc.encoded)
 
     override fun decodeString(encoded: StringEncoded<ByteArray, E>): ByteArray =
-            decoder.decode(encoded.encoded)
+            decoder.decode(encoded.string)
 
     object Basic : Base64Encoding<Basic>(
             encoder = Base64.getEncoder(),
@@ -61,7 +61,7 @@ value class StringEncoded<V, E : StringEncoding<V, E>>(
         @get:Deprecated("string", ReplaceWith("string"))
         val encoded: String
 ) {
-    val string get() = encoded
+    val string get() = string
 
     override fun toString() = string
 }
