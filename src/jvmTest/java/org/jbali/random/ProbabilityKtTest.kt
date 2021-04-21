@@ -1,5 +1,6 @@
 package org.jbali.random
 
+import org.jetbrains.annotations.Range
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -7,9 +8,9 @@ import kotlin.test.assertFailsWith
 class ProbabilityKtTest {
 
     @Test
-    fun stepSuccessChance() {
+    fun testStepSuccessChance() {
 
-        fun ssc(t: Double, s: Int) =
+        fun ssc(t: Double, s: @Range(from = 0, to = Long.MAX_VALUE) Int): Double =
             stepSuccessChance(Probability.fromUnitNum(t), s).asUnitNum
 
         assertEquals(1.0000000000000000, ssc(1.00, 1))

@@ -1,6 +1,7 @@
 package org.jbali.random
 
 import org.jbali.math.unitInterval
+import org.jetbrains.annotations.Range
 import kotlin.math.pow
 import kotlin.random.Random
 
@@ -38,7 +39,7 @@ value class Probability private constructor(
  * of completing successfully to result in a [sequenceSuccessChance] chance of the
  * entire sequence completing successfully.
  */
-fun stepSuccessChance(sequenceSuccessChance: Probability, steps: Int): Probability {
+fun stepSuccessChance(sequenceSuccessChance: Probability, steps: @Range(from = 0, to = Long.MAX_VALUE) Int): Probability {
     require(steps > 0)
 
     // sequenceSuccessChance = stepSuccessChance ^ failPoints

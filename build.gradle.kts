@@ -153,7 +153,7 @@ if (doJvm) {
                         api(Kotlin.reflect)
 
                         api(Arrow.core, "0.13.1")
-                        api("org.jetbrains:annotations", "15.0")
+                        api("org.jetbrains:annotations", "20.1.0")
 
                         api("com.google.guava:guava", "29.0-jre")
                         api("org.slf4j:slf4j-api", vSlf4j)
