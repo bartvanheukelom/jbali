@@ -118,7 +118,7 @@ val KClass<*>.kotlinReferenceLink: String by StoredExtensionProperty {
                 val ld = it.lastIndexOf('.')
                 val pack = it.substring(0, ld)
                 val name = it.substring(ld + 1)
-                "$pack/-${name.toLowerCase()}"
+                "$pack/-${name.lowercase()}"
             } + "/"
 }
 

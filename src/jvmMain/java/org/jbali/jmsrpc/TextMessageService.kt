@@ -22,7 +22,7 @@ class TextMessageService<T : Any>(
 
     private val methods: Map<String, Method> =
             Methods.mapPublicMethodsByName(iface)
-                .mapKeys { it.key.toLowerCase() }
+                .mapKeys { it.key.lowercase() }
 
     fun handleRequest(request: String): String {
 
@@ -40,7 +40,8 @@ class TextMessageService<T : Any>(
 
             // determine method
             methName = reqJson.getString(RQIDX_METHOD)
-            val method = methods[methName.toLowerCase()] ?: throw NoSuchElementException("Unknown method '$methName'")
+            val method = methods[methName.lowercase(Locale.getDefault())]
+                ?: throw NoSuchElementException("Unknown method '$methName'")
 
             // read arguments
             val pars = method.parameters
