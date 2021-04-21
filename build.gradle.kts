@@ -1,4 +1,5 @@
 import org.jbali.gradle.*
+import org.jbali.gradle.git.GitRepository
 import org.jetbrains.kotlin.config.KotlinCompilerVersion
 import org.jetbrains.kotlin.gradle.dsl.KotlinCompile
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
@@ -92,6 +93,13 @@ forbidDependencies(
 
 // configure `dokkaHtml` to run as part of `build`, but last
 tasks {
+
+    val gitVersion by registering {
+        doLast {
+            println(GitRepository(projectDir).version())
+        }
+    }
+
     val dokkaHtml by existing {
         shouldRunAfter(
                 check,
