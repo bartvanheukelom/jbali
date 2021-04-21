@@ -13,7 +13,7 @@ class Base64Serializer<E : Base64Encoding<E>>(
             encoding.decodeString(Base64String(s))
 
     override fun toString(o: ByteArray): String =
-            encoding.encodeToString(o).encoded
+            encoding.encodeToString(o).string
 
 }
 

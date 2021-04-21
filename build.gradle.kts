@@ -155,13 +155,13 @@ if (doJvm) {
                         api(Arrow.core, "0.13.1")
                         api("org.jetbrains:annotations", "20.1.0")
 
-                        api("com.google.guava:guava", "29.0-jre")
+                        api("com.google.guava:guava", "30.1.1-jre")
                         api("org.slf4j:slf4j-api", vSlf4j)
 
-                        api("commons-codec:commons-codec", "1.10")
+                        api("commons-codec:commons-codec", "1.15")
                         api("org.apache.httpcomponents:httpclient", "4.5.13")
-                        api("org.apache.httpcomponents:httpcore", "4.4.13")
-                        api("org.threeten:threeten-extra", "1.5.0")
+                        api("org.apache.httpcomponents:httpcore", "4.4.14")
+                        api("org.threeten:threeten-extra", "1.6.0")
 
                         // for test library code used in other projects' actual tests
                         compileOnly(Kotlin.Test.jvm)
@@ -174,7 +174,7 @@ if (doJvm) {
                         compileOnly(Ktor.websockets,    vKtor)
 
                         compileOnly("com.google.code.gson:gson", "2.8.6")
-                        compileOnly("org.apache.activemq:activemq-client", "5.11.1")
+                        compileOnly("org.apache.activemq:activemq-client", "5.16.1")
 
                     }
                 }
