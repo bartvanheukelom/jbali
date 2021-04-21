@@ -1,5 +1,8 @@
+@file:OptIn(ExperimentalJsExport::class)
+
 package org.jbali.collect
 
+import kotlin.js.ExperimentalJsExport
 import kotlin.js.JsExport
 import kotlin.js.JsName
 

@@ -1,6 +1,9 @@
+@file:OptIn(ExperimentalJsExport::class)
 @file:JsExport
+
 package org.jbali.text
 
+import kotlin.js.ExperimentalJsExport
 import kotlin.js.JsExport
 import kotlin.js.JsName
 
