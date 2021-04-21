@@ -67,8 +67,15 @@ kotlin {
 
         commonTest {
             dependencies {
-                implementation(kotlin("test-common"))
-                implementation(kotlin("test-annotations-common"))
+                implementation(kotlin("test"))
+            }
+        }
+
+        // TODO can be removed when moving to 1.5.0 non-RC? but then, best to be explicit
+        all {
+            languageSettings {
+                languageVersion = "1.5"
+                apiVersion = "1.5"
             }
         }
 
@@ -120,19 +127,6 @@ val doJvm = true
 val doJs = true
 
 
-// TODO can be removed when moving to 1.5.0 non-RC? but then, best to be explicit
-kotlin {
-    sourceSets {
-        all {
-            languageSettings {
-                languageVersion = "1.5"
-                apiVersion = "1.5"
-            }
-        }
-    }
-}
-
-
 // ===================================== JVM ================================ //
 
 if (doJvm) {
@@ -180,8 +174,6 @@ if (doJvm) {
                 }
                 val jvmTest by existing {
                     dependencies {
-                        implementation(Kotlin.Test.jvm)
-                        implementation(Kotlin.Test.junit)
                         implementation("org.slf4j:jul-to-slf4j",   vSlf4j)
                         implementation("org.slf4j:jcl-over-slf4j", vSlf4j)
                         implementation("org.slf4j:slf4j-simple",   vSlf4j)
@@ -246,14 +238,6 @@ if (doJs) {
             // TODO get/pack kotlin stdlib types
             // TODO better module name?
 
-        }
-
-        sourceSets {
-            val jsTest by existing {
-                dependencies {
-                    implementation(kotlin("test-js"))
-                }
-            }
         }
 
     }
