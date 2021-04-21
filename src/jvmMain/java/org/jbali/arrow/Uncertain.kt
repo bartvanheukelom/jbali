@@ -1,9 +1,6 @@
 package org.jbali.arrow
 
-import arrow.core.Either
-import arrow.core.Left
-import arrow.core.Right
-import arrow.core.getOrHandle
+import arrow.core.*
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -37,7 +34,7 @@ inline fun <T> Uncertain<T>.ifCertain(crossinline block: (T) -> Unit) {
         callsInPlace(block, InvocationKind.AT_MOST_ONCE)
     }
     if (this is Either.Right) {
-        block(this.b)
+        block(this.value)
     }
 }
 
@@ -76,7 +73,7 @@ fun <T : Any> T.nullToError(noErrMsg: () -> String): Uncertain<T> =
 
 
 fun <T> result(r: T) =
-        Right(r)
+    r.right()
 
 fun errorMessage(msg: String) =
-        Left(ErrorMessage(msg))
+    ErrorMessage(msg).left()

@@ -6,11 +6,11 @@ import arrow.core.Either.Right
 import arrow.core.left
 import arrow.core.right
 
-fun <A, B> B?.nullToLeft(default: () -> A): Either<A, B> =
-        when (this) {
-            null -> default().left()
-            else -> this.right()
-        }
+/**
+ * @return `Right(this)`, or `Left(default())` if `this` is `null`.
+ */
+fun <A, B> B?.nullToLeftOf(default: () -> A): Either<A, B> =
+    this?.right() ?: default().left()
 
 /**
  * Return the actual value in this either, whether it is left or right.
@@ -24,8 +24,8 @@ fun <C> Either<C, C>.value() = fold({it},{it})
  */
 fun <A : Throwable, B> Either<A, B>.getOrThrow(): B =
         when (this) {
-            is Left -> throw a
-            is Right -> b
+            is Left  -> throw value
+            is Right ->       value
         }
 /**
  * @return the right value if this is [Right].
@@ -33,6 +33,6 @@ fun <A : Throwable, B> Either<A, B>.getOrThrow(): B =
  */
 fun <A, B, T : Throwable> Either<A, B>.getOrThrow(exceptionMaker: (A) -> T): B =
         when (this) {
-            is Left -> throw exceptionMaker(a)
-            is Right -> b
+            is Left  -> throw exceptionMaker(value)
+            is Right ->                      value
         }

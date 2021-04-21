@@ -152,7 +152,7 @@ if (doJvm) {
                     dependencies {
                         api(Kotlin.reflect)
 
-                        api(Arrow.core, "0.10.5")
+                        api(Arrow.core, "0.13.1")
                         api("org.jetbrains:annotations", "15.0")
 
                         api("com.google.guava:guava", "29.0-jre")
