@@ -10,7 +10,8 @@ import java.lang.ref.WeakReference
  *
  * The name of this class was inspired by Rust's borrow checker, but it probably works rather differently.
  */
-inline class Borrowed<T>
+@JvmInline
+value class Borrowed<T>
 
 // TODO:
 //@PublishedApi

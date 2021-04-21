@@ -120,6 +120,19 @@ val doJvm = true
 val doJs = true
 
 
+// TODO can be removed when moving to 1.5.0 non-RC? but then, best to be explicit
+kotlin {
+    sourceSets {
+        all {
+            languageSettings {
+                languageVersion = "1.5"
+                apiVersion = "1.5"
+            }
+        }
+    }
+}
+
+
 // ===================================== JVM ================================ //
 
 if (doJvm) {

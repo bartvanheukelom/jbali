@@ -7,6 +7,7 @@ import kotlinx.serialization.json.JsonElement
 import org.jbali.kotser.BasicJson
 import org.jbali.kotser.parseJson
 import org.jbali.kotser.stringify
+import kotlin.jvm.JvmInline
 
 
 /**
@@ -14,7 +15,8 @@ import org.jbali.kotser.stringify
  * It doesn't represent a string literal like e.g. [kotlinx.serialization.json.JsonLiteral] or
  * the legacy [org.jbali.json.JSONString].
  */
-inline class JSONString(
+@JvmInline
+value class JSONString(
         val string: String
 ) {
 

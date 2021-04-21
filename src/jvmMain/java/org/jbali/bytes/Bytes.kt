@@ -3,6 +3,7 @@ package org.jbali.bytes
 import sun.misc.Unsafe
 import java.io.DataOutput
 import kotlin.experimental.xor
+import kotlin.jvm.JvmInline
 
 @JvmField
 val theUnsafe: Unsafe =
@@ -36,7 +37,8 @@ inline fun ByteArray.mapBytes(m: (Int, Byte) -> Byte) =
  * in a JVM crash.
  */
 @Suppress("NOTHING_TO_INLINE")
-inline class Bytes4(val array: ByteArray = ByteArray(4)) {
+@JvmInline
+value class Bytes4(val array: ByteArray = ByteArray(4)) {
     inline operator fun get(i: Int): Byte = theUnsafe.getByte(array, byteArrOffset + i.toLong())
     inline operator fun set(i: Int, value: Byte) { theUnsafe.putByte(array, byteArrOffset + i.toLong(), value) }
 

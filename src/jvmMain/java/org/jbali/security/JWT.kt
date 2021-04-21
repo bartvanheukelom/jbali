@@ -13,6 +13,7 @@ import org.jbali.json2.JSONString
 import org.jbali.kotser.DefaultJson
 import org.jbali.kotser.TransformingSerializer
 import java.time.Instant
+import kotlin.jvm.JvmInline
 
 
 data class JWTHeader(
@@ -24,7 +25,8 @@ data class JWTHeader(
 typealias Base64JSON = Base64Utf8String<Base64Encoding.Url, JSONString>
 
 
-inline class JWTSignature(
+@JvmInline
+value class JWTSignature(
         val encoded: Base64String<Base64Encoding.Url>
 ) {
     override fun toString() = encoded.toString()

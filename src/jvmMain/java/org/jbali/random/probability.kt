@@ -4,7 +4,8 @@ import org.jbali.math.unitInterval
 import kotlin.math.pow
 import kotlin.random.Random
 
-inline class Probability(
+@JvmInline
+value class Probability private constructor(
     val asUnitNum: Double
 ) {
     companion object {

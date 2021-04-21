@@ -7,8 +7,10 @@ import arrow.core.getOrHandle
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
+import kotlin.jvm.JvmInline
 
-inline class ErrorMessage(val msg: String) {
+@JvmInline
+value class ErrorMessage(val msg: String) {
     override fun toString(): String = "Error: $msg"
 }
 

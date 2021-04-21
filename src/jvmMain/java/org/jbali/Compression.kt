@@ -4,8 +4,10 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
+import kotlin.jvm.JvmInline
 
-inline class GZipped(val data: ByteArray) {
+@JvmInline
+value class GZipped(val data: ByteArray) {
     val size get() = data.size
 
     fun unzipped(): ByteArray {

@@ -17,7 +17,8 @@ import java.time.ZoneOffset
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 
-inline class JSON(val s: String) {
+@JvmInline
+value class JSON(val s: String) {
     fun parse(): JsonElement = StdJSON.indented.parseJson(s)
 }
 

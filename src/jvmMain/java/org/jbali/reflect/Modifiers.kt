@@ -2,8 +2,10 @@ package org.jbali.reflect
 
 import java.lang.reflect.Member
 import java.lang.reflect.Modifier
+import kotlin.jvm.JvmInline
 
-inline class Modifiers(
+@JvmInline
+value class Modifiers(
         val m: Int
 ) {
     val isPublic       get() = Modifier.isPublic(m)

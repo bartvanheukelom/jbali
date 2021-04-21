@@ -1,6 +1,7 @@
 package org.jbali.bytes
 
 import java.util.*
+import kotlin.jvm.JvmInline
 
 /**
  * Represents one of the 3 standard Base64 encoding schemes.
@@ -39,7 +40,8 @@ sealed class Base64Encoding<E : Base64Encoding<E>>(
 
 }
 
-//inline class Base64String<E : Base64Encoding<E>>(
+//@JvmInline
+//value class Base64String<E : Base64Encoding<E>>(
 //        val encoded: String
 //) {
 //    override fun toString() = encoded
@@ -54,7 +56,8 @@ infix fun <V, E : StringEncoding<V, E>> V.encodedAs(e: StringEncoding<V, E>): St
         e.encodeToString(this)
 
 // TODO when serialization supports inline class, serialize this as the contents
-inline class StringEncoded<V, E : StringEncoding<V, E>>(
+@JvmInline
+value class StringEncoded<V, E : StringEncoding<V, E>>(
         @get:Deprecated("string", ReplaceWith("string"))
         val encoded: String
 ) {
@@ -75,7 +78,8 @@ fun Base64BasicString.decode(): ByteArray = Base64Encoding.Basic.decodeString(th
  * encodes a UTF-8 encoded string, which is wrappable in, or convertible to,
  * a value of type [S].
  */
-inline class Base64Utf8String<E : Base64Encoding<E>, S>(
+@JvmInline
+value class Base64Utf8String<E : Base64Encoding<E>, S>(
         val encoded: Base64String<E>
 ) {
 
