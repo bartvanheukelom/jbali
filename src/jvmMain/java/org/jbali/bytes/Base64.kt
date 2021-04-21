@@ -58,10 +58,11 @@ infix fun <V, E : StringEncoding<V, E>> V.encodedAs(e: StringEncoding<V, E>): St
 // TODO when serialization supports inline class, serialize this as the contents
 @JvmInline
 value class StringEncoded<V, E : StringEncoding<V, E>>(
-        @get:Deprecated("string", ReplaceWith("string"))
-        val encoded: String
+        private val v: String
 ) {
-    val string get() = string
+    @get:Deprecated("string", ReplaceWith("string"))
+    val encoded get() = v
+    val string get() = v
 
     override fun toString() = string
 }
