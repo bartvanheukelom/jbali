@@ -1,6 +1,7 @@
 package org.jbali.util
 
 import org.jbali.util.OnceEvent.NotWaitingException
+import org.jetbrains.annotations.MustBeInvokedByOverriders
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.lang.ref.WeakReference
@@ -150,6 +151,7 @@ open class Event<P>(
      * An exception to the above is that any AssertionError is rethrown wrapped in an AssertionError with a message.
      * In that case, any remaining listeners will not be invoked.
      */
+    @MustBeInvokedByOverriders
     open fun dispatch(data: P, errCb: ListenerErrorCallback<P> = ListenerErrorCallbacks.default) {
         for (l in listeners.toList()) {
             l.call(data, errCb)

@@ -1,5 +1,6 @@
 package org.jbali.util
 
+import org.jetbrains.annotations.MustBeInvokedByOverriders
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Consumer
 import java.util.function.Supplier
@@ -148,6 +149,7 @@ sealed class MutableObservableBase<T>(initialValue: T, name: String? = null): Ob
     fun readOnly(): Observable<T> = this
 
     @PreDestroy
+    @MustBeInvokedByOverriders
     open fun destroy() {
         onChange.detachListeners()
         onNewValue.detachListeners()
