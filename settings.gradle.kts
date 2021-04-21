@@ -1,9 +1,9 @@
 pluginManagement {
-    val kotlinVersion = KotlinVersion(1, 4, 21)
-    val kotlinEAPSuffix = null
+    val kotlinVersion = KotlinVersion(1, 5, 0)
+    val kotlinEAPSuffix = "-RC"
 
     plugins {
-        id("org.jetbrains.dokka") version "1.4.20"
+        id("org.jetbrains.dokka") version "1.4.30"
     }
 
     // ============ shared TODO find way to share this =========== //
@@ -30,11 +30,6 @@ pluginManagement {
     repositories {
         mavenCentral()
         gradlePluginPortal()
-
-        if (kotlinEAP) {
-            maven("https://dl.bintray.com/kotlin/kotlin-eap")
-            maven("https://kotlin.bintray.com/kotlinx")
-        }
     }
 
     plugins {

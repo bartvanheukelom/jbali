@@ -6,6 +6,8 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
 buildscript {
     repositories {
         mavenCentral()
+//        // TODO remove when kotlinx-html-jvm:0.7.2 can be gotten elsewhere
+//        jcenter()
     }
     dependencies {
         // supplied by included build `gradle-tools`
@@ -21,19 +23,20 @@ plugins {
 
 // check gradle version, for when not running with the included wrapper (e.g. included in another project)
 val supportedGradleVersions = setOf(
-        "6.7.1"
+    "6.7.1",
+    "7.0"
 )
 check(org.gradle.util.GradleVersion.current().version in supportedGradleVersions) {
     "This build script is untested with Gradle version ${org.gradle.util.GradleVersion.current()}. Tested versions are $supportedGradleVersions"
 }
 
 initKotlinProject(
-        group = JBali.group,
-        name = JBali.aJbali,
-        acceptableKotlinVersions = setOf(
-                KotlinVersions.V1_4_20,
-                KotlinVersions.V1_4_21
-        )
+    group = JBali.group,
+    name = JBali.aJbali,
+    acceptableKotlinVersionStrings = setOf("1.5.0-RC")
+//        acceptableKotlinVersions = setOf(
+//                KotlinVersions.V1_5_0
+//        )
 )
 
 // TODO centralize
@@ -43,6 +46,9 @@ check(kotlinVersionString == KotlinCompilerVersion.VERSION)
 
 repositories {
     mavenCentral()
+    // TODO remove when kotlinx-html-jvm:0.7.2 can be gotten elsewhere
+    //      (also, why must this be here and not in buildscript)
+    jcenter()
 }
 
 kotlin {
@@ -51,7 +57,7 @@ kotlin {
 
         commonMain {
             dependencies {
-                api(KotlinX.Serialization.json, "1.0.1")
+                api(KotlinX.Serialization.json, "1.1.0")
             }
         }
 
@@ -115,7 +121,7 @@ if (doJvm) {
 
             sourceSets {
 
-                val vKtor = "1.4.1"
+                val vKtor = "1.5.3"
                 val vSlf4j = "1.7.30"
 
                 val jvmMain by existing {
@@ -184,6 +190,11 @@ if (doJvm) {
         kotlinOptions {
             jvmTarget = javaVersion.toString()
         }
+    }
+
+    // TODO why is this suddenly required since upgrade to gradle 7.0 / kotlin 1.5.0-RC ?
+    val jvmProcessResources by tasks.existing(Copy::class) {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
     }
 
 }
