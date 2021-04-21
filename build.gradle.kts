@@ -6,8 +6,6 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
 buildscript {
     repositories {
         mavenCentral()
-//        // TODO remove when kotlinx-html-jvm:0.7.2 can be gotten elsewhere
-//        jcenter()
     }
     dependencies {
         // supplied by included build `gradle-tools`
@@ -18,6 +16,9 @@ buildscript {
 plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
+
+    // documentation generation
+    // https://github.com/Kotlin/dokka
     id("org.jetbrains.dokka")
 }
 
@@ -46,9 +47,7 @@ check(kotlinVersionString == KotlinCompilerVersion.VERSION)
 
 repositories {
     mavenCentral()
-    // TODO remove when kotlinx-html-jvm:0.7.2 can be gotten elsewhere
-    //      (also, why must this be here and not in buildscript)
-    jcenter()
+    kotlinxHtmlJbSpace()
 }
 
 kotlin {
