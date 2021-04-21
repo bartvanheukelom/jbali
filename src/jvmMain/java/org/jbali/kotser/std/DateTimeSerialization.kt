@@ -14,7 +14,6 @@ import java.sql.Timestamp
 import java.time.*
 import java.util.*
 
-@Serializer(forClass = Instant::class)
 object InstantSerializer : StringBasedSerializer<Instant>(Instant::class) {
     override fun fromString(s: String): Instant =
             Instant.parse(s)
@@ -25,22 +24,18 @@ object DateSerializer : TransformingSerializer<Date, Instant>(Date::class, Insta
     override fun detransform(tf: Instant): Date = tf.toDate()
 }
 
-@Serializer(forClass = LocalDate::class)
 object LocalDateSerializer : StringBasedSerializer<LocalDate>(LocalDate::class) {
     override fun fromString(s: String): LocalDate = LocalDate.parse(s)
 }
 
-@Serializer(forClass = YearWeek::class)
 object YearWeekSerializer : StringBasedSerializer<YearWeek>(YearWeek::class) {
     override fun fromString(s: String): YearWeek = YearWeek.parse(s)
 }
 
-@Serializer(forClass = YearMonth::class)
 object YearMonthSerializer : StringBasedSerializer<YearMonth>(YearMonth::class) {
     override fun fromString(s: String): YearMonth = YearMonth.parse(s)
 }
 
-@Serializer(forClass = YearQuarter::class)
 object YearQuarterSerializer : StringBasedSerializer<YearQuarter>(YearQuarter::class) {
     override fun fromString(s: String): YearQuarter = YearQuarter.parse(s)
 }
@@ -52,18 +47,15 @@ object YearSerializer : KSerializer<Year> by transformingSerializer(
         }
 )
 
-@Serializer(forClass = ZonedDateTime::class)
 object ZonedDateTimeSerializer : StringBasedSerializer<ZonedDateTime>(ZonedDateTime::class) {
     override fun fromString(s: String): ZonedDateTime = ZonedDateTime.parse(s)
 }
 
-@Serializer(forClass = Timestamp::class)
 object TimestampSerializer : StringBasedSerializer<Timestamp>(Timestamp::class) {
     override fun fromString(s: String): Timestamp =
             Timestamp.valueOf(s)
 }
 
-@Serializer(forClass = Duration::class)
 object DurationSerializer : StringBasedSerializer<Duration>(Duration::class) {
     override fun fromString(s: String): Duration =
             Duration.parse(s)
