@@ -104,8 +104,7 @@ inline fun <reified T> KType.reify(): ReifiedType<T> {
         throw ClassCastException("($this).reify<$parent>() invalid: $this is not a subtype of $parent")
     }
 
-    @Suppress("UNCHECKED_CAST")
-    return cachedReifiedType as ReifiedType<T>
+    return ReifiedType(this)
 }
 
 fun KType.match(): ReifiedType.Matcher<Any?, Unit> =
@@ -122,18 +121,10 @@ fun <T : Any> ReifiedType<T>.realClass(): KClass<T> =
 
 inline fun <reified T> reifiedTypeOf(): ReifiedType<T> {
 
-    // can safely opt in because this is going to be stable in 1.4:
+    // can safely opt in because this is going to be stable in 1.4 (update: on 1.5.0-RC and it still isn't...):
     //     https://blog.jetbrains.com/kotlin/2019/12/what-to-expect-in-kotlin-1-4-and-beyond/#language-features
     @OptIn(ExperimentalStdlibApi::class)
     val type = typeOf<T>()
 
-    @Suppress("UNCHECKED_CAST")
-    return type.cachedReifiedType as ReifiedType<T>
-}
-
-val KType.cachedReifiedType: ReifiedType<*> by StoredExtensionProperty {
-    // TODO this leaks! the following ref chain is never GC'ed:
-    //      cache -> _: WeakEntry -> value: ReifiedType -> type: KType
-    //      just remove the cache in the next update, it probably only negatively affects performance.
-    ReifiedType<Any?>(type = this.steal())
+    return ReifiedType(type)
 }
