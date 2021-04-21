@@ -20,6 +20,10 @@ plugins {
     // documentation generation
     // https://github.com/Kotlin/dokka
     id("org.jetbrains.dokka")
+
+    // adds task `dependencyUpdates` which checks dependencies for available new versions
+    // https://github.com/ben-manes/gradle-versions-plugin
+    id("com.github.ben-manes.versions") version "0.38.0"
 }
 
 // check gradle version, for when not running with the included wrapper (e.g. included in another project)
