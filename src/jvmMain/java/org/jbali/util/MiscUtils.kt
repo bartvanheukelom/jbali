@@ -143,7 +143,7 @@ fun invocationToString(func: KCallable<*>, vararg args: Any?): String {
     }
 
     val argsJoined =
-            if (argsStringed.sumBy { it.length } >= 120) argsStringed.joinToString(separator = "\n\t", prefix = "\n\t", postfix = "\n")
+            if (argsStringed.sumOf { it.length } >= 120) argsStringed.joinToString(separator = "\n\t", prefix = "\n\t", postfix = "\n")
             else argsStringed.joinToString()
 
     return "${func.name}($argsJoined)"

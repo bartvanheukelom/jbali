@@ -96,7 +96,7 @@ class ObjMap<T : Any> private constructor(
             }
 
     override fun hashCode() =
-            entries.sumBy { it.hashCode() }
+            entries.sumOf { it.hashCode() }
 
 }
 
