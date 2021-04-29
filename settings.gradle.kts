@@ -1,9 +1,9 @@
 pluginManagement {
     val kotlinVersion = KotlinVersion(1, 5, 0)
-    val kotlinEAPSuffix = "-RC"
+    val kotlinEAPSuffix = null
 
     plugins {
-        id("org.jetbrains.dokka") version "1.4.30"
+        id("org.jetbrains.dokka") version "1.4.32"
     }
 
     // ============ shared TODO find way to share this =========== //

@@ -39,10 +39,9 @@ check(org.gradle.util.GradleVersion.current().version in supportedGradleVersions
 initKotlinProject(
     group = JBali.group,
     name = JBali.aJbali,
-    acceptableKotlinVersionStrings = setOf("1.5.0-RC")
-//        acceptableKotlinVersions = setOf(
-//                KotlinVersions.V1_5_0
-//        )
+    acceptableKotlinVersions = setOf(
+        KotlinVersions.V1_5_0
+    )
 )
 
 // TODO centralize
@@ -146,7 +145,7 @@ if (doJvm) {
                     dependencies {
                         api(Kotlin.reflect)
 
-                        api(Arrow.core, "0.13.1")
+                        api(Arrow.core, "0.13.2")
                         api("org.jetbrains:annotations", "20.1.0")
 
                         api("com.google.guava:guava", "30.1.1-jre")
@@ -168,7 +167,7 @@ if (doJvm) {
                         compileOnly(Ktor.websockets,    vKtor)
 
                         compileOnly("com.google.code.gson:gson", "2.8.6")
-                        compileOnly("org.apache.activemq:activemq-client", "5.16.1")
+                        compileOnly("org.apache.activemq:activemq-client", "5.16.2")
 
                     }
                 }
