@@ -60,7 +60,7 @@ kotlin {
 
         commonMain {
             dependencies {
-                api(KotlinX.Serialization.json, "1.1.0")
+                api(KotlinX.Serialization.json, "1.2.0")
             }
         }
 
@@ -97,7 +97,6 @@ forbidDependencies(
 )
 
 
-// configure `dokkaHtml` to run as part of `build`, but last
 tasks {
 
     val gitVersion by registering {
@@ -106,6 +105,8 @@ tasks {
         }
     }
 
+
+    // configure `dokkaHtml` to run as part of `build`, but last
     val dokkaHtml by existing {
         shouldRunAfter(
                 check,
