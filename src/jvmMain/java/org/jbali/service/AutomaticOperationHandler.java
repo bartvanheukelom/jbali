@@ -1,5 +1,6 @@
 package org.jbali.service;
 
+import kotlin.reflect.KType;
 import org.jbali.errors.ExceptionToolsKt;
 import org.jbali.service.ServiceHandler.OperationHandler;
 
@@ -11,7 +12,8 @@ class AutomaticOperationHandler<C> implements OperationHandler<C> {
 	private Object impl;
 	private Method method;
 	private Class<?> inputType;
-	private Class<?> returnType;
+	private KType returnType;
+	private Class<?> returnTypeClass;
 
 	public AutomaticOperationHandler(Class<?> clazz, Object impl, Method method) {
 		this.clazz = clazz;
@@ -22,7 +24,8 @@ class AutomaticOperationHandler<C> implements OperationHandler<C> {
 			this.inputType = method.getParameterTypes()[1];
 		else
 			this.inputType = Void.TYPE;
-		this.returnType = method.getReturnType();
+		this.returnType = ServiceUtilsKt.returnKType(method);
+		this.returnTypeClass = method.getReturnType();
 	}
 
 	private void validate() {
@@ -38,7 +41,7 @@ class AutomaticOperationHandler<C> implements OperationHandler<C> {
 				answer = method.invoke(impl, context, input);
 			else
 				answer = method.invoke(impl, context);
-			if (returnType.equals(Void.TYPE))
+			if (returnTypeClass.equals(Void.TYPE))
 				return null;
 			return answer;				
 		} catch (IllegalAccessException e) {
@@ -53,6 +56,11 @@ class AutomaticOperationHandler<C> implements OperationHandler<C> {
 		if (inputType.equals(Void.TYPE))
 			return null;
 		return inputType;
+	}
+
+	@Override
+	public KType getReturnType() {
+		return returnType;
 	}
 
 	@Override

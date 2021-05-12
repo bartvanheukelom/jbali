@@ -21,6 +21,10 @@ public class ServiceHandlerUtil {
 	 */
 	public static <C> ImmutableMap<String, OperationHandler<C>> createCallableMethodsMap(Object impl) {
 		Class<?> clazz = impl.getClass();
+		return createCallableMethodsMap(clazz, impl);
+	}
+
+	public static <C> ImmutableMap<String, OperationHandler<C>> createCallableMethodsMap(Class<?> clazz, Object impl) {
 		Map<String, OperationHandler<C>> handlers = new HashMap<>();
 		Method[] methods = clazz.getMethods();
 		for (Method method : methods) {			

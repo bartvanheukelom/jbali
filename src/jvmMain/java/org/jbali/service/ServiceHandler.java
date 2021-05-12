@@ -1,5 +1,7 @@
 package org.jbali.service;
 
+import kotlin.reflect.KType;
+import org.jbali.coroutines.Blocking;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -9,8 +11,10 @@ public interface ServiceHandler<C> {
 	
 	interface OperationHandler<C> {
 		@Nullable
+		@Blocking
 		Object handle(C context, Object input);
 		Class<?> getInputType();
+		KType getReturnType();
 	}
 
 	OperationHandler<C> getOperation(String operation);
