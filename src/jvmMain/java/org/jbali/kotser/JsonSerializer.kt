@@ -2,6 +2,7 @@ package org.jbali.kotser
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import org.jbali.json2.JSONString
 
 /**
@@ -11,6 +12,9 @@ data class JsonSerializer<T>(
         val serializer: KSerializer<T>,
         val format: Json
 ) {
+
+    fun encodeToElement(obj: T): JsonElement = format.encodeToJsonElement(serializer, obj)
+    fun decodeFromElement(element: JsonElement): T = format.decodeFromJsonElement(serializer, element)
 
     fun stringify(obj: T): JSONString = JSONString.stringify(format, serializer, obj)
     fun parse(str: JSONString) = str.parse(format, serializer)

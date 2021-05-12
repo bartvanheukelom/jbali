@@ -75,6 +75,9 @@ fun JsonableMap.toJsonElement() =
 fun JsonableList.toJsonElement() =
         toJsonArray()
 
+@Deprecated("Useless JsonElement.toJsonElement(). Did you expect the receiver to be something else?", ReplaceWith("this"))
+fun JsonElement.toJsonElement(): JsonElement = this
+
 /**
  * Wrap this value in the appropriate [JsonElement] container.
  * Deeply, for [Map] and [List].
