@@ -60,7 +60,7 @@ kotlin {
 
         commonMain {
             dependencies {
-                api(KotlinX.Serialization.json, "1.2.0")
+                api(KotlinX.Serialization.json, "1.2.1")
             }
         }
 
@@ -139,7 +139,7 @@ if (doJvm) {
 
             sourceSets {
 
-                val vKtor = "1.5.3"
+                val vKtor = "1.5.4"
                 val vSlf4j = "1.7.30"
 
                 val jvmMain by existing {
