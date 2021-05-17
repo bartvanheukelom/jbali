@@ -4,6 +4,7 @@ import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.request.*
 import io.ktor.routing.*
+import org.jbali.ktor.getExact
 import org.jbali.ktor.respondNoContent
 import org.jbali.util.ReifiedType
 import org.jbali.util.reifiedTypeOf
@@ -63,7 +64,7 @@ open class RestObject<T>(
             impl: suspend I.(ApplicationCall) -> T
     ) {
         allowedMethods += HttpMethod.Get
-        route.get("") {
+        route.getExact {
             readInput(inputType)
                 .let { it.impl(call) }
                 .let { rv ->

@@ -17,6 +17,7 @@ import org.jbali.kotser.DefaultJson
 import org.jbali.kotser.jsonString
 import org.jbali.ktor.BasicErrorException
 import org.jbali.ktor.handleAnyPath
+import org.jbali.ktor.routeExact
 import org.jbali.util.uuid
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -133,10 +134,12 @@ data class RestApiBuilder(
 //                )
 //            )
 
-            get("") {
-                respondObject(buildJsonObject {
-                    "hello" to "this is api"
-                })
+            routeExact {
+                get {
+                    respondObject(buildJsonObject {
+                        "hello" to "this is api"
+                    })
+                }
             }
         }
     }
@@ -160,7 +163,7 @@ data class RestApiBuilder(
             respondObject(
                 status = HttpStatusCode.NotFound,
                 returnVal = buildJsonObject {
-                    put("message", jsonString("Not Found"))
+                    put("message", jsonString("Not Found in REST API @ $route"))
                     errorResponseAugmenter(call)
                 }
             )
