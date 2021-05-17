@@ -1,21 +1,20 @@
 package org.jbali.ktor
 
-import io.ktor.features.origin
-import io.ktor.http.RequestConnectionPoint
-import io.ktor.http.URLBuilder
-import io.ktor.http.URLProtocol
-import io.ktor.http.Url
-import io.ktor.request.ApplicationRequest
-import io.ktor.request.header
+import io.ktor.features.*
+import io.ktor.http.*
+import io.ktor.request.*
 import kotlinx.serialization.Serializable
 import org.jbali.arrow.Uncertain
 import org.jbali.arrow.nullToError
 import org.jbali.kotser.StringBasedSerializer
 
 /**
- * Represents an Origin as used in CORS.
+ * Represents an Origin as used in CORS, i.e. a protocol/scheme, host and port.
  *
  * [https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin]
+ *
+ * Coincidentally, the exact properties required to establish a connection to a server. This class may also be used as such.
+ * TODO rename it to something more appropriate then, and don't use Url for storage
  *
  * @throws IllegalArgumentException if [url] includes unused components.
  */
@@ -86,3 +85,22 @@ val ApplicationRequest.originHeaderIfGiven: HTTPOrigin?
  */
 val ApplicationRequest.deducedOrigin: HTTPOrigin
     get() = originHeaderIfGiven ?: origin.httpOrigin
+
+infix fun Url.sameOrigin(other: Url): Boolean =
+    protocol == other.protocol &&
+    portOrDefault == other.portOrDefault &&
+    host == other.host
+
+val Url.origin get() =
+    HTTPOrigin(Url(
+        protocol = protocol,
+        host = host,
+        specifiedPort = portOrDefault,
+
+        encodedPath = "",
+        parameters = Parameters.Empty,
+        fragment = "",
+        user = null,
+        password = null,
+        trailingQuery = false,
+    ))

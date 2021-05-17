@@ -1,7 +1,6 @@
 package org.jbali.ktor
 
-import io.ktor.http.DEFAULT_PORT
-import io.ktor.http.Url
+import io.ktor.http.*
 
 
 val Url.portIfSpecified: Int? get() =
@@ -9,6 +8,9 @@ val Url.portIfSpecified: Int? get() =
 
 val Url.specifiesDefaultPort: Boolean get() =
     specifiedPort == protocol.defaultPort
+
+val Url.portOrDefault: Int get() =
+    portIfSpecified ?: protocol.defaultPort
 
 /**
  * Return a copy of this [Url] with the port unspecified,
