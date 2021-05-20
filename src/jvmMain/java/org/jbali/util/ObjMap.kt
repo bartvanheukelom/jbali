@@ -78,21 +78,11 @@ class ObjMap<T : Any> private constructor(
             }.toString()
 
     override fun equals(other: Any?) =
-            when (other) {
-
-                this ->
-                    true
-
-                is ObjMap<*> ->
-                    other.obj == obj
-
-                is Map<*, *> ->
-                    other.size == size &&
-                            toMap() == other // TODO optimize?
-
-                else ->
-                    false
-
+            when {
+                other === this ->        true
+                other is ObjMap<*> ->    other.obj == obj
+                other is Map<*, *> ->    other.size == size && toMap() == other // TODO optimize?
+                else ->                  false
             }
 
     override fun hashCode() =
