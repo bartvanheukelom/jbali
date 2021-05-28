@@ -89,11 +89,11 @@ tasks.withType<KotlinCompile<*>>().configureEach {
 }
 
 forbidDependencies(
-        // these conflict with the new KotlinX.Serialization.json,
-        // but somebody may try to pull them in transitively
-        KotlinX.SerializationRuntime.common,
-        KotlinX.SerializationRuntime.jvm,
-        KotlinX.SerializationRuntime.js
+    // these conflict with the new KotlinX.Serialization.json,
+    // but somebody may try to pull them in transitively
+    KotlinX.SerializationRuntime.common,
+    KotlinX.SerializationRuntime.jvm,
+    KotlinX.SerializationRuntime.js
 )
 
 
@@ -109,8 +109,8 @@ tasks {
     // configure `dokkaHtml` to run as part of `build`, but last
     val dokkaHtml by existing {
         shouldRunAfter(
-                check,
-                assemble
+            check,
+            assemble
         )
     }
     build {
@@ -130,46 +130,52 @@ val doJs = true
 // ===================================== JVM ================================ //
 
 if (doJvm) {
-
+    
     kotlin {
-
+        
         jvm {
-
+            
             withJava()
-
+            
             sourceSets {
-
+                
                 val vKtor = "1.5.4"
                 val vSlf4j = "1.7.30"
-
+                val vExposed = "0.31.1"
+                
                 val jvmMain by existing {
                     dependencies {
                         api(Kotlin.reflect)
-
+                        
                         api(Arrow.core, "0.13.2")
                         api("org.jetbrains:annotations", "20.1.0")
-
+                        
                         api("com.google.guava:guava", "30.1.1-jre")
                         api("org.slf4j:slf4j-api", vSlf4j)
-
+                        
                         api("commons-codec:commons-codec", "1.15")
+                        api("org.apache.commons:commons-lang3", "3.12.0")
                         api("org.apache.httpcomponents:httpclient", "4.5.13")
                         api("org.apache.httpcomponents:httpcore", "4.4.14")
                         api("org.threeten:threeten-extra", "1.6.0")
-
+                        
                         // for test library code used in other projects' actual tests
                         compileOnly(Kotlin.Test.jvm)
-
+                        
                         // TODO extract these to own modules or features, see
                         //      https://docs.gradle.org/current/userguide/feature_variants.html
                         compileOnly(Ktor.Client.cio,    vKtor)
                         compileOnly(Ktor.Server.core,   vKtor)
                         compileOnly(Ktor.serialization, vKtor)
                         compileOnly(Ktor.websockets,    vKtor)
-
+                        
+                        compileOnly("org.jetbrains.exposed:exposed-core", vExposed)
+                        compileOnly("org.jetbrains.exposed:exposed-dao",  vExposed)
+                        compileOnly("org.jetbrains.exposed:exposed-jdbc", vExposed)
+                        
                         compileOnly("com.google.code.gson:gson", "2.8.6")
                         compileOnly("org.apache.activemq:activemq-client", "5.16.2")
-
+                        
                     }
                 }
                 val jvmTest by existing {
@@ -177,25 +183,25 @@ if (doJvm) {
                         implementation("org.slf4j:jul-to-slf4j",   vSlf4j)
                         implementation("org.slf4j:jcl-over-slf4j", vSlf4j)
                         implementation("org.slf4j:slf4j-simple",   vSlf4j)
-
+                        
                         // add those dependencies that are not transitively included
                         configurations
-                                .getByName(jvmMain.get().compileOnlyConfigurationName)
-                                .dependencies.forEach {
-                                    implementation(it)
-                                }
+                            .getByName(jvmMain.get().compileOnlyConfigurationName)
+                            .dependencies.forEach {
+                                implementation(it)
+                            }
                     }
                 }
-
+                
             }
-
+            
         }
     }
-
+    
     tasks.withType<JavaCompile>().configureEach {
         options.storeParameterNames()
     }
-
+    
     // TODO make KotlinJvmTarget extension
     val javaVersion = JavaVersion.VERSION_1_8
     tasks.withType<JavaCompile>().configureEach {
@@ -207,12 +213,12 @@ if (doJvm) {
             jvmTarget = javaVersion.toString()
         }
     }
-
+    
     // TODO why is this suddenly required since upgrade to gradle 7.0 / kotlin 1.5.0-RC ?
     val jvmProcessResources by tasks.existing(Copy::class) {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
     }
-
+    
 }
 
 
@@ -222,25 +228,24 @@ if (doJvm) {
 // ===================================== JavaScript ================================ //
 
 if (doJs) {
-
+    
     kotlin {
-
+        
         js(compiler = IR) {
-
+            
             // TODO what exactly is the difference between these? and can't I do both or something universal?
             // for now it seems that the "nodejs" code can run fine in a browser, and adding the browser environment is just making things like testing complicated
 //            browser()
             nodejs()
-
+            
             binaries.library()
-
+            
             // TODO source map https://youtrack.jetbrains.com/issue/KT-39447
             // TODO get/pack kotlin stdlib types
             // TODO better module name?
-
+            
         }
-
+        
     }
-
+    
 }
-
