@@ -19,12 +19,15 @@ fun <T : Enum<T>> Table.myEnum(name: String, klass: KClass<T>): Column<T> {
     return customEnumeration(
         name = name,
         sql = "ENUM(${vals.joinToString {
-            "'${it.name.replace("'", "''")}'"
+            it.sqlLiteral
         }})",
         fromDb = { byName.getValue(it as String) },
         toDb = { it.name }
     )
 }
+
+val <E : Enum<E>> E.sqlLiteral: String
+    get() = "'" + name.replace("'", "''") + "'"
 
 fun <T : JsonElement> Table.myJson(name: String): Column<T> =
     registerColumn(name, JsonColumnType())

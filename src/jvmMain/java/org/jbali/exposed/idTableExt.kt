@@ -15,3 +15,13 @@ fun <T : Comparable<T>> IdTable<T>.selectSingle(id: T): ResultRow =
 
 fun <T : Comparable<T>> IdTable<T>.selectSingleOrNull(id: T): ResultRow? =
     select(id).singleOrNull()
+
+
+//@JvmName("setWithEntityIdValue")
+//operator fun <S : Comparable<S>, ID : EntityID<S>, E : S?>
+//        UpdateBuilder<*>.set(column: Column<ID>, value: E) {
+//    this[column] = EntityID(value, column.referee<EntityID<E>>().table as IdTable<E>)
+//
+//    require(!values.containsKey(column)) { "$column is already initialized" }
+//    values[column] = value
+//}
