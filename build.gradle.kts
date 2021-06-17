@@ -164,10 +164,12 @@ if (doJvm) {
                         
                         // TODO extract these to own modules or features, see
                         //      https://docs.gradle.org/current/userguide/feature_variants.html
-                        compileOnly(Ktor.Client.cio,    vKtor)
-                        compileOnly(Ktor.Server.core,   vKtor)
-                        compileOnly(Ktor.serialization, vKtor)
-                        compileOnly(Ktor.websockets,    vKtor)
+                        compileOnly(Ktor.Client.cio,          vKtor)
+                        compileOnly(Ktor.Client.Logging.jvm,  vKtor)
+                        compileOnly("io.ktor:ktor-client-auth", vKtor)
+                        compileOnly(Ktor.Server.core,         vKtor)
+                        compileOnly(Ktor.serialization,       vKtor)
+                        compileOnly(Ktor.websockets,          vKtor)
                         
                         compileOnly("org.jetbrains.exposed:exposed-core", vExposed)
                         compileOnly("org.jetbrains.exposed:exposed-dao",  vExposed)
