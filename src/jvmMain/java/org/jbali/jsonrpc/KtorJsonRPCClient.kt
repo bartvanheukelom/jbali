@@ -7,7 +7,6 @@ import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.features.auth.*
 import io.ktor.client.features.auth.providers.*
-import io.ktor.client.features.logging.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.http.content.*
@@ -30,9 +29,9 @@ class KtorJsonRPCClient(
                 }
             }
         }
-        install(Logging) {
-            level = LogLevel.ALL
-        }
+//        install(Logging) {
+//            level = LogLevel.ALL
+//        }
     },
 ) {
     
