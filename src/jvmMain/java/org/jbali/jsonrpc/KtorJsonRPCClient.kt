@@ -10,6 +10,7 @@ import io.ktor.client.features.auth.providers.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.http.content.*
+import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -65,12 +66,15 @@ class KtorJsonRPCClient(
                     )
             }
         
-        // TODO how to handle HTTP error codes.
         val jsonResp: JsonRPCResponse<UUID, R, E> =
-            DefaultJson.plain.decodeFromString(
-                deserializer = JsonRPCResponse.serializer(UUIDSerializer, serializer(), serializer()),
-                string = resp,
-            )
+            try {
+                DefaultJson.plain.decodeFromString(
+                    deserializer = JsonRPCResponse.serializer(UUIDSerializer, serializer(), serializer()),
+                    string = resp,
+                )
+            } catch (e: Throwable) {
+                throw RuntimeException("Error parsing response $resp: $e", e)
+            }
         
         return when (val e = jsonResp.error) {
             null -> jsonResp.result.right()
@@ -81,7 +85,27 @@ class KtorJsonRPCClient(
     
     inner class RequestBuilder() {
     
-        private val params = mutableMapOf<String, JsonElement>()
+        @PublishedApi
+        internal val params = mutableMapOf<String, JsonElement>()
+        
+        inline fun <reified V> param(name: String, value: V) {
+            param(
+                name = name,
+                serializer = serializer(),
+                value = value
+            )
+        }
+        
+        fun <V> param(
+            name: String,
+            serializer: SerializationStrategy<V>,
+            value: V,
+        ) {
+            val json = DefaultJson.plain.encodeToJsonElement(serializer, value)
+            if (params.putIfAbsent(name, json) != null) {
+                throw error("Already have an argument $name")
+            }
+        }
         
         @PublishedApi
         internal fun requestBody(): JsonObject =

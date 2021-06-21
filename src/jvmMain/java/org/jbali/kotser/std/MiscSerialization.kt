@@ -2,9 +2,12 @@ package org.jbali.kotser.std
 
 import com.google.common.net.HostAndPort
 import com.google.common.net.InetAddresses
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
 import org.jbali.kotser.StringBasedSerializer
+import org.jbali.kotser.jsonString
+import org.jbali.kotser.transformingSerializer
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.net.Inet4Address
@@ -49,9 +52,13 @@ val inetAddressSerModule = SerializersModule {
 
 // --- BigDecimal
 
-object BigDecimalSerializer : StringBasedSerializer<BigDecimal>(BigDecimal::class) {
-    override fun fromString(s: String) = BigDecimal(s)
-}
+/**
+ * Outputs `"42.0"` but accepts `"42.0"` and `42.0`.
+ */
+object BigDecimalSerializer : KSerializer<BigDecimal> by transformingSerializer(
+    transformer = { jsonString(it.toPlainString()) },
+    detransformer = { BigDecimal(it.content) }
+)
 
 object BigIntegerSerializer : StringBasedSerializer<BigInteger>(BigInteger::class) {
     override fun fromString(s: String) = BigInteger(s)

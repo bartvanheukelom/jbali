@@ -1,7 +1,6 @@
 package org.jbali.kotser.std
 
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializer
 import kotlinx.serialization.modules.SerializersModule
 import org.jbali.kotser.StringBasedSerializer
 import org.jbali.kotser.Transformer
@@ -14,10 +13,21 @@ import java.sql.Timestamp
 import java.time.*
 import java.util.*
 
+/**
+ * Serialize as a string in [java.time.format.DateTimeFormatter.ISO_INSTANT].
+ */
 object InstantSerializer : StringBasedSerializer<Instant>(Instant::class) {
     override fun fromString(s: String): Instant =
             Instant.parse(s)
 }
+
+/**
+ * Serialize as a Unix timestamp, i.e. seconds since the epoch.
+ */
+object InstantUnixSerializer : KSerializer<Instant> by transformingSerializer(
+    transformer = { it.epochSecond },
+    detransformer = { Instant.ofEpochSecond(it) }
+)
 
 object DateSerializer : TransformingSerializer<Date, Instant>(Date::class, InstantSerializer) {
     override fun transform(obj: Date): Instant = obj.toInstant()
