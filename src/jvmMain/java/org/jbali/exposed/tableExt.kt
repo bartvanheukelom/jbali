@@ -3,6 +3,7 @@ package org.jbali.exposed
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 import org.jbali.kotser.BasicJson
+import org.jbali.util.cast
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.Table
@@ -27,18 +28,35 @@ fun <T : Enum<T>> Table.myEnum(name: String, klass: KClass<T>): Column<T> {
 }
 
 val <E : Enum<E>> E.sqlLiteral: String
-    get() = "'" + name.replace("'", "''") + "'"
+    get() = name.toSqlLiteral()
+
+fun String.toSqlLiteral(): String =
+    "'${replace("'", "''")}'"
 
 fun <T : JsonElement> Table.myJson(name: String): Column<T> =
     registerColumn(name, JsonColumnType())
 
 class JsonColumnType : ColumnType() {
+    
     override fun sqlType(): String = "JSON"
     
     override fun valueFromDB(value: Any) =
-        BasicJson.parse(value as String)
+        when (value) {
+            is JsonElement -> value // TODO why is this one required
+            is String -> BasicJson.parse(value)
+            else -> throw IllegalArgumentException("Illegal value type for this column: $value")
+        }
     
     override fun notNullValueToDB(value: Any) =
-        BasicJson.plain.encodeToString(value as JsonElement)
+        when (value) {
+            is JsonElement -> value
+                .cast<JsonElement>()
+                .let(BasicJson.plain::encodeToString)
+            is String -> value // TODO why is this one required
+            else -> throw IllegalArgumentException("Illegal value type for this column: $value")
+        }
+    
+    override fun nonNullValueToString(value: Any): String =
+        notNullValueToDB(value).toSqlLiteral()
     
 }
