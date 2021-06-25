@@ -10,6 +10,7 @@ import io.ktor.client.features.auth.providers.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.http.content.*
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -17,6 +18,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.serializer
 import org.jbali.kotser.DefaultJson
 import org.jbali.kotser.std.UUIDSerializer
+import org.slf4j.LoggerFactory
 import java.util.*
 
 class KtorJsonRPCClient(
@@ -34,7 +36,13 @@ class KtorJsonRPCClient(
 //            level = LogLevel.ALL
 //        }
     },
+    val logging: Boolean = false,
 ) {
+    
+    companion object {
+        @PublishedApi
+        internal val log = LoggerFactory.getLogger(KtorJsonRPCClient::class.qualifiedName!!)
+    }
     
     val url = url.copy(
         user = null,
@@ -43,6 +51,19 @@ class KtorJsonRPCClient(
     
     suspend inline fun <reified R, reified E : Any> request(
         method: String,
+        noinline build: RequestBuilder.() -> Unit = {},
+    ): Either<E, R> =
+        request(
+            method = method,
+            resultSer = serializer(),
+            errorSer = serializer(),
+            build = build,
+        )
+    
+    suspend fun <R, E : Any> request(
+        method: String,
+        resultSer: KSerializer<R>,
+        errorSer: KSerializer<E>,
         build: RequestBuilder.() -> Unit = {},
     ): Either<E, R> {
         
@@ -56,20 +77,28 @@ class KtorJsonRPCClient(
                             .requestBody(),
                         id = UUID.randomUUID(),
                     )
+                val bodyText = DefaultJson.plain.encodeToString(
+                    serializer = JsonRPCRequest.serializer(UUIDSerializer, JsonObject.serializer()),
+                    value = req
+                )
+                if (logging) {
+                    log.info("Request: $bodyText")
+                }
                 body =
                     TextContent(
-                        text = DefaultJson.plain.encodeToString(
-                            serializer = JsonRPCRequest.serializer(UUIDSerializer, JsonObject.serializer()),
-                            value = req
-                        ),
+                        text = bodyText,
                         contentType = ContentType.Application.Json.withCharset(Charsets.UTF_8),
                     )
             }
         
+        if (logging) {
+            log.info("Response: $resp")
+        }
+        
         val jsonResp: JsonRPCResponse<UUID, R, E> =
             try {
                 DefaultJson.plain.decodeFromString(
-                    deserializer = JsonRPCResponse.serializer(UUIDSerializer, serializer(), serializer()),
+                    deserializer = JsonRPCResponse.serializer(UUIDSerializer, resultSer, errorSer),
                     string = resp,
                 )
             } catch (e: Throwable) {
@@ -78,6 +107,8 @@ class KtorJsonRPCClient(
         
         return when (val e = jsonResp.error) {
             null -> jsonResp.result.right()
+            
+            // TODO this is never reached because an expection is thrown by the error response code (at least in bitcoin)
             else -> e.left()
         }
         
