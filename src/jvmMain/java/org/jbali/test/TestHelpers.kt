@@ -1,5 +1,6 @@
 package org.jbali.test
 
+import java.math.BigDecimal
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
@@ -23,4 +24,10 @@ fun <T> assertListImplementation(list: List<T>) {
     @Suppress("ReplaceSizeZeroCheckWithIsEmpty")
     assertEquals(list.isEmpty(), list.size == 0)
 
+}
+
+fun assertComparesEqual(expected: BigDecimal, actual: BigDecimal, message: String? = null) {
+    // TODO better message that doesn't lose original scale
+    val ms = maxOf(expected.scale(), actual.scale())
+    assertEquals(expected.setScale(ms), actual.setScale(ms), message)
 }

@@ -82,7 +82,7 @@ class KtorJsonRPCClient(
                     value = req
                 )
                 if (logging) {
-                    log.info("Request: $bodyText")
+                    log.info("Request: POST ${this@KtorJsonRPCClient.url} $bodyText")
                 }
                 body =
                     TextContent(
