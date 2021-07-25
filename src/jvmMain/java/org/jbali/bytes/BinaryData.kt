@@ -25,6 +25,9 @@ class BinaryData(
 
     fun toHexString() =
         data.toHexString()
+    
+    fun toBase64() =
+        Base64Encoding.Basic.encodeToString(data).string
 
     override fun equals(other: Any?): Boolean =
             when {

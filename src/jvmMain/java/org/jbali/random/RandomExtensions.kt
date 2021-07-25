@@ -1,15 +1,8 @@
 package org.jbali.random
 
-import org.jbali.math.NormalDistribution
+import org.jbali.bytes.asData
 import org.jbali.math.powerOf10
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.log10
-import kotlin.math.sqrt
 import kotlin.random.Random
-
-
-// whole numbers with a given number of decimal digits
 
 /**
  * Generate a long with at most n digits.
@@ -17,41 +10,18 @@ import kotlin.random.Random
  */
 fun Random.nextLongOfDigits(n: Int) = nextLong(powerOf10(n))
 
-private const val DIGIT_CHARS = "0123456789"
+// "tokens"
 
-/**
- * Generate a random number string with an exact number
- * of decimal digits, including padding zeroes.
- * E.g. nextPaddedNum(4) -> "1749",
- *      nextPaddedNum(5) -> "00212"
- */
-fun Random.nextPaddedNum(digits: Int): String =
-        CharArray(digits).let { a ->
-            for (d in 0 until digits) {
-                a[d] = DIGIT_CHARS.random(this)
-            }
-            String(a)
-        }
+@OptIn(ExperimentalUnsignedTypes::class)
+fun Random.nextBase64(chars: UInt): String {
+    val bits = chars * 6u
+    val bytes = bits / 8u
+    return nextBytes(bytes.toInt()).asData().toBase64()
+}
 
-
-// characters
-
-@OptIn(ExperimentalStdlibApi::class)
-fun Random.nextDigit(): Char =
-    nextInt('0'.code, '9'.code).toChar()
-
-@OptIn(ExperimentalStdlibApi::class)
-fun Random.nextUpperCaseLetter(): Char =
-    nextInt('A'.code, 'Z'.code).toChar()
-
-
-// numbers on normal distribution
-
-fun Random.nextNormalDouble(): Double =
-    sqrt(-2 * log10(nextDouble())) * cos(2 * PI * nextDouble())
-
-fun Random.nextNormalDouble(mean: Double, sd: Double): Double =
-    (nextNormalDouble() * sd) + mean
-
-fun Random.nextNormalDouble(distribution: NormalDistribution): Double =
-    nextNormalDouble(distribution.mean, distribution.sd)
+@OptIn(ExperimentalUnsignedTypes::class)
+fun Random.nextHex(chars: UInt): String {
+    require(chars % 2u == 0u)
+    val bytes = chars / 2u
+    return nextBytes(bytes.toInt()).asData().toHexString()
+}
