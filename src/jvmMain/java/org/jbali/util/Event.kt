@@ -158,7 +158,7 @@ open class Event<P>(
         }
     }
 
-    // TODO move to Listenable with @JvmDefault
+    // TODO move to Listenable with Jvm Default
     fun listenVoid(callback: Runnable) = listen { callback.run() }
 
     fun dispatch(data: P, errLog: Logger) {

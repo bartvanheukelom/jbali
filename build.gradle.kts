@@ -213,6 +213,7 @@ if (doJvm) {
     tasks.withType<KotlinJvmCompile>().configureEach {
         kotlinOptions {
             jvmTarget = javaVersion.toString()
+            jvmDefaultAll()
         }
     }
     
