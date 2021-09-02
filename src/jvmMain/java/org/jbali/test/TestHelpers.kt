@@ -24,3 +24,14 @@ fun <T> assertListImplementation(list: List<T>) {
     assertEquals(list.isEmpty(), list.size == 0)
 
 }
+
+fun <T> T.assertEquals(expected: T, message: String? = null) {
+    assertEquals(expected, this, message)
+}
+
+fun <T> T.assertMatches(pattern: Regex) =
+    toString().let { str ->
+        if (!pattern.containsMatchIn(str)) {
+            throw AssertionError("Actual value doesn't match $pattern: $str")
+        }
+    }

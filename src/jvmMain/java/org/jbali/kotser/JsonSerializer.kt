@@ -1,6 +1,7 @@
 package org.jbali.kotser
 
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.jbali.json2.JSONString
@@ -30,6 +31,11 @@ fun <T> T.stringifyWith(s: JsonSerializer<T>): JSONString =
 
 fun <T> JSONString.parseWith(s: JsonSerializer<T>): T =
         s.parse(this)
+
+inline fun <reified T> JSONString.decode(): T =
+    string.decodeJson()
+inline fun <reified T> String.decodeJson(): T =
+    DefaultJson.read.decodeFromString(this)
 
 inline fun <reified T> jsonSerializer(
         serializer: KSerializer<T> = kotlinx.serialization.serializer(),

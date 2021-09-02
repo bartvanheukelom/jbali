@@ -73,7 +73,7 @@ fun JsonableMap.toJsonElement() =
         }
 
 fun JsonableList.toJsonElement() =
-        toJsonArray()
+        mapToJsonArray()
 
 @Deprecated("Useless JsonElement.toJsonElement(). Did you expect the receiver to be something else?", ReplaceWith("this"))
 fun JsonElement.toJsonElement(): JsonElement = this
@@ -103,26 +103,20 @@ fun JsonableValue?.toJsonElement(): JsonElement =
 
             is List<*> ->
                 // IntelliJ doesn't require this cast, but compiler does (though it shouldn't?)
-                (this as Iterable<*>).toJsonArray {
-                    add(it.toJsonElement())
-                }
+                (this as Iterable<*>).mapToJsonArray()
 
             else -> throw IllegalArgumentException("$this is not a valid JsonableValue")
         }
 
 /**
  * Map this iterable to a [JsonArray].
- *
- * Unlike [map], the lambda should not return the value to be added, but should call
- * the proper overload of [JsonArrayBuilder.unaryPlus].
- *
- * The default [adder] simply maps each item using [toJsonElement].
+ * The default [mapper] simply maps each item using [toJsonElement].
  */
-inline fun <T> Iterable<T>.toJsonArray(
-        crossinline adder: JsonArrayBuilder.(T) -> Unit = { add(it.toJsonElement()) }
+inline fun <T> Iterable<T>.mapToJsonArray(
+        crossinline mapper: (T) -> JsonElement = { it.toJsonElement() }
 ): JsonArray =
         buildJsonArray {
             forEach {
-                adder(it)
+                add(mapper(it))
             }
         }

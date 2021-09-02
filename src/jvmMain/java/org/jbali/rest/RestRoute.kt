@@ -24,7 +24,11 @@ import org.slf4j.LoggerFactory
 import java.lang.ref.WeakReference
 import java.time.Instant
 
-abstract class RestRoute : RestApiContext {
+interface RestRouteContext : RestApiContext {
+    fun path(name: String, config: RestRoute.() -> Unit): RestRouteContext
+}
+
+abstract class RestRoute : RestRouteContext {
 
     private val log = LoggerFactory.getLogger(RestRoute::class.java)
 
@@ -129,26 +133,31 @@ abstract class RestRoute : RestApiContext {
             returnVal: T,
             status: HttpStatusCode = HttpStatusCode.OK
     ) {
-
-        // serialize return value
-        val returnJson: String =
-            // TODO fix
-//            try {
-//                returnVal.jsonCache.invoke(returnType.serializer)
-//            } catch (e: Throwable) {
-//                log.warn("Error invoking jsonCache for returnVal=$returnVal, returnType.serializer=${returnType.serializer}", e)
-                jsonFormat.encodeToString(returnType.serializer, returnVal)
-//            }
-
-        // instruct client how to deserialize the response
-        // TODO instead, set contentType to application/vnd.$returnType+json... but how to deal with nullability and type parameters
-        call.response.addContentTypeInnerHeader(returnType.type)
-
-        // respond JSON response
-        respondJson(
-                json = returnJson,
-                status = status
-        )
+        
+        if (returnType.extends(reifiedTypeOf<ByteArrayContent>())) {
+            respond(returnVal as ByteArrayContent)
+        } else {
+    
+            // serialize return value
+            val returnJson: String =
+                // TODO fix
+    //            try {
+    //                returnVal.jsonCache.invoke(returnType.serializer)
+    //            } catch (e: Throwable) {
+    //                log.warn("Error invoking jsonCache for returnVal=$returnVal, returnType.serializer=${returnType.serializer}", e)
+                    jsonFormat.encodeToString(returnType.serializer, returnVal)
+    //            }
+    
+            // instruct client how to deserialize the response
+            // TODO instead, set contentType to application/vnd.$returnType+json... but how to deal with nullability and type parameters
+            call.response.addContentTypeInnerHeader(returnType.type)
+    
+            // respond JSON response
+            respondJson(
+                    json = returnJson,
+                    status = status
+            )
+        }
     }
 
     private suspend fun PipelineContext<Unit, ApplicationCall>.respondJson(
@@ -183,7 +192,7 @@ abstract class RestRoute : RestApiContext {
             override val route: Route
     ) : RestRoute(), RestApiContext by context
 
-    fun path(name: String, config: RestRoute.() -> Unit): Sub =
+    override fun path(name: String, config: RestRoute.() -> Unit): Sub =
             Sub(
                     context = context,
                     route = route.createRouteFromPath(name)
