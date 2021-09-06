@@ -60,7 +60,7 @@ inline fun <T> Iterable<T>.forEachWrappingExceptions(action: (T) -> Unit) {
     }
 }
 
-fun <T> Iterable<T>.forEachCatching(
+inline fun <T> Iterable<T>.forEachCatching(
         errorHandler: (T, Throwable) -> Unit, // TODO simple logging version
         action: (T) -> Unit
 ) {
