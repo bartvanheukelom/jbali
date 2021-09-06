@@ -22,6 +22,7 @@ import org.jbali.kotser.StringBasedSerializer
 data class HTTPOrigin(
         /**
          * The [Url] representation of this origin. Only the protocol, host and port parts may be used.
+         * The port must not be specified if it's equal to the default port of the protocol.
          */
         val url: Url
 ) {
@@ -63,6 +64,7 @@ val RequestConnectionPoint.httpOrigin: HTTPOrigin get() =
     this.let { c ->
         HTTPOrigin(URLBuilder().apply {
             protocol = URLProtocol.createOrDefault(c.scheme)
+                .wsToHttp()
             host = c.host
             if (c.port != protocol.defaultPort) {
                 port = c.port
@@ -86,10 +88,13 @@ val ApplicationRequest.originHeaderIfGiven: HTTPOrigin?
 val ApplicationRequest.deducedOrigin: HTTPOrigin
     get() = originHeaderIfGiven ?: origin.httpOrigin
 
+/**
+ * Returns whether these URLs point to the same [HTTPOrigin].
+ * Note that this returns `false` for e.g. an "https" URL and a "wss" URL that point to the same host and port.
+ * Use [Url.sameOrigin] when you need to consider those as equal.
+ */
 infix fun Url.sameOrigin(other: Url): Boolean =
-    protocol == other.protocol &&
-    portOrDefault == other.portOrDefault &&
-    host == other.host
+    protocol == other.protocol && sameOrigin(other)
 
 val Url.origin get() =
     HTTPOrigin(Url(
