@@ -20,18 +20,20 @@ import kotlin.coroutines.CoroutineContext
 fun <T : HttpClientEngineConfig> HttpClientEngineFactory<T>.withRequestModder(
     modder: HttpRequestData.() -> HttpRequestData
 ) =
-    @OptIn(InternalAPI::class)
+    @OptIn(InternalAPI::class, KtorExperimentalAPI::class)
     object : HttpClientEngineFactory<T> {
         override fun create(block: T.() -> Unit): HttpClientEngine {
             val org: HttpClientEngine = this@withRequestModder.create(block)
-            return object : HttpClientEngine
-//                by org - TODO doesn't work, override execute is not called. why?
-            {
+            return object : HttpClientEngine {
 
                 override suspend fun execute(data: HttpRequestData): HttpResponseData =
                     org.execute(data.modder())
+   
+                // Note how this class doesn't do ` : HttpClientEngine by org`.
+                // That's because it must not do this:
+//                override fun install(client: HttpClient) { org.install(client) }
 
-                // manual delegation:
+                // So do manual delegation:
                 override val config: HttpClientEngineConfig
                     get() = org.config
                 override val coroutineContext: CoroutineContext
@@ -41,6 +43,7 @@ fun <T : HttpClientEngineConfig> HttpClientEngineFactory<T>.withRequestModder(
                 override fun close() {
                     org.close()
                 }
+                override val supportedCapabilities get() = org.supportedCapabilities
 
             }
         }
