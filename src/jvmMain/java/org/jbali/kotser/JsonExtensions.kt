@@ -1,6 +1,7 @@
 package org.jbali.kotser
 
-import kotlinx.serialization.*
+import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.*
 
 
@@ -51,6 +52,10 @@ val jsonFalse = JsonPrimitive(false)
 
 fun jsonString(string: String) = JsonPrimitive(string)
 fun jsonString(value: Any?) = JsonPrimitive(value.toString())
+
+fun <T : JsonElement> List<T>    .toJsonArray() = JsonArray(this         )
+fun <T : JsonElement> Iterable<T>.toJsonArray() = JsonArray(this.toList())
+fun <T : JsonElement> Sequence<T>.toJsonArray() = JsonArray(this.toList())
 
 @Suppress("NOTHING_TO_INLINE")
 inline fun JsonPrimitive.Companion.bool(b: Boolean): JsonPrimitive =

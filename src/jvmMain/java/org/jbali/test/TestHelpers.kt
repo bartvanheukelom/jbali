@@ -31,3 +31,30 @@ fun assertComparesEqual(expected: BigDecimal, actual: BigDecimal, message: Strin
     val ms = maxOf(expected.scale(), actual.scale())
     assertEquals(expected.setScale(ms), actual.setScale(ms), message)
 }
+
+
+// for these extension functions, use "must" instead of "assert" because
+// it's otherwise very easy to accidentally call these instead of the normal asserts, like e.g.:
+//
+// with (context) {
+//      val status: String = ...
+//      assertEquals("good", status)
+// }
+//
+// ...would call
+//     context.assertEquals(expected = "good", message = status)
+// which would call
+//     assertEquals(expected = "good", actual = context, message = status)
+
+fun <T> T.mustEqual(expected: T, message: String? = null) {
+    assertEquals(expected, this, message)
+}
+
+fun <T> T.mustMatch(pattern: Regex) =
+    toString().let { str ->
+        if (!pattern.containsMatchIn(str)) {
+            throw AssertionError("Actual value doesn't match $pattern: $str")
+        }
+    }
+
+

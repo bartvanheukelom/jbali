@@ -4,6 +4,7 @@ import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.http.content.*
+import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.Route
 import io.ktor.routing.get
@@ -163,7 +164,7 @@ data class RestApiBuilder(
             respondObject(
                 status = HttpStatusCode.NotFound,
                 returnVal = buildJsonObject {
-                    put("message", jsonString("Not Found in REST API @ $route"))
+                    put("message", jsonString("'${call.request.path()}' not found in REST API @ $route"))
                     errorResponseAugmenter(call)
                 }
             )

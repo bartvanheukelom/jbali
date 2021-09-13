@@ -59,7 +59,19 @@ object WebSockets {
              */
             val mask: Boolean
     ) {
-
+        
+        companion object {
+            val asserts = Companion::class.java.desiredAssertionStatus()
+        }
+        
+        init {
+            if (asserts && opcode == OPCODE_TEXT && fin) {
+                // throw if payload is malformed
+                Charsets.UTF_8.newDecoder()
+                    .decode(ByteBuffer.wrap(payload))
+            }
+        }
+        
         // the following are generated because that's required for bytearray apparently
 
         override fun toString() =
