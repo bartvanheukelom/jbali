@@ -1,49 +1,21 @@
-pluginManagement {
-    val kotlinVersion = KotlinVersion(1, 5, 0)
-    val kotlinEAPSuffix = null
+import org.jbali.gradle.settings.*
 
-    plugins {
-        id("org.jetbrains.dokka") version "1.4.32"
+buildscript {
+    dependencies {
+        // unfortunately can't access GradleVersion.current() here,
+        // but the included jar will check for version mismatch
+        classpath(files("./gradle-tools/settings-tools/lib/gradle-7.0.jar"))
     }
-
-    // ============ shared TODO find way to share this =========== //
-
-    val kotlinVersionString = "$kotlinVersion${kotlinEAPSuffix ?: ""}"
-    @Suppress("SENSELESS_COMPARISON")
-    val kotlinEAP = kotlinEAPSuffix != null
-
-    (gradle as ExtensionAware).extra.let { e ->
-
-        // TODO make wrapper class with suffix included
-        // this one preserves it as KotlinVersion
-        check(!e.has("kotlinVersion"))
-        e["kotlinVersion"] = kotlinVersion
-        // but this one includes the suffix
-        check(!e.has("kotlinVersionString"))
-        e["kotlinVersionString"] = kotlinVersionString
-
-        check(!e.has("kotlinEAP"))
-        e["kotlinEAP"] = kotlinEAP
-
-    }
-
-    repositories {
-        mavenCentral()
-        gradlePluginPortal()
-    }
-
-    plugins {
-        listOf(
-                "org.jetbrains.kotlin.jvm",
-                "org.jetbrains.kotlin.multiplatform",
-                "org.jetbrains.kotlin.plugin.serialization"
-        ).forEach {
-            id(it) version kotlinVersionString
-        }
-    }
-
 }
 
 rootProject.name = "jbali"
+composableBuild()
 
-includeBuild("gradle-tools")
+managePlugins {
+    recommendedRepositories()
+    versionsFromProperties()
+}
+
+compositeBuild {
+    includeNamedBuild("jbali-gradle-tools")
+}
