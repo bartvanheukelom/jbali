@@ -9,6 +9,7 @@ import io.ktor.util.*
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import org.jbali.ktor.plus
+import org.jbali.ktor.wsToHttp
 import java.net.InetAddress
 import kotlin.coroutines.CoroutineContext
 
@@ -76,16 +77,45 @@ fun HttpRequestData.copy(
  *
  * Specifically, changes the [HttpRequestData.url] to [backendUrl],
  * and adds the original url and given [clientAddress] as `X-Forwarded` headers.
+ *
+ * @param forwardWs For `ws(s)://..` URLs, whether `X-Forwarded-Proto` is set to `ws(s)` (true) or `http(s)` (false).
+ *                  It's not exactly clear what is proper. The default is true because that seems to cause the most
+ *                  backend issues, and is therefore most useful for testing.
  */
 fun HttpRequestData.proxyPass(
     backendUrl: Url,
     clientAddress: InetAddress,
+    forwardWs: Boolean = true,
+    forwardFor: Boolean = true,
+    moreHeaders: Map<String, String> = emptyMap(),
 ) =
     copy(
         url = backendUrl,
-        headers = headers + mapOf(
-            HttpHeaders.XForwardedProto to url.protocol.name,
-            HttpHeaders.XForwardedFor to clientAddress.hostAddress,
-            HttpHeaders.XForwardedHost to url.hostWithPort,
-        ),
+        headers = headers
+                + mapOf(
+                    HttpHeaders.XForwardedProto to url.protocol
+                        .let { if (forwardWs) it else it.wsToHttp() }
+                        .name,
+                    "X-Real-Ip" to clientAddress.hostAddress,
+                    HttpHeaders.XForwardedHost to url.hostWithPort,
+                    HttpHeaders.XForwardedServer to "frontend.biz",
+                )
+                + (if (forwardFor) {
+                      mapOf(HttpHeaders.XForwardedFor to clientAddress.hostAddress)
+                  } else emptyMap())
+                + moreHeaders,
+    )
+
+fun HttpRequestData.proxyLikeTraefik1(
+    backendUrl: Url,
+    clientAddress: InetAddress,
+) =
+    proxyPass(
+        backendUrl = backendUrl,
+        clientAddress = clientAddress,
+        forwardWs = true,
+        forwardFor = !url.protocol.isWebsocket(),
+        moreHeaders = mapOf(
+            "X-Forwarded-SSL" to "true"
+        )
     )
