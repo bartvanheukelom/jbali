@@ -2,6 +2,7 @@ package org.jbali.exposed
 
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.Transaction
+import org.jetbrains.exposed.sql.exposedLogger
 import org.jetbrains.exposed.sql.statements.jdbc.JdbcConnectionImpl
 import org.jetbrains.exposed.sql.transactions.TransactionInterface
 import org.jetbrains.exposed.sql.transactions.TransactionManager
@@ -18,11 +19,28 @@ fun <T> inTransactionOf(
         ignoreCommit = ignoreCommit,
     ))
     try {
-        return TransactionManager.current().statement()
+        val res = TransactionManager.current().statement()
+        closeStatements(TransactionManager.current())
+        return res
     } finally {
         TransactionManager.resetCurrent(before)
     }
 }
+
+// copy-paste from internal closeStatementsAndConnection
+private fun closeStatements(transaction: Transaction) {
+    val currentStatement = transaction.currentStatement
+    try {
+        currentStatement?.let {
+            it.closeIfPossible()
+            transaction.currentStatement = null
+        }
+        transaction.closeExecutedStatements()
+    } catch (e: Exception) {
+        exposedLogger.warn("Statements close failed", e)
+    }
+}
+
 
 internal class ExistingConTxManager(
     con: Connection,
