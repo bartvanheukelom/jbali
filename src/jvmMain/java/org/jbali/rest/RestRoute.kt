@@ -25,6 +25,7 @@ import java.lang.ref.WeakReference
 import java.time.Instant
 
 interface RestRouteContext : RestApiContext {
+    val ktorRouteForHacks: Route
     fun path(name: String, config: RestRoute.() -> Unit): RestRouteContext
 }
 
@@ -36,7 +37,7 @@ abstract class RestRoute : RestRouteContext {
 
     @Suppress("DeprecatedCallableAddReplaceWith")
     @Deprecated("")
-    val ktorRouteForHacks get() = route
+    override val ktorRouteForHacks get() = route
 
     protected val allowedMethods = mutableSetOf<HttpMethod>()
 

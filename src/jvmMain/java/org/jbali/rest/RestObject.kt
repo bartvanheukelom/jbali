@@ -9,7 +9,7 @@ import org.jbali.ktor.respondNoContent
 import org.jbali.util.ReifiedType
 import org.jbali.util.reifiedTypeOf
 
-inline fun <reified T> RestRoute.singleton(
+inline fun <reified T> RestRouteContext.singleton(
         name: String,
         noinline config: RestObject<T>.() -> Unit
 ): RestObject<T> =
@@ -19,14 +19,14 @@ inline fun <reified T> RestRoute.singleton(
                 config = config
         )
 
-fun <T> RestRoute.singleton(
+fun <T> RestRouteContext.singleton(
         name: String,
         type: ReifiedType<T>,
         config: RestObject<T>.() -> Unit
 ): RestObject<T> =
         RestObject(
                 context = context,
-                route = route.createRouteFromPath(name),
+                route = ktorRouteForHacks.createRouteFromPath(name),
                 type = type
         )
             .configure(config)
