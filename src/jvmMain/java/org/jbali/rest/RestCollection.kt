@@ -6,12 +6,14 @@ import io.ktor.routing.*
 import io.ktor.util.*
 import org.jbali.ktor.getExact
 import org.jbali.util.ReifiedType
+import org.jbali.util.cast
 import org.jbali.util.reifiedTypeOf
+import kotlin.reflect.KClass
 
-fun RestRoute.collection(name: String, config: RestCollection.() -> Unit): RestCollection =
+fun RestRouteContext.collection(name: String, config: RestCollection.() -> Unit): RestCollection =
         RestCollection(
                 context = context,
-                route = route.createRouteFromPath(name)
+                route = ktorRouteForHacks.createRouteFromPath(name)
         )
             .configure(config)
 
@@ -84,15 +86,21 @@ class RestCollection(
     fun <T : Any> item(
             type: ReifiedType<T>,
             config: Item<T>.() -> Unit
-    ): Item<T> =
-            @OptIn(KtorExperimentalAPI::class)
-            Item(
-                    context = context,
-                    route = route.createChild(PathSegmentParameterRouteSelector("key")),
-                    type = type,
-                    getKey = { parameters.getOrFail("key") }
-            )
-                .configure(config)
+    ): Item<T> {
+        
+        // attempt to make key name unique (rest collections can be nested),
+        // yet also readable
+        val keyParName = "key${type.type.classifier!!.cast<KClass<*>>().simpleName!!}"
+        
+        @OptIn(KtorExperimentalAPI::class)
+        return Item(
+            context = context,
+            route = route.createChild(PathSegmentParameterRouteSelector(keyParName)),
+            type = type,
+            getKey = { parameters.getOrFail(keyParName) }
+        )
+            .configure(config)
+    }
 
     class Item<T : Any>(
             context: RestApiContext,
