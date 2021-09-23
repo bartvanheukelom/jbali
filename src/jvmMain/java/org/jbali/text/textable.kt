@@ -51,7 +51,7 @@ fun textable(
     
     val colSizes = cols.map { c ->
         maxOf(
-            rows.maxOf { it[c].length },
+            rows.maxOfOrNull { it[c].length } ?: 0,
             colHeaders[c].length,
         )
     }
