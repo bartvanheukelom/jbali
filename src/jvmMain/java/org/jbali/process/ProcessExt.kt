@@ -19,6 +19,22 @@ fun runProcess(vararg command: String) {
         .run()
 }
 
+@Throws(InterruptedException::class)
+fun runAndReadLines(vararg command: String): List<String> {
+    val p = buildProcess(*command)
+        .redirectOutput(ProcessBuilder.Redirect.PIPE)
+        .start()
+    
+    val lines =
+        p.inputStream.use { ins ->
+            ins.reader().readLines()
+        }
+    
+    // should complete instantly
+    p.waitForSuccess()
+    return lines
+}
+
 /**
  * Start the process and wait for it to terminate successfully, or throw an exception.
  *
