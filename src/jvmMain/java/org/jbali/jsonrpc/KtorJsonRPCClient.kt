@@ -102,7 +102,7 @@ class KtorJsonRPCClient(
                     string = resp,
                 )
             } catch (e: Throwable) {
-                throw RuntimeException("Error parsing response $resp: $e", e)
+                throw RuntimeException("Error parsing method $method response $resp: $e", e)
             }
         
         return when (val e = jsonResp.error) {
