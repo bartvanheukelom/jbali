@@ -14,16 +14,33 @@ fun <T> inTransactionOf(
     statement: Transaction.() -> T
 ): T {
     val before = TransactionManager.manager
-    TransactionManager.resetCurrent(ExistingConTxManager(
+    val ectm = ExistingConTxManager(
         con = connection,
         ignoreCommit = ignoreCommit,
-    ))
+    )
+    TransactionManager.resetCurrent(ectm)
+    val tx = TransactionManager.current()
     try {
-        val res = TransactionManager.current().statement()
-        closeStatements(TransactionManager.current())
+        
+        val res = tx.statement()
+        
+        // does not actually commit, but is required to run interceptors
+        // that e.g. flush entity inserts
+        tx.commit()
+        
         return res
+        
+    } catch (e: Throwable) {
+        val currentStatement = tx.currentStatement
+        try {
+            tx.rollback()
+        } catch (e: Exception) {
+            exposedLogger.warn("Transaction rollback failed: ${e.message}. Statement: $currentStatement", e)
+        }
+        throw e
     } finally {
         TransactionManager.resetCurrent(before)
+        closeStatements(tx)
     }
 }
 
@@ -64,17 +81,17 @@ internal class ExistingConTxManager(
                 get() = con.transactionIsolation
             
             override fun close() {
-                throw unsup()
+//                throw unsup()
             }
             
             override fun commit() {
-                if (!ignoreCommit) {
-                    throw unsup()
-                }
+//                if (!ignoreCommit) {
+//                    throw unsup()
+//                }
             }
-            
+
             override fun rollback() {
-                throw unsup()
+                con.rollback()
             }
             
         })
