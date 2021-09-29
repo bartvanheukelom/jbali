@@ -177,6 +177,7 @@ if (doJvm) {
                         
                         compileOnly("com.google.code.gson:gson", "2.8.6")
                         compileOnly("org.apache.activemq:activemq-client", "5.16.2")
+                        compileOnly("org.springframework:spring-context", "5.3.7")
                         
                     }
                 }

@@ -77,3 +77,21 @@ fun textable(
 inline fun <reified T : Any> Iterable<T>.toTableString() =
     // TODO optimized builder with fixed length
     textable(this).joinToString("\n") + "\n"
+
+fun String.layout(
+    maxWidth: Int = 100,
+    collapseLines: Boolean = true,
+    ellipsis: String = "…"
+): String =
+    if (collapseLines) {
+        // TODO optimize for really long strings
+        val collapsed = lineSequence().joinToString("⏎")
+        when {
+            collapsed.length <= maxWidth ->
+                collapsed
+            else ->
+                collapsed.substring(0, maxWidth - ellipsis.length) + ellipsis
+        }
+    } else {
+        TODO()
+    }
