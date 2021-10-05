@@ -7,7 +7,10 @@ import java.math.BigInteger
 fun Long.toIntExact(): Int =
         Math.toIntExact(this)
 
+fun Float.toLongExact(): Long = toDouble().toLongExact()
+
 fun Double.toLongExact(): Long =
+        // TODO should be able to optimize by checking exponent (don't forget NaN and infinity)
         toLong().also { l ->
             if (l.toDouble() != this) {
                 throw ArithmeticException("$this is not representable as long")
@@ -73,10 +76,10 @@ fun Number.toLongExact(): Long =
         when (this) {
             is Long -> this
             is Byte, is Short, is Int -> this.toLong()
-            is BigDecimal -> this.toLongExact()
-            is BigInteger -> this.toLongExact()
+            is BigDecimal -> this.toBigIntegerExact().longValueExact()
+            is BigInteger -> this.longValueExact()
 
-            is Float -> this.toDouble().toLongExact()
+            is Float -> this.toLongExact()
             is Double -> this.toLongExact()
 
             else -> throw ArithmeticException("Cannot do ($this as ${this.kClass.qualifiedName}).toLongExact()")
