@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalUnsignedTypes::class)
+
 package org.jbali.math
 
 import org.jbali.reflect.kClass
@@ -84,3 +86,14 @@ fun Number.toLongExact(): Long =
 
             else -> throw ArithmeticException("Cannot do ($this as ${this.kClass.qualifiedName}).toLongExact()")
         }
+
+/**
+ * Converts this [Long] value to [UInt]. If this value is smaller than 0 or larger than [UInt.MAX_VALUE], it returns
+ * those bounds, respectively.
+ */
+fun Long.toUIntClamped(): UInt =
+    when {
+        this < 0L -> 0u
+        this > UInt.MAX_VALUE.toLong() -> UInt.MAX_VALUE
+        else -> toUInt()
+    }
