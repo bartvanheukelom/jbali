@@ -1,7 +1,9 @@
 package org.jbali.kotser
 
+import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.serializer
 import org.jbali.json2.JSONString
+import org.jbali.reflect.kClass
 import org.jbali.util.stringToBeUnmarshalled
 import java.io.Externalizable
 import java.io.ObjectInput
@@ -29,6 +31,15 @@ constructor(
 
         inline fun <reified T : Any> wrap(obj: T): JsonSerialized<T> =
             JsonSerialized(JSONString.stringify(format, serializer(), obj))
+    
+        /**
+         * Serialize the given object using the serializer of its runtime class.
+         * Only works for non-generic types. For Java use.
+         */
+        @OptIn(InternalSerializationApi::class)
+        @JvmStatic
+        fun <T : Any> wrapConcrete(obj: T): JsonSerialized<T> =
+            JsonSerialized(JSONString.stringify(format, obj.kClass.serializer(), obj))
     }
 
     inline fun <reified R : T> unwrap(): R =
