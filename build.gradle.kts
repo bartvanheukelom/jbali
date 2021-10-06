@@ -171,9 +171,10 @@ if (doJvm) {
                         compileOnly(Ktor.serialization,       vKtor)
                         compileOnly(Ktor.websockets,          vKtor)
                         
-                        compileOnly("org.jetbrains.exposed:exposed-core", vExposed)
-                        compileOnly("org.jetbrains.exposed:exposed-dao",  vExposed)
-                        compileOnly("org.jetbrains.exposed:exposed-jdbc", vExposed)
+                        compileOnly("org.jetbrains.exposed:exposed-core",      vExposed)
+                        compileOnly("org.jetbrains.exposed:exposed-dao",       vExposed)
+                        compileOnly("org.jetbrains.exposed:exposed-java-time", vExposed)
+                        compileOnly("org.jetbrains.exposed:exposed-jdbc",      vExposed)
                         
                         compileOnly("com.google.code.gson:gson", "2.8.6")
                         compileOnly("org.apache.activemq:activemq-client", "5.16.2")
