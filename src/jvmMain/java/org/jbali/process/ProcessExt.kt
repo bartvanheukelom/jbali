@@ -31,7 +31,7 @@ fun runAndReadLines(vararg command: String): List<String> {
         }
     
     // should complete instantly
-    p.waitForSuccess()
+    p.waitForSuccess(command.first().substringAfterLast('/'))
     return lines
 }
 
@@ -45,8 +45,11 @@ fun runAndReadLines(vararg command: String): List<String> {
  * @throws InterruptedException if this thread is interrupted while waiting.
  */
 @Throws(InterruptedException::class)
-fun ProcessBuilder.run(timeout: Duration? = null) {
-    start().waitForSuccess(timeout)
+fun ProcessBuilder.run(
+    name: String? = null,
+    timeout: Duration? = null,
+) {
+    start().waitForSuccess(name = name, timeout = timeout)
 }
 
 /**
@@ -59,7 +62,10 @@ fun ProcessBuilder.run(timeout: Duration? = null) {
  * @throws InterruptedException if this thread is interrupted while waiting.
  */
 @Throws(InterruptedException::class)
-fun Process.waitForSuccess(timeout: Duration? = null) {
+fun Process.waitForSuccess(
+    name: String?,
+    timeout: Duration? = null
+) {
     
     try {
         if (timeout != null) {
@@ -79,6 +85,6 @@ fun Process.waitForSuccess(timeout: Duration? = null) {
     }
     
     if (exitValue() != 0) {
-        throw RuntimeException("Process exited with value ${exitValue()}")
+        throw RuntimeException("Process${name?.let { " '$name'" } ?: ""} exited with value ${exitValue()}")
     }
 }
