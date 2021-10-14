@@ -10,11 +10,11 @@ import io.ktor.routing.*
 import io.ktor.util.pipeline.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.serializer
 import org.jbali.bytes.Hex
 import org.jbali.bytes.encodedAs
 import org.jbali.crypto.sha256
 import org.jbali.kotser.jsonString
-import org.jbali.kotser.serializer
 import org.jbali.ktor.handleExact
 import org.jbali.util.ReifiedType
 import org.jbali.util.StoredExtensionProperty
@@ -146,7 +146,7 @@ abstract class RestRoute : RestRouteContext {
     //                returnVal.jsonCache.invoke(returnType.serializer)
     //            } catch (e: Throwable) {
     //                log.warn("Error invoking jsonCache for returnVal=$returnVal, returnType.serializer=${returnType.serializer}", e)
-                    jsonFormat.encodeToString(returnType.serializer, returnVal)
+                    jsonFormat.encodeToString(jsonFormat.serializersModule.serializer(returnType.type), returnVal)
     //            }
     
             // instruct client how to deserialize the response
