@@ -1,6 +1,5 @@
 package org.jbali.text
 
-
 /**
  * Split this string on the first occurence of [sep] and return the before and after parts, excluding [sep].
  * If this string does not contain [sep], returns `Pair(this, null)`.

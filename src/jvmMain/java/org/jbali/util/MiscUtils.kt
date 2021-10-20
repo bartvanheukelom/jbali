@@ -122,8 +122,6 @@ val KClass<*>.kotlinReferenceLink: String by StoredExtensionProperty {
             } + "/"
 }
 
-val Pair<*, *>.assignFormatted get() = "${first}=${second}"
-
 /**
  * ```
  * fun foo(x: String, y: Int)
