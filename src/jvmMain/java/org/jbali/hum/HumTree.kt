@@ -18,6 +18,15 @@ import kotlin.reflect.KClass
 import kotlin.reflect.full.companionObjectInstance
 import kotlin.reflect.full.isSubclassOf
 
+// ------------------------------------------------------------------- //
+// root = root, has branches and/or leaves
+// branch = subset of root or branch, has branches and/or leaves
+// value = leaf
+// ------------------------------------------------------------------- //
+// group = root or branch
+// tree = root, branch or leaf
+// ------------------------------------------------------------------- //
+
 
 /**
  * Some subtree of a hierarchical enum.
@@ -96,7 +105,10 @@ sealed class HumTree<R : HumValue<R>, G : R>(
 
     fun fromString(s: String): G =
             byName[s] ?: throw NoSuchElementException("$this has no value named '$s'. Did you mean '${closestMatch(s)}'?")
-
+    
+    // TODO
+//    fun treeFromString(s: String): HumTreeOut<G> =
+    
     fun closestMatch(s: String): G =
         values.minByOrNull { nameDistance(it.name, s) }
             ?: throw NoSuchElementException("$this has no values?")
@@ -186,6 +198,7 @@ sealed class HumTree<R : HumValue<R>, G : R>(
 }
 
 /**
+ * Represent a subtree of a hierarchical enum, possibly the entire tree, but not a single leaf.
  * Base class for companions of enum root or subdivision.
  */
 sealed class HumGroup<R : HumValue<R>, G : R>(
