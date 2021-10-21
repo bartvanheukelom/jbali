@@ -4,7 +4,10 @@ import org.jbali.json.JSONArray;
 import org.jbali.threads.ThreadPool;
 import org.junit.Test;
 
+import javax.annotation.Nullable;
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.NoSuchElementException;
 
 import static org.junit.Assert.*;
@@ -20,6 +23,8 @@ public class TextMessageServiceTest {
 		void bar(int a, Object b);
 		Object echo(Object a);
 		void nestedLocalFail();
+		@KoSe
+		TestKoseData kose(@Nullable TestKoseData data, @JJS TestJavaSerData mixer);
 	}
 	public interface LocalEP {
 		void setVal(int v);
@@ -31,7 +36,9 @@ public class TextMessageServiceTest {
 		@Override
 		boolean equals(Object obj); // ?
 		void nestedLocalFail();
-
+		@KoSe
+		TestKoseData kose(@Nullable TestKoseData data, @JJS TestJavaSerData mixer);
+		
 		void localFail(); // hackyhack, will never be submitted
 	}
 
@@ -87,7 +94,12 @@ public class TextMessageServiceTest {
 		}
 
 		public void notInInterface() {}
-
+		
+		@Override
+		public TestKoseData kose(@Nullable TestKoseData data, TestJavaSerData mixer) {
+			if (data != null && data.getFibonacciMaybe().isEmpty()) throw new IllegalArgumentException("no fib?");
+			return data != null ? data : new TestKoseData(Arrays.asList(1, 2, 3));
+		}
 	}
 	
 	@Test
@@ -225,12 +237,8 @@ public class TextMessageServiceTest {
 			fail();
 		} catch (RuntimeException e) {
 			e.printStackTrace();
-			try {
-				assertEquals("Wrapped e", e.getMessage());
-				assertTrue(e.getCause() instanceof IllegalArgumentException);
-			} catch (AssertionError ae) {
-				throw ae;
-			}
+			assertEquals("Wrapped e", e.getMessage());
+			assertTrue(e.getCause() instanceof IllegalArgumentException);
 		}
 		
 		// wrong type		
@@ -246,9 +254,22 @@ public class TextMessageServiceTest {
 		LocalDate d = LocalDate.now();
 		assertEquals(d, client.echo(d));
 		
-		// too few/many
+		// too few/many, should still be compatible
 		client.foo(12, 13);
 		client.bar(12);
+		
+		// kose
+		TestKoseData td = new TestKoseData(
+				Arrays.asList(5, 5, 5) // hey, it said maybe
+		);
+		assertEquals(td, client.kose(td, TestJavaSerData.INSTANCE));
+		assertNotNull(client.kose(null, TestJavaSerData.INSTANCE));
+		try {
+			client.kose(new TestKoseData(Collections.emptyList()), TestJavaSerData.INSTANCE); // should throw for empty list
+			fail();
+		} catch (RuntimeException e) {
+			assertEquals("no fib?", e.getMessage());
+		}
 
 	}
 	

@@ -1,7 +1,12 @@
 package org.jbali.jmsrpc
 
+import io.ktor.serialization.*
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.serializer
 import org.jbali.errors.removeCurrentStack
 import org.jbali.json.JSONArray
+import org.jbali.json.JSONObject
 import org.jbali.reflect.Methods
 import org.jbali.serialize.JavaJsonSerializer
 import org.jbali.util.onceFunction
@@ -9,6 +14,8 @@ import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.util.*
+import kotlin.reflect.KType
+import kotlin.reflect.jvm.kotlinFunction
 
 private val log = LoggerFactory.getLogger(TextMessageService::class.java)!!
 
@@ -19,6 +26,8 @@ class TextMessageService<T : Any>(
         private val svcName: String = iface.name,
         private val endpoint: T
 ) {
+    
+    private val ifaceKose = iface.isAnnotationPresent(KoSe::class.java)
 
     private val methods: Map<String, Method> =
             Methods.mapPublicMethodsByName(iface)
@@ -42,19 +51,42 @@ class TextMessageService<T : Any>(
             methName = reqJson.getString(RQIDX_METHOD)
             val method = methods[methName.lowercase(Locale.getDefault())]
                 ?: throw NoSuchElementException("Unknown method '$methName'")
-
+    
+            // which serialization to use
+            val methodKose = when {
+                method.isAnnotationPresent(KoSe::class.java) -> true
+                method.isAnnotationPresent(JJS ::class.java) -> false
+                else                                         -> ifaceKose
+            }
+            
             // read arguments
             val pars = method.parameters
-
             val args = method.parameters.mapIndexed { p, par ->
                 val indexInReq = p + 1
                 if (reqJson.length() < indexInReq + 1) {
                     // this parameter has no argument
                     logTheRequest()
                     log.info("- Arg #" + p + " (" + par.type + " " + par.name + ") omitted")
-                    null // let's hope that's sufficient
+                    null // let's hope that's sufficient TODO kotlin default value
                 } else {
-                    JavaJsonSerializer.unserialize(reqJson.get(indexInReq))
+    
+                    val serVal = reqJson.get(indexInReq)
+                    
+                    val paramKose = when {
+                        par.isAnnotationPresent(KoSe::class.java) -> true
+                        par.isAnnotationPresent(JJS ::class.java) -> false
+                        else                                      -> methodKose
+                    }
+                    
+                    if (paramKose) {
+                        val argSer = method.kotlinFunction!!.parameters[p + 1].type.let(::serializer) // TODO cache
+                        serVal
+                            .let(JSONObject::valueToString) // TODO optimize, use kose json the whole way
+                            .let { DefaultJson.decodeFromString(argSer, it) }
+                    } else {
+                        JavaJsonSerializer.unserialize(serVal)
+                    }
+                    
                 }
             }.toTypedArray()
 
@@ -83,7 +115,15 @@ class TextMessageService<T : Any>(
             }
 
             // return response
-            JSONArray.create(STATUS_OK, JavaJsonSerializer.serialize(ret))!!
+            if (methodKose) {
+                val argSer = method.kotlinFunction!!.returnType.let(::serializer) // TODO cache
+                ret
+                    .let { DefaultJson.encodeToString(argSer, it) }  // TODO optimize, use kose json the whole way
+                    .let { "[${STATUS_OK}, $it]" }
+                    .let(::JSONArray)
+            } else {
+                JSONArray.create(STATUS_OK, JavaJsonSerializer.serialize(ret))!!
+            }
 
         } catch (e: Throwable) {
 
@@ -130,3 +170,13 @@ class TextMessageService<T : Any>(
     }
 
 }
+
+/**
+ * Apply to interfaces, methods or parameters in a [TextMessageService] interface that should use kotlinx.serialization.
+ */
+annotation class KoSe
+
+/**
+ * Apply to interfaces, methods or parameters in a [TextMessageService] interface that should use the legacy [JavaJsonSerializer].
+ */
+annotation class JJS
