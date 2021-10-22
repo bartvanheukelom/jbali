@@ -66,6 +66,9 @@ fun <T> JsonSerializer<T>.assertSerialization(obj: T, expectJson: JsonElement): 
 fun <T> JsonSerializer<T>.assertSerialization(obj: T, expectJson: String): T =
         assertSerialization(obj, JSONString(expectJson))
 
+inline fun <reified T> assertSerialization(obj: T, expectJson: String): T =
+    jsonSerializer<T>().assertSerialization(obj, expectJson)
+
 
 inline infix fun <reified T> T.shouldSerializeTo(expectJson: JsonElement): T =
         jsonSerializer<T>().assertSerialization(this, expectJson)
