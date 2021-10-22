@@ -1,13 +1,13 @@
 package org.jbali.json2
 
 import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import org.intellij.lang.annotations.Language
 import org.jbali.kotser.BasicJson
-import org.jbali.kotser.stringify
-import kotlin.jvm.JvmInline
 
 
 /**
@@ -17,7 +17,7 @@ import kotlin.jvm.JvmInline
  */
 @JvmInline
 value class JSONString(
-        val string: String
+    @Language("JSON") val string: String
 ) {
 
     override fun toString() = string
@@ -51,5 +51,6 @@ value class JSONString(
 
 }
 
-fun makeJsonPretty(t: String): String =
+@OptIn(ExperimentalSerializationApi::class)
+fun makeJsonPretty(@Language("JSON") t: String): String =
     BasicJson.indented.encodeToString(BasicJson.plain.parseToJsonElement(t))
