@@ -1,12 +1,10 @@
 package org.jbali.jmsrpc
 
-import io.ktor.serialization.*
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.serializer
 import org.jbali.errors.removeCurrentStack
 import org.jbali.json.JSONArray
 import org.jbali.json.JSONObject
+import org.jbali.kotser.DefaultJson
 import org.jbali.reflect.Methods
 import org.jbali.serialize.JavaJsonSerializer
 import org.jbali.util.onceFunction
@@ -14,13 +12,11 @@ import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.util.*
-import kotlin.reflect.KType
 import kotlin.reflect.jvm.kotlinFunction
 
 private val log = LoggerFactory.getLogger(TextMessageService::class.java)!!
 
-// TODO simple kotlin-serialization JSON instead of JavaJsonSerializer.
-//      perhaps migrate to that slowly with an annotation per method.
+@OptIn(ExperimentalStdlibApi::class)
 class TextMessageService<T : Any>(
         private val iface: Class<out T>,
         private val svcName: String = iface.name,
@@ -82,7 +78,7 @@ class TextMessageService<T : Any>(
                         val argSer = method.kotlinFunction!!.parameters[p + 1].type.let(::serializer) // TODO cache
                         serVal
                             .let(JSONObject::valueToString) // TODO optimize, use kose json the whole way
-                            .let { DefaultJson.decodeFromString(argSer, it) }
+                            .let { DefaultJson.read.decodeFromString(argSer, it) }
                     } else {
                         JavaJsonSerializer.unserialize(serVal)
                     }
@@ -118,7 +114,7 @@ class TextMessageService<T : Any>(
             if (methodKose) {
                 val argSer = method.kotlinFunction!!.returnType.let(::serializer) // TODO cache
                 ret
-                    .let { DefaultJson.encodeToString(argSer, it) }  // TODO optimize, use kose json the whole way
+                    .let { DefaultJson.plainOmitDefaults.encodeToString(argSer, it) }  // TODO optimize, use kose json the whole way
                     .let { "[${STATUS_OK}, $it]" }
                     .let(::JSONArray)
             } else {
