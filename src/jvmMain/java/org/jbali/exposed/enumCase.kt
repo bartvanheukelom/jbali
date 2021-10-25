@@ -7,7 +7,7 @@ import kotlin.reflect.KClass
 inline fun <reified E : Enum<E>, R> SqlExpressionBuilder.enumCase(
     valueExpression: Expression<E>,
     elseResult: Expression<R>? = null,
-    noinline results: (E) -> Expression<R>
+    noinline results: (E) -> Expression<R>?
 ) =
     EnumCase(
         enumClass = E::class,
@@ -20,24 +20,25 @@ class EnumCase<E : Enum<E>, R>(
     private val enumClass: KClass<E>,
     private val valueExpression: Expression<E>,
     private val elseResult: Expression<R>? = null,
-    private val results: (E) -> Expression<R>,
+    private val results: (E) -> Expression<R>?,
 ): Op<R>(), ComplexExpression {
     override fun toQueryBuilder(queryBuilder: QueryBuilder): Unit = queryBuilder {
         append("CASE ")
         +valueExpression
     
         for (v in enumClass.java.enumConstants!!) {
-            append(" WHEN ")
-            append(v.sqlLiteral)
-            append(" THEN ")
-            
-            val res = results(v)
-            // exposed doesn't apply this check in this case
-            // TODO should it? then report. or am I using it wrong?
-            if (res is ComplexExpression) {
-                append("(", res, ")")
-            } else {
-                append(res)
+            results(v)?.let { res ->
+                append(" WHEN ")
+                append(v.sqlLiteral)
+                append(" THEN ")
+    
+                // exposed doesn't apply this check in this case
+                // TODO should it? then report. or am I using it wrong?
+                if (res is ComplexExpression) {
+                    append("(", res, ")")
+                } else {
+                    append(res)
+                }
             }
         }
     
