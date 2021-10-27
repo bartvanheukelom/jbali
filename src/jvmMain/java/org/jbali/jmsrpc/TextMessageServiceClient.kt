@@ -91,7 +91,12 @@ object TextMessageServiceClient {
                         // return or throw it
                         when (respStatus) {
                             TextMessageService.STATUS_OK -> {
-                                if (methodKose) {
+                                val returnKose = when {
+                                    method.isAnnotationPresent(KoSeReturn::class.java) -> true
+                                    method.isAnnotationPresent(JJSReturn ::class.java) -> false
+                                    else                                               -> methodKose
+                                }
+                                if (returnKose) {
                                     val argSer = method.kotlinFunction!!.returnType.let(::serializer) // TODO cache
                                     respJsonEl
                                         .let(JSONObject::valueToString) // TODO optimize, use kose json the whole way

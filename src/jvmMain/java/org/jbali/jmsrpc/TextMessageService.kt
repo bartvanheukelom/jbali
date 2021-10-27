@@ -111,7 +111,12 @@ class TextMessageService<T : Any>(
             }
 
             // return response
-            if (methodKose) {
+            val returnKose = when {
+                method.isAnnotationPresent(KoSeReturn::class.java) -> true
+                method.isAnnotationPresent(JJSReturn ::class.java) -> false
+                else                                               -> methodKose
+            }
+            if (returnKose) {
                 val argSer = method.kotlinFunction!!.returnType.let(::serializer) // TODO cache
                 ret
                     .let { DefaultJson.plainOmitDefaults.encodeToString(argSer, it) }  // TODO optimize, use kose json the whole way
@@ -171,8 +176,16 @@ class TextMessageService<T : Any>(
  * Apply to interfaces, methods or parameters in a [TextMessageService] interface that should use kotlinx.serialization.
  */
 annotation class KoSe
+/**
+ * Apply to methods in a [TextMessageService] interface that should use kotlinx.serialization _for the return value_.
+ */
+annotation class KoSeReturn
 
 /**
  * Apply to interfaces, methods or parameters in a [TextMessageService] interface that should use the legacy [JavaJsonSerializer].
  */
 annotation class JJS
+/**
+ * Apply to methods in a [TextMessageService] interface that should use use the legacy [JavaJsonSerializer] _for the return value_.
+ */
+annotation class JJSReturn
