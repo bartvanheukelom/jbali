@@ -4,6 +4,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import org.intellij.lang.annotations.Language
 import org.jbali.json2.JSONString
 
 /**
@@ -22,7 +23,7 @@ data class JsonSerializer<T>(
 
     // convenience methods:
 
-    fun parseJsonString(str: String) = parse(JSONString(str))
+    fun parseJsonString(@Language("JSON") str: String) = parse(JSONString(str))
 
 }
 
