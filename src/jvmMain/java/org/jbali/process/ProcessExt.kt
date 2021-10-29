@@ -52,29 +52,52 @@ fun ProcessBuilder.run(
     start().waitForSuccess(name = name, timeout = timeout)
 }
 
+typealias ProcessExitValue = Int
+
+class ProcessExitValueException(msg: String, val exitValue: ProcessExitValue) : RuntimeException(msg)
+
 /**
  * Wait for this process to terminate successfully, or throw an exception.
  *
  * If the wait is stopped before the process terminates, the process will be destroyed.
  *
- * @throws RuntimeException if the process terminated with a non-0 exit value.
+ * @throws ProcessExitValueException if the process terminated with a non-0 exit value.
  * @throws TimeoutException if the process did not terminate before the given [timeout].
  * @throws InterruptedException if this thread is interrupted while waiting.
  */
 @Throws(InterruptedException::class)
 fun Process.waitForSuccess(
-    name: String?,
-    timeout: Duration? = null
+    name: String? = null,
+    timeout: Duration? = null,
 ) {
-    
+    val exitValue = waitForExit(name = name, timeout = timeout)
+    if (exitValue != 0) {
+        throw ProcessExitValueException("Process${name?.let { " '$name'" } ?: ""} exited with value $exitValue", exitValue)
+    }
+}
+
+/**
+ * Wait for this process to terminate and return the [Process.exitValue].
+ *
+ * If the wait is stopped before the process terminates, the process will be destroyed.
+ *
+ * @throws TimeoutException if the process did not terminate before the given [timeout].
+ * @throws InterruptedException if this thread is interrupted while waiting.
+ */
+@Throws(InterruptedException::class)
+fun Process.waitForExit(
+    name: String? = null,
+    timeout: Duration? = null,
+): ProcessExitValue {
     try {
         if (timeout != null) {
             if (!waitFor(timeout.toLongMilliseconds(), TimeUnit.MILLISECONDS)) {
-                throw TimeoutException("Timeout while waiting for process to terminate")
+                throw TimeoutException("Timeout while waiting for process ${name?.let { " '$name'" } ?: ""} to terminate")
             }
         } else {
             waitFor()
         }
+        return exitValue()
     } catch (e: Throwable) {
         try {
             destroy()
@@ -83,8 +106,9 @@ fun Process.waitForSuccess(
         }
         throw e
     }
-    
-    if (exitValue() != 0) {
-        throw RuntimeException("Process${name?.let { " '$name'" } ?: ""} exited with value ${exitValue()}")
-    }
 }
+
+// overloads that don't use ExperimentalTime
+fun ProcessBuilder.run    (name: String? = null) = run           (name = name, timeout = null)
+fun Process.waitForSuccess(name: String? = null) = waitForSuccess(name = name, timeout = null)
+fun Process.waitForExit   (name: String? = null) = waitForExit   (name = name, timeout = null)
