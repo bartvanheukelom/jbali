@@ -4,7 +4,7 @@ buildscript {
     dependencies {
         // unfortunately can't access GradleVersion.current() here,
         // but the included jar will check for version mismatch
-        classpath(files("./gradle-tools/settings-tools/lib/gradle-7.0.jar"))
+        classpath(files("./gradle-tools/settings-tools/lib/gradle-7.2.jar"))
     }
 }
 

@@ -30,7 +30,8 @@ plugins {
 // check gradle version, for when not running with the included wrapper (e.g. included in another project)
 val supportedGradleVersions = setOf(
     "6.7.1",
-    "7.0"
+    "7.0",
+    "7.2"
 )
 check(org.gradle.util.GradleVersion.current().version in supportedGradleVersions) {
     "This build script is untested with Gradle version ${org.gradle.util.GradleVersion.current()}. Tested versions are $supportedGradleVersions"
