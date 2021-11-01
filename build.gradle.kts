@@ -40,7 +40,7 @@ initKotlinProject(
     group = JBali.group,
     name = JBali.aJbali,
     acceptableKotlinVersions = setOf(
-        KotlinVersions.V1_5_0
+        KotlinVersions.V1_5_30,
     )
 )
 
@@ -60,7 +60,7 @@ kotlin {
 
         commonMain {
             dependencies {
-                api(KotlinX.Serialization.json, "1.2.1")
+                api(KotlinX.Serialization.json, "1.3.0-RC")
             }
         }
 
@@ -138,8 +138,8 @@ if (doJvm) {
             withJava()
             
             sourceSets {
-                
-                val vKtor = "1.5.4"
+
+                val vKtor = "1.6.3"
                 val vSlf4j = "1.7.30"
                 val vExposed = "0.31.1"
                 
