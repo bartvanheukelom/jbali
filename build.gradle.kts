@@ -49,10 +49,11 @@ initKotlinProject(
 // TODO centralize
 check(kotlinVersionString == KotlinCompilerVersion.VERSION)
 
-val javaMajorVersion = 17
+val javaVersionMajor = projectOrBuildProp("java.version.major").toString().toInt()
+val javaVersion = JavaVersion.toVersion(javaVersionMajor)
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(javaMajorVersion))
+        languageVersion.set(JavaLanguageVersion.of(javaVersionMajor))
     }
 }
 
@@ -207,16 +208,15 @@ if (doJvm) {
         options.storeParameterNames()
     }
     
-    // TODO make KotlinJvmTarget extension
-//    tasks.withType<JavaCompile>().configureEach {
-//        sourceCompatibility = javaVersion.toString()
-//        targetCompatibility = sourceCompatibility
-//    }
     tasks.withType<KotlinJvmCompile>().configureEach {
         kotlinOptions {
-            
-            jvmTarget = JavaVersion.VERSION_16.toString() // TODO enable below when kotlin supports it
-//            jvmTarget = JavaVersion.toVersion(javaMajorVersion).toString()
+    
+            jvmTarget =
+                if (javaVersionMajor == 17) { // TODO remove when kotlin supports 17
+                    JavaVersion.VERSION_16
+                } else {
+                    javaVersion
+                }.toString()
             
             jvmDefaultAll()
         }
@@ -225,10 +225,6 @@ if (doJvm) {
     // TODO why is this suddenly required since upgrade to gradle 7.0 / kotlin 1.5.0-RC ?
     val jvmProcessResources by tasks.existing(Copy::class) {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
-    }
-    
-    val jvmTest by tasks.existing(Test::class) {
-//        jvmArgs("-illegal-access=permit")
     }
     
 }
