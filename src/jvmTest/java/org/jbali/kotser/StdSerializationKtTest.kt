@@ -15,7 +15,7 @@ class StdSerializationKtTest {
             )
         }.also { e ->
             assertContains(
-                    "kotlinx.serialization.json.internal.JsonDecodingException: Unexpected JSON token at offset 0: Expected string literal with quotes",
+                    "kotlinx.serialization.json.internal.JsonDecodingException: Unexpected JSON token at offset 0: Expected beginning of the string, but got [",
                     e.toString()
             )
         }

@@ -62,21 +62,13 @@ kotlin {
 
         commonMain {
             dependencies {
-                api(KotlinX.Serialization.json, "1.3.0-RC")
+                api(KotlinX.Serialization.json, "1.3.0")
             }
         }
 
         commonTest {
             dependencies {
                 implementation(kotlin("test"))
-            }
-        }
-
-        // TODO can be removed when moving to 1.5.0 non-RC? but then, best to be explicit
-        all {
-            languageSettings {
-                languageVersion = "1.5"
-                apiVersion = "1.5"
             }
         }
 
