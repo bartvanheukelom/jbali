@@ -141,18 +141,18 @@ if (doJvm) {
             
             sourceSets {
 
-                val vKtor = "1.6.3"
-                val vSlf4j = "1.7.30"
-                val vExposed = "0.31.1"
+                val vKtor = "1.6.5"
+                val vSlf4j = "1.7.32"
+                val vExposed = "0.35.3"
                 
                 val jvmMain by existing {
                     dependencies {
                         api(Kotlin.reflect)
                         
-                        api(Arrow.core, "0.13.2")
+                        api(Arrow.core, "1.0.1")
                         api("org.jetbrains:annotations", "20.1.0")
                         
-                        api("com.google.guava:guava", "30.1.1-jre")
+                        api("com.google.guava:guava", "31.0.1-jre")
                         api("org.slf4j:slf4j-api", vSlf4j)
                         
                         api("commons-codec:commons-codec", "1.15")
