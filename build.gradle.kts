@@ -49,7 +49,12 @@ initKotlinProject(
 // TODO centralize
 check(kotlinVersionString == KotlinCompilerVersion.VERSION)
 
-
+val javaMajorVersion = 17
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(javaMajorVersion))
+    }
+}
 
 repositories {
     mavenCentral()
@@ -143,6 +148,8 @@ if (doJvm) {
                         
                         api(Arrow.core, "1.0.1")
                         api("org.jetbrains:annotations", "20.1.0")
+                        api("javax.annotation:javax.annotation-api", "1.3.2")
+                        api("javax.xml.bind:jaxb-api", "2.3.0")
                         
                         api("com.google.guava:guava", "31.0.1-jre")
                         api("org.slf4j:slf4j-api", vSlf4j)
@@ -201,14 +208,16 @@ if (doJvm) {
     }
     
     // TODO make KotlinJvmTarget extension
-    val javaVersion = JavaVersion.VERSION_1_8
-    tasks.withType<JavaCompile>().configureEach {
-        sourceCompatibility = javaVersion.toString()
-        targetCompatibility = sourceCompatibility
-    }
+//    tasks.withType<JavaCompile>().configureEach {
+//        sourceCompatibility = javaVersion.toString()
+//        targetCompatibility = sourceCompatibility
+//    }
     tasks.withType<KotlinJvmCompile>().configureEach {
         kotlinOptions {
-            jvmTarget = javaVersion.toString()
+            
+            jvmTarget = JavaVersion.VERSION_16.toString() // TODO enable below when kotlin supports it
+//            jvmTarget = JavaVersion.toVersion(javaMajorVersion).toString()
+            
             jvmDefaultAll()
         }
     }
@@ -216,6 +225,10 @@ if (doJvm) {
     // TODO why is this suddenly required since upgrade to gradle 7.0 / kotlin 1.5.0-RC ?
     val jvmProcessResources by tasks.existing(Copy::class) {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
+    
+    val jvmTest by tasks.existing(Test::class) {
+//        jvmArgs("-illegal-access=permit")
     }
     
 }
