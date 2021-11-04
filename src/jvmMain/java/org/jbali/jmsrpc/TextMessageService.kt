@@ -16,12 +16,16 @@ import kotlin.reflect.jvm.kotlinFunction
 
 private val log = LoggerFactory.getLogger(TextMessageService::class.java)!!
 
+interface ITextMessageService<T : Any> {
+    fun handleRequest(request: String): String
+}
+
 @OptIn(ExperimentalStdlibApi::class)
 class TextMessageService<T : Any>(
         private val iface: Class<out T>,
         private val svcName: String = iface.name,
         private val endpoint: T
-) {
+) : ITextMessageService<T> {
     
     private val ifaceKose = iface.isAnnotationPresent(KoSe::class.java)
 
@@ -29,7 +33,7 @@ class TextMessageService<T : Any>(
             Methods.mapPublicMethodsByName(iface)
                 .mapKeys { it.key.lowercase() }
 
-    fun handleRequest(request: String): String {
+    override fun handleRequest(request: String): String {
 
         var methName = "?"
         val logTheRequest = onceFunction { log.info("In text request $svcName.$methName:") }
