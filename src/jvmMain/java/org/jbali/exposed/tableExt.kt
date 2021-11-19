@@ -68,6 +68,7 @@ class JsonColumnType : ColumnType() {
     
 }
 
+
 /**
  * A timestamp column to store both a date and a time.
  *

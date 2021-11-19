@@ -8,6 +8,7 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.select
 
+// TODO seems useless, id must always return 0 or 1
 fun <T : Comparable<T>> IdTable<T>.select(id: T): Query =
     let { tbl ->
         select { tbl.id eq id }
