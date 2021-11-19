@@ -64,6 +64,14 @@ val JsonElement.string: String get() =
 fun String.toJsonElement() = JsonPrimitive(this)
 fun Double.toJsonElement() = JsonPrimitive(this)
 fun Boolean.toJsonElement() = JsonPrimitive(this)
+// numbers that convert to Double without loss (however, type info is lost)
+fun Byte.toJsonElement() = JsonPrimitive(toDouble())
+fun Short.toJsonElement() = JsonPrimitive(toDouble())
+fun Int.toJsonElement() = JsonPrimitive(toDouble())
+// TODO make name consistent when https://youtrack.jetbrains.com/issue/KT-35305 fixed
+fun UByte.toJsonElementU() = JsonPrimitive(toDouble())
+fun UShort.toJsonElementU() = JsonPrimitive(toDouble())
+fun UInt.toJsonElementU() = JsonPrimitive(toDouble())
 
 fun JsonableMap.toJsonElement() =
         buildJsonObject {
@@ -91,6 +99,14 @@ fun JsonableValue?.toJsonElement(): JsonElement =
             is Double -> toJsonElement()
             is Boolean -> toJsonElement()
             is String -> toJsonElement()
+    
+            // numbers that convert to Double without loss
+            is Byte -> toJsonElement()
+            is Short -> toJsonElement()
+            is Int -> toJsonElement()
+            is UByte -> toJsonElementU()
+            is UShort -> toJsonElementU()
+            is UInt -> toJsonElementU()
 
             is Map<*, *> ->
                 buildJsonObject {
@@ -120,3 +136,33 @@ inline fun <T> Iterable<T>.mapToJsonArray(
                 add(mapper(it))
             }
         }
+
+
+// ========= JsonObjectBuilder extensions ===========
+
+fun JsonObjectBuilder.put(key: String, value: String)  = put(key, value.toJsonElement())
+fun JsonObjectBuilder.put(key: String, value: Double)  = put(key, value.toJsonElement())
+fun JsonObjectBuilder.put(key: String, value: Boolean) = put(key, value.toJsonElement())
+fun JsonObjectBuilder.put(key: String, value: Byte) = put(key, value.toJsonElement())
+fun JsonObjectBuilder.put(key: String, value: Short) = put(key, value.toJsonElement())
+fun JsonObjectBuilder.put(key: String, value: Int) = put(key, value.toJsonElement())
+fun JsonObjectBuilder.put(key: String, value: UByte) = put(key, value.toJsonElementU())
+fun JsonObjectBuilder.put(key: String, value: UShort) = put(key, value.toJsonElementU())
+fun JsonObjectBuilder.put(key: String, value: UInt) = put(key, value.toJsonElementU())
+
+
+// for https://youtrack.jetbrains.com/issue/KT-35305
+//fun Any?.foo() {}
+//fun Int.foo() {}
+//fun UInt.foo() {}
+//@JvmInline value class UInt24(val data: UInt) : Comparable<UInt24> {
+//    override fun compareTo(other: UInt24): Int = T ODO()
+//
+//}
+//fun UInt24.foo() {}
+//
+//fun test() {
+//    1.foo()  // resolves to Int.foo()
+//    1u.foo() // Overload resolution ambiguity
+//    UInt24(1u).foo() // resolves to UInt24.foo()
+//}

@@ -57,6 +57,23 @@ fun <T : JsonElement> List<T>    .toJsonArray() = JsonArray(this         )
 fun <T : JsonElement> Iterable<T>.toJsonArray() = JsonArray(this.toList())
 fun <T : JsonElement> Sequence<T>.toJsonArray() = JsonArray(this.toList())
 
+fun <T : JsonElement> Iterable<Pair<String, T>>.toJsonObject() = JsonObject(toMap())
+fun <T : JsonElement> Sequence<Pair<String, T>>.toJsonObject() = JsonObject(toMap())
+
 @Suppress("NOTHING_TO_INLINE")
 inline fun JsonPrimitive.Companion.bool(b: Boolean): JsonPrimitive =
         if (b) jsonTrue else jsonFalse
+
+
+fun JsonObjectBuilder.putExclusive(key: String, value: JsonElement) {
+    val prev = put(key, value)
+    if (prev != null) {
+        put(key, prev)
+        throw IllegalStateException("Key '$key' already present in JsonObjectBuilder")
+    }
+}
+
+fun JsonObjectBuilder.putAllExclusive(source: Map<String, JsonElement>) {
+    source.forEach { (k, v) -> putExclusive(k, v) }
+}
+
