@@ -87,3 +87,14 @@ inline fun <T, reified P> KProperty1<T, *>.checkReturnType(): KProperty1<T, P> {
     @Suppress("UNCHECKED_CAST")
     return this as KProperty1<T, P>
 }
+
+@Target(AnnotationTarget.CLASS, AnnotationTarget.PROPERTY, AnnotationTarget.FUNCTION, AnnotationTarget.TYPEALIAS, AnnotationTarget.CONSTRUCTOR)
+@RequiresOptIn(level = RequiresOptIn.Level.WARNING)
+annotation class HasBetterKotlinAlternative(
+    val message: String = "",
+)
+@Target(AnnotationTarget.CLASS, AnnotationTarget.PROPERTY, AnnotationTarget.FUNCTION, AnnotationTarget.TYPEALIAS, AnnotationTarget.CONSTRUCTOR)
+@RequiresOptIn(level = RequiresOptIn.Level.ERROR)
+annotation class KotlinMustUseAlternative(
+    val message: String = "",
+)
