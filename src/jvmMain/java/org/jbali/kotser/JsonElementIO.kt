@@ -150,6 +150,10 @@ fun JsonObjectBuilder.put(key: String, value: UByte) = put(key, value.toJsonElem
 fun JsonObjectBuilder.put(key: String, value: UShort) = put(key, value.toJsonElementU())
 fun JsonObjectBuilder.put(key: String, value: UInt) = put(key, value.toJsonElementU())
 
+fun JsonObjectBuilder.putStrings (key: String, value: Iterable<String >) = put(key, value.mapToJsonArray { it.toJsonElement() })
+fun JsonObjectBuilder.putDoubles (key: String, value: Iterable<Double >) = put(key, value.mapToJsonArray { it.toJsonElement() })
+fun JsonObjectBuilder.putBooleans(key: String, value: Iterable<Boolean>) = put(key, value.mapToJsonArray { it.toJsonElement() })
+
 
 // for https://youtrack.jetbrains.com/issue/KT-35305
 //fun Any?.foo() {}

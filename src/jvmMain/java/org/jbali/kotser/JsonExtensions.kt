@@ -69,7 +69,7 @@ fun JsonObjectBuilder.putExclusive(key: String, value: JsonElement) {
     val prev = put(key, value)
     if (prev != null) {
         put(key, prev)
-        throw IllegalStateException("Key '$key' already present in JsonObjectBuilder")
+        throw IllegalArgumentException("Key '$key' already present in JsonObjectBuilder")
     }
 }
 
@@ -77,3 +77,8 @@ fun JsonObjectBuilder.putAllExclusive(source: Map<String, JsonElement>) {
     source.forEach { (k, v) -> putExclusive(k, v) }
 }
 
+infix fun JsonObject.plusExclusive(other: JsonObject) =
+    buildJsonObject {
+        putAllExclusive(this@plusExclusive)
+        putAllExclusive(other)
+    }
