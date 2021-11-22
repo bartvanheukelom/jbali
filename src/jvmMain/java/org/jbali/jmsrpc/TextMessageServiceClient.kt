@@ -33,7 +33,8 @@ object TextMessageServiceClient {
     fun <S> create(iface: Class<out S>, requestHandler: Function<String, String>): S {
 
         val toStringed = "TextMessageServiceClient[" + iface.simpleName + "]"
-        val ifaceInfo = iface.kotlin.asTMSInterface
+        val ifaceK = iface.kotlin
+        val ifaceInfo = ifaceK.asTMSInterface
     
         return Proxies.create(iface) { proxy, method, args ->
 
@@ -46,6 +47,7 @@ object TextMessageServiceClient {
                         // --- ok, it's a real method --- //
                         
                         val tMethod = ifaceInfo.methodsByJavaMethod.getValue(method)
+                        val func = tMethod.method(ifaceK)
     
                         // serialize the invocation to JSON
                         // TODO send args object instead of array
@@ -55,7 +57,7 @@ object TextMessageServiceClient {
                             args?.asSequence()
                                 ?.mapIndexed { p, arg ->
                                     val par = tMethod.params[p]
-                                    val kpar = par.param.get()!!
+                                    val kpar = par.param(func)
                                     try {
                                         par.serializer.transform(arg)
                                     } catch (e: Exception) {

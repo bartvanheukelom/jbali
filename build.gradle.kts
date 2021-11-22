@@ -211,14 +211,7 @@ if (doJvm) {
     
     tasks.withType<KotlinJvmCompile>().configureEach {
         kotlinOptions {
-    
-            jvmTarget =
-                if (javaVersionMajor == 17) { // TODO remove when kotlin supports 17
-                    JavaVersion.VERSION_16
-                } else {
-                    javaVersion
-                }.toString()
-            
+            setJvmTarget(javaVersion)
             jvmDefaultAll()
         }
     }

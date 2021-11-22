@@ -10,10 +10,9 @@ import org.jbali.kotser.jsonSerializer
 import org.jbali.serialize.JavaJsonSerializer
 import org.jbali.text.toMessageString
 import org.jbali.util.Borrowed
-import org.jbali.util.StoredExtensionProperty
 import org.jbali.util.cast
+import org.jbali.util.loan
 import org.slf4j.LoggerFactory
-import java.lang.ref.WeakReference
 import java.lang.reflect.Method
 import java.util.*
 import kotlin.reflect.KClass
@@ -24,6 +23,13 @@ import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.jvm.javaMethod
 
 
+fun interface DeepMemberPointer<TContainer, TMember> {
+    /**
+     * Must always be invoked with the same [container], or one that is equivalent.
+     */
+   operator fun invoke(container: TContainer): TMember
+}
+
 internal class TMSInterface<I : Any>(
     bIface: Borrowed<KClass<I>>
 ) {
@@ -32,12 +38,14 @@ internal class TMSInterface<I : Any>(
     }
     
     class TMethod(
-        val method: WeakReference<KFunction<*>>,
+        // we can't store the KFunction because we only Borrowed the interface
+        // TODO oh noooo... the KSerializers probably do keep references to their classes. can we weakref them?
+        val method: DeepMemberPointer<KClass<*>, KFunction<*>>,
         val params: List<TParam>,
         val returnSerializer: TMSSerializer,
     )
     class TParam(
-        val param: WeakReference<KParameter>,
+        val param: DeepMemberPointer<KFunction<*>, KParameter>,
         val serializer: TMSSerializer,
     )
     
@@ -53,22 +61,28 @@ internal class TMSInterface<I : Any>(
             }
         }
         
-        iface
-            .memberFunctions
-            .filter {
-                it.javaMethod!!.declaringClass != Object::class.java
+        val memFunPointers: List<DeepMemberPointer<KClass<*>, KFunction<*>>> =
+            iface.memberFunctions.indices.map { i ->
+                DeepMemberPointer { ifa: KClass<*> ->
+                    // TODO not optimal because memberFunctions is a filtering getter
+                    ifa.memberFunctions
+                        .cast<List<KFunction<*>>>()[i]
+                }
             }
-            .groupBy { it.name }
+        
+        memFunPointers
+            .filter {
+                it(iface).javaMethod!!.declaringClass != Object::class.java
+            }
+            .groupBy { it(iface).name }
             .mapValues { (n, f) ->
                 if (f.size == 1) f.single()
                 else throw IllegalArgumentException(f.toMessageString(
                     "Encountered duplicate methods. TextMessageService does not support overloads."
                 ))
             }
-            .mapValues { (n, func) ->
-    
-//                val func = method.kotlinFunction!!
-                
+            .mapValues { (n, fp) ->
+                val func = fp(iface)
                 val methodKose = when {
                     func.hasAnnotation<KoSe>() -> true
                     func.hasAnnotation<JJS >() -> false
@@ -82,14 +96,14 @@ internal class TMSInterface<I : Any>(
                 
                 val params = func.parameters
                     .drop(1) // this
-                    .map { p ->
+                    .mapIndexed { i, p ->
                         val paramKose = when {
                             p.hasAnnotation<KoSe>() -> true
                             p.hasAnnotation<JJS >() -> false
                             else                    -> methodKose
                         }
                         TParam(
-                            param = WeakReference(p),
+                            param = { f -> f.parameters[i + 1] },
                             serializer = if (paramKose) {
                                 p.type.let(::serializer).asTms()
                             } else {
@@ -105,7 +119,7 @@ internal class TMSInterface<I : Any>(
                 }
     
                 TMethod(
-                    method = WeakReference(func),
+                    method = fp,
                     params = params,
                     returnSerializer = returnSer,
                 )
@@ -117,16 +131,18 @@ internal class TMSInterface<I : Any>(
     
     val methodsByJavaMethod: Map<Method, TMethod> = methods
         .values.associateByTo(WeakHashMap()) {
-            it.method.get()!!.javaMethod
+            it.method(bIface()).javaMethod
         }
     
 }
 
 
 internal val <I : Any> KClass<I>.asTMSInterface: TMSInterface<I>
-        by StoredExtensionProperty {
-            TMSInterface(this)
-        }
+    get() = TMSInterface(this.loan())
+// TODO disabled because probably leaks, see comment in TMSInterface
+//        by StoredExtensionProperty {
+//            TMSInterface(this)
+//        }
 
 typealias TMSSerializer = Transformer<Any?, JsonElement>
 

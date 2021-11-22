@@ -25,7 +25,8 @@ class TextMessageService<T : Any>(
         private val endpoint: T
 ) : ITextMessageService<T> {
     
-    private val ifaceInfo = iface.kotlin.asTMSInterface
+    private val ifaceK = iface.kotlin
+    private val ifaceInfo = ifaceK.asTMSInterface
     
     override fun handleRequest(request: String): String {
 
@@ -45,7 +46,7 @@ class TextMessageService<T : Any>(
             methName = reqJson[RQIDX_METHOD].string
             val method = ifaceInfo.methodsLowerName[methName.lowercase()]
                 ?: throw NoSuchElementException("Unknown method '$methName'")
-            val func = method.method.get()!!
+            val func = method.method(ifaceK)
             
             // read arguments
             // TODO support reading from object instead of array
@@ -54,7 +55,7 @@ class TextMessageService<T : Any>(
                 func.instanceParameter!! to endpoint
             )
             pars.forEachIndexed { p, par ->
-                val kPar = par.param.get()!!
+                val kPar = par.param(func)
                 val indexInReq = p + 1
                 if (reqJson.size < indexInReq + 1) {
                     // this parameter has no argument
