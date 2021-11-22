@@ -151,7 +151,18 @@ class TextMessageService<T : Any>(
 
         const val STATUS_OK = 1
         const val STATUS_ERROR = 0
-
+    
+        inline fun <reified T : Any> testWrap(endpoint: T) = testWrap(T::class.java, endpoint)
+        
+        fun <T : Any> testWrap(
+            iface: Class<out T>,
+            endpoint: T
+        ): T =
+            TextMessageServiceClient.create(
+                iface,
+                requestHandler = TextMessageService(iface, endpoint = endpoint)::handleRequest
+            )
+        
     }
 
 }
