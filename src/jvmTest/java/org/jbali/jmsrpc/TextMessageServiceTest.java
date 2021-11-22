@@ -169,7 +169,9 @@ public class TextMessageServiceTest {
 		
 		Endpoint ep = new Endpoint();
 		
-		TextMessageService<?> svc = new TextMessageService<>(ServerEP.class, "TestSVC", ep);
+		TextMessageService<?> svc  = new TextMessageService<>(ServerEP.class, "TestSVC", ep);
+		TextMessageService<?> svcK = new TextMessageService<>(TMSKotlinIface.class, "TestSVCK", TMSKotlinEndpoint.INSTANCE);
+		
 		LocalEP client = TextMessageServiceClient.create(LocalEP.class, r -> {
 			System.out.println("submit " + r);
 			if (r.startsWith("[\"localFail")) {
@@ -189,6 +191,7 @@ public class TextMessageServiceTest {
 			}
 			
 		});
+		TMSKotlinIfaceOlder clientK = TextMessageServiceClient.create(TMSKotlinIfaceOlder.class, svcK::handleRequest);
 		
 		System.out.println("----- toString, hashCode, equals -----");
 		assertEquals("TextMessageServiceClient[LocalEP]", client.toString());
@@ -257,6 +260,11 @@ public class TextMessageServiceTest {
 		// too few/many, should still be compatible
 		client.foo(12, 13);
 		client.bar(12);
+		
+		// too few but it's nullable
+		assertNull(clientK.withNullable());
+		// too few but it has a default value
+		assertEquals("hello", clientK.withDefault());
 		
 		// kose
 		TestKoseData td = new TestKoseData(

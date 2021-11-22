@@ -30,6 +30,7 @@ fun JsonElement.unwrap(): JsonableValue? =
 
 /**
  * Get the content of a [JsonPrimitive].
+ * @return A [Boolean], [Double], [String] or `null`.
  * @throws IllegalArgumentException if the literal is invalid.
  */
 fun JsonPrimitive.unwrap(): JsonableLiteral? =

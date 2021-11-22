@@ -1,18 +1,16 @@
 package org.jbali.jmsrpc
 
-import kotlinx.serialization.serializer
+import kotlinx.serialization.json.JsonArray
 import org.jbali.errors.removeCurrentStack
-import org.jbali.json.JSONArray
-import org.jbali.json.JSONObject
-import org.jbali.kotser.DefaultJson
-import org.jbali.reflect.Methods
+import org.jbali.json2.JSONString
+import org.jbali.kotser.string
+import org.jbali.kotser.toJsonElement
 import org.jbali.serialize.JavaJsonSerializer
 import org.jbali.util.onceFunction
 import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
-import java.lang.reflect.Method
-import java.util.*
-import kotlin.reflect.jvm.kotlinFunction
+import kotlin.reflect.KParameter
+import kotlin.reflect.full.instanceParameter
 
 private val log = LoggerFactory.getLogger(TextMessageService::class.java)!!
 
@@ -22,84 +20,70 @@ interface ITextMessageService<T : Any> {
 
 @OptIn(ExperimentalStdlibApi::class)
 class TextMessageService<T : Any>(
-        private val iface: Class<out T>,
+        iface: Class<out T>,
         private val svcName: String = iface.name,
         private val endpoint: T
 ) : ITextMessageService<T> {
     
-    private val ifaceKose = iface.isAnnotationPresent(KoSe::class.java)
-
-    private val methods: Map<String, Method> =
-            Methods.mapPublicMethodsByName(iface)
-                .mapKeys { it.key.lowercase() }
-
+    private val ifaceInfo = iface.kotlin.asTMSInterface
+    
     override fun handleRequest(request: String): String {
 
         var methName = "?"
         val logTheRequest = onceFunction { log.info("In text request $svcName.$methName:") }
 
-        val response = try {
+        val response: JsonArray = try {
 
             // parse request json
             val reqJson = try {
-                JSONArray(request)
+                JSONString(request).parse() as JsonArray
             } catch (e: Throwable) {
                 throw IllegalArgumentException("Could not parse request", e)
             }
 
             // determine method
-            methName = reqJson.getString(RQIDX_METHOD)
-            val method = methods[methName.lowercase(Locale.getDefault())]
+            methName = reqJson[RQIDX_METHOD].string
+            val method = ifaceInfo.methodsLowerName[methName.lowercase()]
                 ?: throw NoSuchElementException("Unknown method '$methName'")
-    
-            // which serialization to use
-            val methodKose = when {
-                method.isAnnotationPresent(KoSe::class.java) -> true
-                method.isAnnotationPresent(JJS ::class.java) -> false
-                else                                         -> ifaceKose
-            }
+            val func = method.method.get()!!
             
             // read arguments
-            val pars = method.parameters
-            val args = method.parameters.mapIndexed { p, par ->
+            // TODO support reading from object instead of array
+            val pars = method.params
+            val args = mutableMapOf<KParameter, Any?>(
+                func.instanceParameter!! to endpoint
+            )
+            pars.forEachIndexed { p, par ->
+                val kPar = par.param.get()!!
                 val indexInReq = p + 1
-                if (reqJson.length() < indexInReq + 1) {
+                if (reqJson.size < indexInReq + 1) {
                     // this parameter has no argument
-                    logTheRequest()
-                    log.info("- Arg #" + p + " (" + par.type + " " + par.name + ") omitted")
-                    null // let's hope that's sufficient TODO kotlin default value
-                } else {
-    
-                    val serVal = reqJson.get(indexInReq)
-                    
-                    val paramKose = when {
-                        par.isAnnotationPresent(KoSe::class.java) -> true
-                        par.isAnnotationPresent(JJS ::class.java) -> false
-                        else                                      -> methodKose
-                    }
-                    
-                    if (paramKose) {
-                        val argSer = method.kotlinFunction!!.parameters[p + 1].type.let(::serializer) // TODO cache
-                        serVal
-                            .let(JSONObject::valueToString) // TODO optimize, use kose json the whole way
-                            .let { DefaultJson.read.decodeFromString(argSer, it) }
+//                    logTheRequest()
+//                    log.info("- Arg ${par.name} omitted")
+                    if (kPar.isOptional) {
+                        // not putting it in args, will result in the default value being used
                     } else {
-                        JavaJsonSerializer.unserialize(serVal)
+                        // let's hope this is good enough
+                        args[kPar] = null
                     }
-                    
+                } else {
+                    val serVal = reqJson[indexInReq]
+                    args[kPar] = par.serializer.detransform(serVal)
                 }
-            }.toTypedArray()
+            }
 
             // check for more args than used
-            val extraArgs = reqJson.length() - 1 - pars.size
-            if (extraArgs > 0) {
-                logTheRequest()
-                log.info("- $extraArgs args too many ignored.")
-            }
+//            val extraArgs = reqJson.size - 1 - pars.size
+//            if (extraArgs > 0) {
+//                logTheRequest()
+//                log.info("- $extraArgs args too many ignored.")
+//            }
 
             // execute
             val ret = try {
-                method.invoke(endpoint, *args)
+                func.callBy(args)
+                    // "void" KFunction returns Unit, which should be returned as null
+                    .takeIf { it !is Unit }
             } catch (e: InvocationTargetException) {
                 // InvocationTargetException: actual exception inside method.
                 throw e.cause!!
@@ -115,20 +99,10 @@ class TextMessageService<T : Any>(
             }
 
             // return response
-            val returnKose = when {
-                method.isAnnotationPresent(KoSeReturn::class.java) -> true
-                method.isAnnotationPresent(JJSReturn ::class.java) -> false
-                else                                               -> methodKose
-            }
-            if (returnKose) {
-                val argSer = method.kotlinFunction!!.returnType.let(::serializer) // TODO cache
-                ret
-                    .let { DefaultJson.plainOmitDefaults.encodeToString(argSer, it) }  // TODO optimize, use kose json the whole way
-                    .let { "[${STATUS_OK}, $it]" }
-                    .let(::JSONArray)
-            } else {
-                JSONArray.create(STATUS_OK, JavaJsonSerializer.serialize(ret))!!
-            }
+            JsonArray(listOf(
+                STATUS_OK.toJsonElement(),
+                method.returnSerializer.transform(ret),
+            ))
 
         } catch (e: Throwable) {
 
@@ -144,17 +118,23 @@ class TextMessageService<T : Any>(
             log.warn("Error handling request", e)
 
             try {
-                JSONArray.create(STATUS_ERROR, JavaJsonSerializer.serialize(e))!!
+                JsonArray(listOf(
+                    STATUS_ERROR.toJsonElement(),
+                    JjsAsTms.transform(e),
+                ))
             } catch (serEr: Throwable) {
                 serEr.removeCurrentStack()
                 log.warn("!! Error while serializing error", serEr)
-                JSONArray.create(STATUS_ERROR, JavaJsonSerializer.serialize(RuntimeException("Error occurred but could not be serialized (see log for details)")))!!
+                JsonArray(listOf(
+                    STATUS_ERROR.toJsonElement(),
+                    JjsAsTms.transform(RuntimeException("Error occurred but could not be serialized (see log for details)")),
+                ))
             }
 
         }
 
         return try {
-            response.toString(2)
+            JSONString.stringify(response, prettyPrint = false).string
         } catch (e: Throwable) {
             log.warn("Error toStringing JSON response", e)
             "[0, null]"

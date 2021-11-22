@@ -42,5 +42,6 @@ value class Borrowed<T>
         WeakReference(invoke())
 }
 
-@Suppress("NOTHING_TO_INLINE")
-inline fun <T> loan(v: T) = Borrowed<T>(v)
+fun <T> loan(v: T) = Borrowed<T>(v)
+@JvmName("loanExt")
+fun <T> T.loan() = Borrowed<T>(this)

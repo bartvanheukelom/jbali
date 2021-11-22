@@ -3,15 +3,15 @@ package org.jbali.jmsrpc
 import arrow.core.getOrHandle
 import arrow.core.left
 import arrow.core.right
-import io.ktor.serialization.*
-import kotlinx.serialization.serializer
-import org.jbali.json.JSONArray
-import org.jbali.json.JSONObject
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.buildJsonArray
+import org.jbali.json2.JSONString
+import org.jbali.kotser.toJsonElement
+import org.jbali.kotser.unwrap
 import org.jbali.reflect.Proxies
 import org.jbali.reflect.kClassOrNull
 import org.jbali.serialize.JavaJsonSerializer
 import java.util.function.Function
-import kotlin.reflect.jvm.kotlinFunction
 
 object TextMessageServiceClient {
 
@@ -30,10 +30,10 @@ object TextMessageServiceClient {
      *
      */
     @JvmStatic
-    fun <S> create(iface: Class<S>, requestHandler: Function<String, String>): S {
+    fun <S> create(iface: Class<out S>, requestHandler: Function<String, String>): S {
 
         val toStringed = "TextMessageServiceClient[" + iface.simpleName + "]"
-        val ifaceKose = iface.isAnnotationPresent(KoSe::class.java)
+        val ifaceInfo = iface.kotlin.asTMSInterface
     
         return Proxies.create(iface) { proxy, method, args ->
 
@@ -44,70 +44,46 @@ object TextMessageServiceClient {
                     ?: run {
     
                         // --- ok, it's a real method --- //
-    
-                        // which serialization to use
-                        val methodKose = when {
-                            method.isAnnotationPresent(KoSe::class.java) -> true
-                            method.isAnnotationPresent(JJS ::class.java) -> false
-                            else                                         -> ifaceKose
-                        }
+                        
+                        val tMethod = ifaceInfo.methodsByJavaMethod.getValue(method)
     
                         // serialize the invocation to JSON
-                        val reqJson = JSONArray.create(method.name)!!
-                        args?.asSequence()
-                            ?.mapIndexed { p, arg ->
-                                val par = method.parameters[p]!!
-                                
-                                val paramKose = when {
-                                    par.isAnnotationPresent(KoSe::class.java) -> true
-                                    par.isAnnotationPresent(JJS ::class.java) -> false
-                                    else                                      -> methodKose
-                                }
-
-                                if (paramKose) {
-                                    val kpar = method.kotlinFunction!!.parameters[p + 1]
-                                    val argSer = kpar.type.let(::serializer) // TODO cache
+                        // TODO send args object instead of array
+                        val reqJson = buildJsonArray {
+                            add(method.name.toJsonElement())
+                            
+                            args?.asSequence()
+                                ?.mapIndexed { p, arg ->
+                                    val par = tMethod.params[p]
+                                    val kpar = par.param.get()!!
                                     try {
-                                        arg
-                                            .let { DefaultJson.encodeToString(argSer, it) }  // TODO optimize, use kose json the whole way
-                                            .let { JSONArray("[$it]").get(0) }
+                                        par.serializer.transform(arg)
                                     } catch (e: Exception) {
-                                        throw RuntimeException("Error serializing arg of type ${arg.kClassOrNull} for $kpar using serializer $argSer: $e", e)
+                                        throw RuntimeException("Error serializing arg of type ${arg.kClassOrNull} for $kpar.name: $e", e)
                                     }
-                                } else {
-                                    JavaJsonSerializer.serialize(arg)
                                 }
-                            }
-                            ?.forEach(reqJson::put)
+                                ?.forEach(::add)
+                        }
     
                         // send the request
-                        val respJson = requestHandler.apply(reqJson.toString(2))
+                        val respJson = requestHandler.apply(JSONString.stringify(reqJson, prettyPrint = false).string)
     
                         // parse the response
-                        val respParsed = JSONArray(respJson)
-                        val respStatus = respParsed.getInt(TextMessageService.RSIDX_STATUS)
-                        val respJsonEl = respParsed.get(TextMessageService.RSIDX_RESPONSE)
+                        val respParsed = JSONString(respJson).parse() as JsonArray
+                        val respStatus = (respParsed[TextMessageService.RSIDX_STATUS].unwrap() as Double).toInt()
+                        val respJsonEl = respParsed[TextMessageService.RSIDX_RESPONSE]
     
                         // return or throw it
                         when (respStatus) {
                             TextMessageService.STATUS_OK -> {
-                                val returnKose = when {
-                                    method.isAnnotationPresent(KoSeReturn::class.java) -> true
-                                    method.isAnnotationPresent(JJSReturn ::class.java) -> false
-                                    else                                               -> methodKose
-                                }
-                                if (returnKose) {
-                                    val argSer = method.kotlinFunction!!.returnType.let(::serializer) // TODO cache
-                                    respJsonEl
-                                        .let(JSONObject::valueToString) // TODO optimize, use kose json the whole way
-                                        .let { DefaultJson.decodeFromString(argSer, it) }
-                                } else {
-                                    JavaJsonSerializer.unserialize(respJsonEl) ?: null // TODO document why ?: null
-                                }.right()
+                                tMethod.returnSerializer
+                                    .detransform(respJsonEl)
+                                    .right()
                             }
                             else ->
                                 // the response should be an exception
-                                JavaJsonSerializer.unserialize(respJsonEl)
+                                JjsAsTms
+                                    .detransform(respJsonEl)
                                     .let { it as? Throwable ?: error("Service returned an error that is not Throwable but ${it?.javaClass}") }
 
                                     // add the local stack trace to the remote exception,
