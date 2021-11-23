@@ -52,11 +52,14 @@ internal class TMSInterface<I : Any>(
     val methods: Map<String, TMethod> = run {
     
         val iface = bIface()
-        val ifaceKose: Boolean = when {
-            iface.hasAnnotation<KoSe>() -> true
-            iface.hasAnnotation<JJS>()  -> false
+        val warningLoggedFor = mutableSetOf<KClass<*>>()
+        fun KClass<*>.ifaceKose(): Boolean = when {
+            this.hasAnnotation<KoSe>() -> true
+            this.hasAnnotation<JJS>()  -> false
             else -> {
-                log.warn("$iface is not annoted with KoSe or JJS, and will currently default to JJS, but in the future will default to KoSe")
+                if (warningLoggedFor.add(this)) {
+                    log.warn("$iface is not annoted with KoSe or JJS, and will currently default to JJS, but in the future will default to KoSe")
+                }
                 false
             }
         }
@@ -83,46 +86,50 @@ internal class TMSInterface<I : Any>(
             }
             .mapValues { (n, fp) ->
                 val func = fp(iface)
-                val methodKose = when {
-                    func.hasAnnotation<KoSe>() -> true
-                    func.hasAnnotation<JJS >() -> false
-                    else                       -> ifaceKose
-                }
-                val returnKose = when {
-                    func.hasAnnotation<KoSeReturn>() -> true
-                    func.hasAnnotation<JJSReturn >() -> false
-                    else                             -> methodKose
-                }
-                
-                val params = func.parameters
-                    .drop(1) // this
-                    .mapIndexed { i, p ->
-                        val paramKose = when {
-                            p.hasAnnotation<KoSe>() -> true
-                            p.hasAnnotation<JJS >() -> false
-                            else                    -> methodKose
-                        }
-                        TParam(
-                            param = { f -> f.parameters[i + 1] },
-                            serializer = if (paramKose) {
-                                p.type.let(::serializer).asTms()
-                            } else {
-                                JjsAsTms
-                            }
-                        )
+                try {
+                    val methodKose = when {
+                        func.hasAnnotation<KoSe>() -> true
+                        func.hasAnnotation<JJS >() -> false
+                        else                       -> func.javaMethod!!.declaringClass.kotlin.ifaceKose() // TODO what's the kotlin equivalent for declaringClass?
                     }
-                
-                val returnSer = if (returnKose) {
-                    func.returnType.let(::serializer).asTms()
-                } else {
-                    JjsAsTms
+                    val returnKose = when {
+                        func.hasAnnotation<KoSeReturn>() -> true
+                        func.hasAnnotation<JJSReturn >() -> false
+                        else                             -> methodKose
+                    }
+                    
+                    val params = func.parameters
+                        .drop(1) // this
+                        .mapIndexed { i, p ->
+                            val paramKose = when {
+                                p.hasAnnotation<KoSe>() -> true
+                                p.hasAnnotation<JJS >() -> false
+                                else                    -> methodKose
+                            }
+                            TParam(
+                                param = { f -> f.parameters[i + 1] },
+                                serializer = if (paramKose) {
+                                    p.type.let(::serializer).asTms()
+                                } else {
+                                    JjsAsTms
+                                }
+                            )
+                        }
+                    
+                    val returnSer = if (returnKose) {
+                        func.returnType.let(::serializer).asTms()
+                    } else {
+                        JjsAsTms
+                    }
+        
+                    TMethod(
+                        method = fp,
+                        params = params,
+                        returnSerializer = returnSer,
+                    )
+                } catch (e: Exception) {
+                    throw RuntimeException("While processing ${func}: $e", e)
                 }
-    
-                TMethod(
-                    method = fp,
-                    params = params,
-                    returnSerializer = returnSer,
-                )
             }
     }
     

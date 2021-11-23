@@ -278,6 +278,10 @@ public class TextMessageServiceTest {
 		} catch (RuntimeException e) {
 			assertEquals("no fib?", e.getMessage());
 		}
+		
+		assertEquals(78, clientK.jjsEcho(new JavaSerThingy(78)).getX());
+		assertEquals(32, clientK.koseEcho(new KoSeThingy(32)).getX());
+		assertEquals(44, clientK.openJjsEcho(new JavaSerThingy(44)).getX());
 
 	}
 	
