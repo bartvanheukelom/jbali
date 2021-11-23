@@ -4,6 +4,7 @@ import kotlinx.serialization.json.JsonElement
 import org.intellij.lang.annotations.Language
 import org.jbali.json2.JSONString
 import kotlin.test.assertEquals
+import kotlin.test.assertFails
 import kotlin.test.fail
 
 // TODO contribute to kotlinserialization lib
@@ -55,7 +56,12 @@ fun assertJsonEquals(expected: JSONString, actual: JSONString, message: String? 
  * and that the result of parsing said JSON equals [obj].
  * Returns the reparsed object.
  */
-fun <T> JsonSerializer<T>.assertSerialization(obj: T, expectJson: JSONString, skipParse: Boolean = false): T {
+fun <T> JsonSerializer<T>.assertSerialization(
+    obj: T,
+    expectJson: JSONString,
+    skipParse: Boolean = false,
+    expectToElementToFail: Boolean = false,
+): T {
 
     val actualJson: JSONString = try {
         stringify(obj)
@@ -64,15 +70,28 @@ fun <T> JsonSerializer<T>.assertSerialization(obj: T, expectJson: JSONString, sk
     }
     assertJsonEquals(expectJson, actualJson, "stringify($obj)")
     
-    val actualEl = encodeToElement(obj)
+    val actualEl = if (expectToElementToFail) {
+        assertFails("expectToElementToFail is true but encodeToElement did NOT fail") {
+            encodeToElement(obj)
+        }
+        null
+    } else {
+        try {
+            encodeToElement(obj)
+        } catch (e: Throwable) {
+            throw AssertionError("stringify() passed but encodeToElement() failed when serializing $obj: $e", e)
+        }
+    }
 
     if (skipParse) {
-        assertJsonEquals(expectJson, actualEl, "encodeToElement($obj)")
+        actualEl?.let { assertJsonEquals(expectJson, it, "encodeToElement($obj)") }
         return obj
     } else {
         val back = parse(actualJson)
         assertEquals(obj, back, "parse($actualJson)")
-        assertEquals(obj, decodeFromElement(actualEl), "decodeFromElement($actualEl)")
+        actualEl?.let {
+            assertEquals(obj, decodeFromElement(it), "decodeFromElement($actualEl)")
+        }
     
         return back
     }
