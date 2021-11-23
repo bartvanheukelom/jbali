@@ -20,6 +20,14 @@ fun assertJsonEquals(expected: JsonElement, actual: JSONString, message: String?
     )
 }
 
+fun assertJsonEquals(expected: JSONString, actual: JsonElement, message: String? = null) {
+    assertEquals(
+        expected = expected.parse(),
+        actual = actual,
+        message = message
+    )
+}
+
 
 /**
  * Asserts that the given [JSONString]s are equal, after normalizing the formatting.
@@ -55,14 +63,18 @@ fun <T> JsonSerializer<T>.assertSerialization(obj: T, expectJson: JSONString, sk
         throw AssertionError("Error while serializing $obj: $e", e)
     }
     assertJsonEquals(expectJson, actualJson, "stringify($obj)")
+    
+    val actualEl = encodeToElement(obj)
 
-    return if (skipParse) {
-        obj
+    if (skipParse) {
+        assertJsonEquals(expectJson, actualEl, "encodeToElement($obj)")
+        return obj
     } else {
         val back = parse(actualJson)
         assertEquals(obj, back, "parse($actualJson)")
+        assertEquals(obj, decodeFromElement(actualEl), "decodeFromElement($actualEl)")
     
-        back
+        return back
     }
 }
 

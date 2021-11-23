@@ -30,14 +30,14 @@ inline fun <R, P> withPropAs(getter: () -> P, setter: (P) -> Unit, v: P, block: 
  * Call body while this threadlocal has value v.
  */
 @OptIn(ExperimentalContracts::class)
-inline fun <L, T> ThreadLocal<L?>.withValue(v: L, body: () -> T): T {
+inline fun <L, V : L, T> ThreadLocal<L>.withValue(v: V, body: (V) -> T): T {
     contract {
         callsInPlace(body, InvocationKind.EXACTLY_ONCE)
     }
     val pre = get()
     try {
         set(v)
-        return body()
+        return body(v)
     } finally {
         set(pre)
     }

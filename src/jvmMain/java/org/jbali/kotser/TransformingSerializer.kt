@@ -51,14 +51,16 @@ inline fun <reified T : Any, reified B> transformingSerializer(
                 @OptIn(ExperimentalStdlibApi::class)
                 typeOf<T>().toString(),
         crossinline transformer: (T) -> B,
-        crossinline detransformer: (B) -> T
+        crossinline detransformer: (B) -> T,
+        backend: KSerializer<B> = serializer(),
 ): KSerializer<T> =
         transformingSerializer(
-                serialName = serialName,
-                transformer = object : Transformer<T, B> {
-                    override fun transform(obj: T): B = transformer(obj)
-                    override fun detransform(tf: B): T = detransformer(tf)
-                }
+            serialName = serialName,
+            transformer = object : Transformer<T, B> {
+                override fun transform(obj: T): B = transformer(obj)
+                override fun detransform(tf: B): T = detransformer(tf)
+            },
+            backend = backend,
         )
 
 interface Transformer<T, B> {

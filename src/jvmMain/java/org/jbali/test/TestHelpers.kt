@@ -26,6 +26,12 @@ fun <T> assertListImplementation(list: List<T>) {
 
 }
 
+//fun <T : Comparable<T>> assertComparesEqual(expected: T, actual: T, message: String? = null) {
+//    // TODO better message that doesn't lose original scale
+//    val ms = maxOf(expected.scale(), actual.scale())
+//    assertEquals(expected.setScale(ms), actual.setScale(ms), message)
+//}
+
 fun assertComparesEqual(expected: BigDecimal, actual: BigDecimal, message: String? = null) {
     // TODO better message that doesn't lose original scale
     val ms = maxOf(expected.scale(), actual.scale())

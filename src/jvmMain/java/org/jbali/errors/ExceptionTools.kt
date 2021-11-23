@@ -138,7 +138,7 @@ inline fun <T> stackRoot(body: () -> T): T {
     contract {
         callsInPlace(body, InvocationKind.EXACTLY_ONCE)
     }
-    return currentStackBase.withValue(currentStackSignature(), body)
+    return currentStackBase.withValue(currentStackSignature()) { body() }
 }
 
 // TODO use receiver context
