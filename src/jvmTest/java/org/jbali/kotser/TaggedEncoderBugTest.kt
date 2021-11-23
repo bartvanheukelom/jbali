@@ -16,6 +16,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
+// https://github.com/Kotlin/kotlinx.serialization/issues/1774 //
+
 @Serializable
 @JvmInline
 value class Name(val v: String)
