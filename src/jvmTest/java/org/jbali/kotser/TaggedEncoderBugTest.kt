@@ -186,7 +186,7 @@ object UndescriptiveNameSerializer : KSerializer<Name> {
     override fun serialize(encoder: Encoder, value: Name) {
         val s = value.v.split(" ")
         when (s.size) {
-            1 -> encoder.encodeString(value.v)
+            1 -> encoder.encodeSerializableValue(String.serializer(), value.v)
             2 -> encoder.encodeSerializableValue(serializer<Map<String, String>>(), mapOf(
                 "first" to s.first(),
                 "last" to s.last(),
