@@ -10,6 +10,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
@@ -127,6 +128,12 @@ class TaggedEncoderBugTest(
             }
             // but it would work in the fixed version
             assertTrue(Name.serializer().descriptor.needTopLevelTag)
+    
+            // what about decoding?
+            assertEquals(
+                Name("henk"),
+                json.decodeFromJsonElement(jsonString("henk")),
+            )
     
             // and what if we wrap it?
             val geert = Person(Name("geert"))
