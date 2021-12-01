@@ -31,7 +31,8 @@ plugins {
 val supportedGradleVersions = setOf(
     "6.7.1",
     "7.0",
-    "7.2"
+    "7.2",
+    "7.3"
 )
 check(org.gradle.util.GradleVersion.current().version in supportedGradleVersions) {
     "This build script is untested with Gradle version ${org.gradle.util.GradleVersion.current()}. Tested versions are $supportedGradleVersions"
@@ -205,6 +206,7 @@ if (doJvm) {
     
     tasks.withType<JavaCompile>().configureEach {
         options.storeParameterNames()
+//        options.compilerArgs.add("-Dfile.encoding=UTF-8")
     }
     
     tasks.withType<KotlinJvmCompile>().configureEach {
