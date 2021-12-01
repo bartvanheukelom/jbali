@@ -9,9 +9,7 @@ import kotlin.time.ExperimentalTime
 
 fun buildProcess(vararg command: String): ProcessBuilder =
     ProcessBuilder(*command)
-        .redirectInput(ProcessBuilder.Redirect.INHERIT)
-        .redirectOutput(ProcessBuilder.Redirect.INHERIT)
-        .redirectError(ProcessBuilder.Redirect.INHERIT)
+        .inheritIO()
 
 @Throws(InterruptedException::class)
 fun runProcess(vararg command: String) {

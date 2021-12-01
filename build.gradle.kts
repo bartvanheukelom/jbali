@@ -68,7 +68,7 @@ kotlin {
 
         commonMain {
             dependencies {
-                api(KotlinX.Serialization.json, "1.3.0")
+                api(KotlinX.Serialization.json, "1.3.1")
             }
         }
 
