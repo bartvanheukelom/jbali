@@ -3,18 +3,22 @@
 package org.jbali.kotser
 
 import kotlinx.serialization.*
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
-import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.contextual
 import org.jbali.threads.withValue
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
+import org.slf4j.LoggerFactory
+import kotlin.test.*
 
 // https://github.com/Kotlin/kotlinx.serialization/issues/1774 //
 
@@ -92,6 +96,10 @@ value class NameFixed(private val v: String) {
 @Serializable
 data class Person(val name: Name)
 
+private val json = DefaultJson.plainOmitDefaults
+
+
+
 @RunWith(Parameterized::class)
 class TaggedEncoderBugTest(
     private val w: Workaround?,
@@ -104,7 +112,6 @@ class TaggedEncoderBugTest(
     
     @Test fun testEncodeInlineClassToJsonElement() {
     
-        val json = DefaultJson.plainOmitDefaults
         
         if (w == null) {
             
@@ -119,6 +126,14 @@ class TaggedEncoderBugTest(
             }.let { e ->
                 assertEquals("No tag in stack for requested element", e.message)
             }
+            // but it would work in the fixed version
+            assertTrue(Name.serializer().descriptor.needTopLevelTag)
+    
+            // what about decoding?
+            assertEquals(
+                Name("henk"),
+                json.decodeFromJsonElement(jsonString("henk")),
+            )
     
             // and what if we wrap it?
             val geert = Person(Name("geert"))
@@ -161,4 +176,126 @@ class TaggedEncoderBugTest(
     
     }
     
+}
+
+
+
+
+object UndescriptiveNameSerializer : KSerializer<Name> {
+    override fun deserialize(decoder: Decoder): Name {
+        TODO("Not yet implemented")
+    }
+    
+    @OptIn(InternalSerializationApi::class)
+    override val descriptor: SerialDescriptor
+        get() = buildSerialDescriptor("UndescriptiveNameSerializer", SerialKind.CONTEXTUAL)
+    
+    override fun serialize(encoder: Encoder, value: Name) {
+        val s = value.v.split(" ")
+        when (s.size) {
+            1 -> encoder.encodeSerializableValue(String.serializer(), value.v)
+            2 -> encoder.encodeSerializableValue(serializer<Map<String, String>>(), mapOf(
+                "first" to s.first(),
+                "last" to s.last(),
+            ))
+        }
+    }
+    
+}
+
+object NameAsListSerializer : KSerializer<Name> {
+    val stringListSer = ListSerializer(String.serializer())
+    override val descriptor: SerialDescriptor = stringListSer.descriptor
+    override fun serialize(encoder: Encoder, value: Name) {
+        encoder.encodeSerializableValue(stringListSer, listOf(value.v))
+    }
+    override fun deserialize(decoder: Decoder) = TODO()
+}
+
+// from upcoming patch:
+// https://github.com/Kotlin/kotlinx.serialization/pull/1777/commits/3e44197923a9364e57e6c439adf22f2ec441d91a
+val SerialDescriptor.needTopLevelTag: Boolean
+    get() {
+        if (kind is PrimitiveKind || kind === SerialKind.ENUM) return true
+        if (isInline) return getElementDescriptor(0).needTopLevelTag
+        return false
+    }
+
+class TaggedEncoderUndescriptiveTest {
+    
+    private val log = LoggerFactory.getLogger(TaggedEncoderUndescriptiveTest::class.java)
+    
+    /**
+     * Test with a custom serializer whose descriptor won't / can't tell whether it needs TopLevelTag
+     */
+    @Test fun testUndescriptiveSer() {
+        
+        // works
+        assertEquals(
+            """"thierry"""",
+            json.encodeToString(UndescriptiveNameSerializer, Name("thierry")),
+        )
+        assertEquals(
+            """{"first":"jan","last":"doedel"}""",
+            json.encodeToString(UndescriptiveNameSerializer, Name("jan doedel")),
+        )
+    
+        // will encode as an object, and it works
+        assertEquals(
+            """{"first":"jan","last":"doedel"}""",
+            json.encodeToJsonElement(UndescriptiveNameSerializer, Name("jan doedel")).let(json::encodeToString),
+        )
+        
+        // will encode as a string, and throws No tag in stack
+        assertFailsWith<SerializationException> {
+            json.encodeToJsonElement(UndescriptiveNameSerializer, Name("thierry"))
+        }.let { e ->
+            assertEquals("No tag in stack for requested element", e.message)
+        }
+        // and would still fail in the new version
+        assertFalse(UndescriptiveNameSerializer.descriptor.needTopLevelTag)
+        
+    }
+    
+    /**
+     * Test with ContextSerializer, which apparently also won't provide the required info for needTopLevelTag.
+     */
+    @Suppress("JSON_FORMAT_REDUNDANT")
+    @Test fun testContextual() {
+        
+        val ctxNameSer = ContextualSerializer(Name::class)
+        
+        log.info("Contextual NameAsListSerializer")
+        Json(json) { serializersModule = SerializersModule {
+            contextual<Name>(NameAsListSerializer)
+        } }
+            .let { cj ->
+                assertEquals(
+                    """["beppie"]""",
+                    cj.encodeToString(ctxNameSer, Name("beppie")),
+                )
+                cj.encodeToJsonElement(ctxNameSer, Name("beppie"))
+            }
+            
+    
+        log.info("Contextual Name.serializer()")
+        Json(json) { serializersModule = SerializersModule {
+            contextual<Name>(Name.serializer())
+        } }
+            .let { cj ->
+                assertEquals(
+                    """"beppie"""",
+                    cj.encodeToString(ctxNameSer, Name("beppie")),
+                )
+                // will encode as a string, and throws No tag in stack
+                assertFailsWith<SerializationException> {
+                    cj.encodeToJsonElement(ctxNameSer, Name("beppie"))
+                }.let { e ->
+                    assertEquals("No tag in stack for requested element", e.message)
+                }
+                // and would still fail in the new version
+                assertFalse(ctxNameSer.descriptor.needTopLevelTag)
+            }
+        
+    }
 }
