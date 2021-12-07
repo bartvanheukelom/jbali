@@ -7,16 +7,16 @@ import org.springframework.context.annotation.ConditionContext
 import org.springframework.core.type.AnnotatedTypeMetadata
 
 /**
- * Spring condition which checks whether [the bean factory has a singleton][org.springframework.beans.factory.BeanFactory.isSingleton]
+ * Spring condition which checks whether the bean factory already contains a bean
  * with the same name as the bean definition this condition is applied to.
- * If it does, the condition returns `false` and the bean is not created, so that the singleton can be used by other beans.
+ * If it does, the condition returns `false` and the bean is not created.
  *
- * Can be used, for example, to override a classpath-scanned bean with a concrete one in a unit test.
+ * Can be used, for example, to override a classpath-scanned bean with an injected singleton in a unit test.
  *
  * The definition must explicitly specify the name using the [Bean] annotation. That is, an implicit
  * bean name from e.g. the name of the factory method is not picked up.
  */
-class SingletonNotRegistered : Condition {
+class BeanNotDefined : Condition {
     
     override fun matches(context: ConditionContext, metadata: AnnotatedTypeMetadata): Boolean {
         
@@ -25,10 +25,10 @@ class SingletonNotRegistered : Condition {
                 .cast<Array<String>>()
                 .first()
         } catch (e: Exception) {
-            throw IllegalArgumentException("Failed to get name of bean annotated with @Conditional(${SingletonNotRegistered::class.simpleName}): $e", e)
+            throw IllegalArgumentException("Failed to get name of bean annotated with @Conditional(${BeanNotDefined::class.simpleName}): $e", e)
         }
         
-        return !context.beanFactory!!.isSingleton(beanName)
+        return !context.beanFactory!!.containsBean(beanName)
         
     }
     
