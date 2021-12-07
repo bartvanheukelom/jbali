@@ -6,8 +6,14 @@ import java.io.ObjectInput
 import java.io.ObjectOutput
 import java.io.Serializable
 
-// TODO doc
-
+/**
+ * [java.io.Serializable] reference to a Kotlin (static, singleton) `object`.
+ *
+ * - Serialized as the class name of the object.
+ * - Unserialized by calling [Class.forName] on that name.
+ *
+ * Has no concept of versioning.
+ */
 class SerializedObject(
         var className: String
 ) : Externalizable {
