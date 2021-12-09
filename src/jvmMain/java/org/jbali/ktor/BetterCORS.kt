@@ -320,6 +320,8 @@ class BetterCORS(configuration: Configuration) {
         companion object {
             /**
              * Default HTTP methods that are always allowed by CORS
+             *
+             * [https://fetch.spec.whatwg.org/#cors-safelisted-method]
              */
             val CorsDefaultMethods: Set<HttpMethod> = setOf(HttpMethod.Get, HttpMethod.Post, HttpMethod.Head)
             
