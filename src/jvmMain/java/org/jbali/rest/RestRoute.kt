@@ -16,6 +16,8 @@ import org.jbali.bytes.encodedAs
 import org.jbali.crypto.sha256
 import org.jbali.kotser.jsonString
 import org.jbali.ktor.handleExact
+import org.jbali.ktor.respondNoContent
+import org.jbali.ktor.routeExact
 import org.jbali.util.ReifiedType
 import org.jbali.util.StoredExtensionProperty
 import org.jbali.util.reifiedTypeOf
@@ -27,7 +29,63 @@ import java.time.Instant
 interface RestRouteContext : RestApiContext {
     val ktorRouteForHacks: Route
     fun path(name: String, config: RestRoute.() -> Unit): RestRouteContext
+    
+    fun <T> post(
+        path: String,
+        impl: suspend (ApplicationCall) -> T
+    ) {
+        ktorRouteForHacks.createRouteFromPath(path).routeExact {
+    
+            post {
+                impl(call)
+            }
+            
+            handle {
+                call.response.header(HttpHeaders.Allow, HttpMethod.Post.value)
+                respondObject(
+                    returnType = reifiedTypeOf(),
+                    status = HttpStatusCode.MethodNotAllowed,
+                    returnVal = buildJsonObject {
+                        put("message", jsonString("Method Not Allowed: ${call.request.httpMethod.value}"))
+                        errorResponseAugmenter(call)
+                    }
+                )
+            }
+        }
+    }
+    
+    suspend fun <T> PipelineContext<Unit, ApplicationCall>.respondObject(
+        returnType: ReifiedType<T>,
+        returnVal: T,
+        status: HttpStatusCode = HttpStatusCode.OK
+    )
 }
+
+inline fun <reified I : Any> RestRouteContext.post(
+    path: String,
+    noinline impl: suspend (ApplicationCall, I) -> Unit
+) {
+    post(
+        path = path,
+        inputType = reifiedTypeOf(),
+        impl = impl
+    )
+}
+fun <I : Any> RestRouteContext.post(
+    path: String,
+    inputType: ReifiedType<I>,
+    impl: suspend (ApplicationCall, I) -> Unit
+) {
+    post(path) { call ->
+        impl(call, call.receive(inputType.type))
+        // TODO base on return type of impl:
+        //      - Unit -> No Content
+        //      - special redirect object
+        //      - some value
+        call.respondNoContent()
+    }
+}
+
 
 abstract class RestRoute : RestRouteContext {
 
@@ -129,10 +187,10 @@ abstract class RestRoute : RestRouteContext {
         )
     }
 
-    suspend fun <T> PipelineContext<Unit, ApplicationCall>.respondObject(
+    override suspend fun <T> PipelineContext<Unit, ApplicationCall>.respondObject(
             returnType: ReifiedType<T>,
             returnVal: T,
-            status: HttpStatusCode = HttpStatusCode.OK
+            status: HttpStatusCode
     ) {
         
         if (returnType.extends(reifiedTypeOf<ByteArrayContent>())) {

@@ -158,9 +158,9 @@ class TextMessageService<T : Any>(
         fun <T : Any> testWrap(
             iface: Class<out T>,
             endpoint: T
-        ): T =
-            TextMessageServiceClient.create(
-                iface,
+        ): TextMessageServiceClient<T> =
+            TextMessageServiceClient(
+                iface.kotlin,
                 requestHandler = TextMessageService(iface, endpoint = endpoint)::handleRequest
             )
         

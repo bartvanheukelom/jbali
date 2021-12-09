@@ -1,5 +1,7 @@
 package org.jbali.util
 
+import kotlin.jvm.JvmStatic
+
 @Suppress("FunctionName")
 object FakeExpression {
 
@@ -11,6 +13,9 @@ object FakeExpression {
 
     fun <T> errorForTest(name: String = "Expression"): T =
         throw Error("$name throws a fake error for testing")
+    
+    fun <T> of(): T =
+        throw RuntimeException("This code must not be called")
 
     @JvmStatic fun TODO_TRUE(): Boolean = true
     @JvmStatic fun TODO_FALSE(): Boolean = false

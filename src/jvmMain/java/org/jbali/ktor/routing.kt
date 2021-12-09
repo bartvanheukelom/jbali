@@ -41,6 +41,7 @@ fun Route.handlePath(path: String, body: PipelineInterceptor<Unit, ApplicationCa
 
 /**
  * Builds 2 routes, to match the paths "" and "/" respectively, and invokes [build] on both.
+ * TODO why does "/" work? is this some kind of legacy behaviour? document this. also document what this route doesn't match.
  */
 fun Route.routeExact(build: Route.() -> Unit) {
     route("", build)
