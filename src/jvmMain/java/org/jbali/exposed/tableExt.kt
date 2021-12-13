@@ -34,12 +34,6 @@ fun <T : Enum<T>> Table.myEnum(name: String, klass: KClass<T>): Column<T> {
     )
 }
 
-val <E : Enum<E>> E.sqlLiteral: String
-    get() = name.toSqlLiteral()
-
-fun String.toSqlLiteral(): String =
-    "'${replace("'", "''")}'"
-
 fun <T : JsonElement> Table.myJson(name: String): Column<T> =
     registerColumn(name, JsonColumnType())
 
