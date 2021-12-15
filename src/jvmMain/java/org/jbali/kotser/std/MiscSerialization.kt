@@ -24,6 +24,11 @@ object HostAndPortSerializer : StringBasedSerializer<HostAndPort>(HostAndPort::c
     override fun fromString(s: String): HostAndPort = HostAndPort.fromString(s)
 }
 
+object LocaleSerializer : StringBasedSerializer<Locale>(Locale::class) {
+    override fun toString(o: Locale): String = o.toLanguageTag()
+    override fun fromString(s: String): Locale = Locale.forLanguageTag(s)
+}
+
 
 // --- InetAddress
 
