@@ -91,7 +91,7 @@ data class RestApiBuilder(
 
                         is RestException ->
                             // TODO serialize to nice JSON (only for JSON requests?)
-                            call.respond(TextContent(
+                            call.respondWithETag(TextContent(
                                     status = e.statusCode,
                                     contentType = ContentType.Text.Plain,
                                     text = e.stackTraceString // TODO hide
@@ -102,7 +102,7 @@ data class RestApiBuilder(
 
                         else ->
                             // TODO serialize to nice JSON (only for JSON requests?)
-                            call.respond(TextContent(
+                            call.respondWithETag(TextContent(
                                     status = HttpStatusCode.InternalServerError,
                                     contentType = ContentType.Text.Plain,
                                     text = e.stackTraceString // TODO hide

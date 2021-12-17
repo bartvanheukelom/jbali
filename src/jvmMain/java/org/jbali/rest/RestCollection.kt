@@ -67,7 +67,7 @@ class RestCollection(
             readInput(inputType)
                 .let { it.impl(call) }
                 .let { rv ->
-                    respondObject(
+                    call.respondObject(
                         returnType = returnType,
                         returnVal = rv
                     )

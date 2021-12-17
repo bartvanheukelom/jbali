@@ -42,7 +42,7 @@ interface RestRouteContext : RestApiContext {
             
             handle {
                 call.response.header(HttpHeaders.Allow, HttpMethod.Post.value)
-                respondObject(
+                call.respondObject(
                     returnType = reifiedTypeOf(),
                     status = HttpStatusCode.MethodNotAllowed,
                     returnVal = buildJsonObject {
@@ -54,7 +54,7 @@ interface RestRouteContext : RestApiContext {
         }
     }
     
-    suspend fun <T> PipelineContext<Unit, ApplicationCall>.respondObject(
+    suspend fun <T> ApplicationCall.respondObject(
         returnType: ReifiedType<T>,
         returnVal: T,
         status: HttpStatusCode = HttpStatusCode.OK
@@ -157,7 +157,7 @@ abstract class RestRoute : RestRouteContext {
         // call implementation
         val returnVal = impl()
 
-        respondObject(returnType = returnType, returnVal = returnVal)
+        call.respondObject(returnType = returnType, returnVal = returnVal)
     }
 
     /**
@@ -175,8 +175,20 @@ abstract class RestRoute : RestRouteContext {
             impl = impl
         )
     }
-
+    
+    
     suspend inline fun <reified T> PipelineContext<Unit, ApplicationCall>.respondObject(
+        returnVal: T,
+        status: HttpStatusCode = HttpStatusCode.OK
+    ) = call.respondObject(returnVal, status)
+    
+    suspend fun <T> PipelineContext<Unit, ApplicationCall>.respondObject(
+        returnType: ReifiedType<T>,
+        returnVal: T,
+        status: HttpStatusCode
+    ) = call.respondObject(returnType, returnVal, status)
+    
+    suspend inline fun <reified T> ApplicationCall.respondObject(
             returnVal: T,
             status: HttpStatusCode = HttpStatusCode.OK
     ) {
@@ -187,14 +199,14 @@ abstract class RestRoute : RestRouteContext {
         )
     }
 
-    override suspend fun <T> PipelineContext<Unit, ApplicationCall>.respondObject(
+    override suspend fun <T> ApplicationCall.respondObject(
             returnType: ReifiedType<T>,
             returnVal: T,
             status: HttpStatusCode
     ) {
         
         if (returnType.extends(reifiedTypeOf<ByteArrayContent>())) {
-            respond(returnVal as ByteArrayContent)
+            respondWithETag(returnVal as ByteArrayContent)
         } else {
     
             // serialize return value
@@ -209,7 +221,7 @@ abstract class RestRoute : RestRouteContext {
     
             // instruct client how to deserialize the response
             // TODO instead, set contentType to application/vnd.$returnType+json... but how to deal with nullability and type parameters
-            call.response.addContentTypeInnerHeader(returnType.type)
+            response.addContentTypeInnerHeader(returnType.type)
     
             // respond JSON response
             respondJson(
@@ -219,7 +231,7 @@ abstract class RestRoute : RestRouteContext {
         }
     }
 
-    private suspend fun PipelineContext<Unit, ApplicationCall>.respondJson(
+    private suspend fun ApplicationCall.respondJson(
             json: String,
             status: HttpStatusCode = HttpStatusCode.OK,
 //            contentType: ContentType = ContentType.Application.Json
@@ -228,22 +240,23 @@ abstract class RestRoute : RestRouteContext {
         // disabled because that's the caller's own responsibility
 //        contentType.requireJson()
 
-        respond(TextContent(
+        respondWithETag(TextContent(
                 status = status,
                 text = json,
                 contentType = ContentType.Application.Json
         ))
     }
 
-    suspend fun PipelineContext<Unit, ApplicationCall>.respond(c: ByteArrayContent) {
+    // TODO can this be done as an intercept?
+    suspend fun ApplicationCall.respondWithETag(c: ByteArrayContent) {
 
-        when (call.request.httpMethod) {
+        when (request.httpMethod) {
             HttpMethod.Get, HttpMethod.Head ->
                 // TODO quote (or use conditionalheaders feature correctly)
-                call.response.etag(c.etag)
+                response.etag(c.etag)
         }
 
-        call.respond(c)
+        respond(c)
     }
 
     open class Sub(

@@ -68,7 +68,7 @@ open class RestObject<T>(
             readInput(inputType)
                 .let { it.impl(call) }
                 .let { rv ->
-                    respondObject(
+                    call.respondObject(
                         returnType = type,
                         returnVal = rv
                     )
