@@ -1,12 +1,14 @@
 @file:OptIn(ExperimentalSerializationApi::class)
 package org.jbali.kotser.jsonSchema
 
-import kotlinx.serialization.*
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.elementDescriptors
-import kotlinx.serialization.descriptors.elementNames
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
+import org.jbali.kotser.jsonString
 import org.jbali.reflect.isObject
 import org.jbali.reflect.kClass
 import java.io.PrintWriter
@@ -16,6 +18,7 @@ import kotlin.reflect.KVariance
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.declaredMemberFunctions
 import kotlin.reflect.full.declaredMemberProperties
+import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.typeOf
 
@@ -50,11 +53,12 @@ class JsonSchemaGenerator {
 
 
     private val known = mutableSetOf<KClass<*>>()
+//    private val todo = mutableListOf<Pair<KClass<*>, Any?>>()
     private val todo = mutableListOf<KClass<*>>()
 
     private fun queue(type: KClass<*>) {
         if (known.add(type)) {
-            todo.add(type)
+            todo.add(type)// to null)
             todo.sortBy { it.qualifiedName!! }
         }
     }
@@ -63,7 +67,10 @@ class JsonSchemaGenerator {
         generate(T::class)
     }
 
-    fun PrintWriter.generate(type: KClass<*>) {
+    fun PrintWriter.generate(
+        type: KClass<*>,
+//        strat:
+    ) {
         queue(type)
         processQueue()
     }
@@ -108,54 +115,64 @@ class JsonSchemaGenerator {
                 println("export namespace $ns {")
                 inNamespace = ns
             }
-            
-            if (clazz.isValue) {
-                println("\n  export type $rn = ${desc.typeName()}")
-            } else {
     
-                print("\n  export interface $rn")
+            when {
+                clazz.isValue -> {
+                    val typeDef = desc.typeName()
+                    println("\n  export type $rn = $typeDef")
+                }
+                clazz.isSubclassOf(Enum::class) -> {
+                    val typeDef = clazz.java.enumConstants!!.joinToString(" | ") {
+                        jsonString((it as Enum<*>).name).toString() // TODO SerialName
+                    }
+                    println("\n  export type $rn = $typeDef")
+                }
+                else -> {
     
-                if (clazz.typeParameters.isNotEmpty()) {
-                    print(clazz.typeParameters.joinToString(prefix = "<", separator = ",", postfix = ">") {
-                        buildString {
-                            when (it.variance) {
-                                KVariance.INVARIANT -> {}
-                                KVariance.IN -> append("in ")
-                                KVariance.OUT -> append("out ")
+                    print("\n  export interface $rn")
+    
+                    if (clazz.typeParameters.isNotEmpty()) {
+                        print(clazz.typeParameters.joinToString(prefix = "<", separator = ",", postfix = ">") {
+                            buildString {
+                                when (it.variance) {
+                                    KVariance.INVARIANT -> {}
+                                    KVariance.IN -> append("in ")
+                                    KVariance.OUT -> append("out ")
+                                }
+                                append(it.name)
+                                when {
+                                    it.upperBounds == listOf(typeOf<Any?>()) -> {}
+                                    it.upperBounds == listOf(typeOf<Any>()) -> append("extends any")
+                                    it.upperBounds.size == 1 -> append("extends ${serializer(it.upperBounds.single()).descriptor.typeName()}")
+                                    else -> append(" ::::: TODO ${it.upperBounds}")
+                                }
                             }
-                            append(it.name)
-                            when {
-                                it.upperBounds == listOf(typeOf<Any?>()) -> {}
-                                it.upperBounds == listOf(typeOf<Any>()) -> append("extends any")
-                                it.upperBounds.size == 1 -> append("extends ${serializer(it.upperBounds.single()).descriptor.typeName()}")
-                                else -> append(" ::::: TODO ${it.upperBounds}")
-                            }
+                        })
+                    }
+                    println(" {")
+    
+                    for (e in 0 until desc.elementsCount) {
+        
+                        val eName = desc.getElementName(e)
+                        val eDesc = desc.getElementDescriptor(e)
+                        val eAnnot = desc.getElementAnnotations(e)
+                        val eOpt = desc.isElementOptional(e)
+        
+                        if (eAnnot.isNotEmpty()) {
+                            println("    // $eAnnot")
                         }
-                    })
-                }
-                println(" {")
-    
-                for (e in 0 until desc.elementsCount) {
-    
-                    val eName = desc.getElementName(e)
-                    val eDesc = desc.getElementDescriptor(e)
-                    val eAnnot = desc.getElementAnnotations(e)
-                    val eOpt = desc.isElementOptional(e)
-    
-                    if (eAnnot.isNotEmpty()) {
-                        println("    // $eAnnot")
+        
+                        var tn = eDesc.typeName()
+                        if (tn.startsWith(inNamespace + ".")) {
+                            tn = tn.removePrefix(inNamespace + ".")
+                        }
+        
+                        println("    $eName${if (eOpt) "?" else ""}: $tn;")
                     }
     
-                    var tn = eDesc.typeName()
-                    if (tn.startsWith(inNamespace + ".")) {
-                        tn = tn.removePrefix(inNamespace + ".")
-                    }
+                    println("  }")
     
-                    println("    $eName${if (eOpt) "?" else ""}: $tn;")
                 }
-    
-                println("  }")
-    
             }
             
         }
@@ -186,9 +203,9 @@ class JsonSchemaGenerator {
 
 
 
-                "kotlinx.serialization.json.JsonElement" -> "any | null"
-                "kotlinx.serialization.json.JsonObject" -> "{ [key: string]: (any | null) }"
-                "kotlinx.serialization.json.JsonArray" -> "(any | null)[]"
+                "kotlinx.serialization.json.JsonElement" -> "string | number | boolean | null"
+                "kotlinx.serialization.json.JsonObject" -> "{ [key: string]: (string | number | boolean | null) }"
+                "kotlinx.serialization.json.JsonArray" -> "(string | number | boolean | null)[]"
                 "kotlinx.serialization.json.JsonPrimitive" -> "string | number | boolean"
 
                 "kotlin.collections.LinkedHashSet",
@@ -215,15 +232,21 @@ class JsonSchemaGenerator {
                                     .single { it.name == "original" }
                                     .also { it.isAccessible = true }
                                     .get(this) as SerialDescriptor
-
-                            "${original.typeName()} | null";
+    
+                            val orgType = original.typeName()
+                            if (orgType.endsWith(" | null")) {
+                                orgType
+                            } else {
+                                "$orgType | null"
+                            }
                         }
 
                         kind == SerialKind.ENUM -> {
-                            // TODO typedef
-                            elementNames.joinToString(separator = " | ") {
-                                Json.Default.encodeToString(it)
-                            }
+                            serialName
+//                            // TODO typedef
+//                            elementNames.joinToString(separator = " | ") {
+//                                Json.Default.encodeToString(it)
+//                            }
                         }
 
                         kind == SerialKind.CONTEXTUAL && serialName.startsWith("kotlinx.serialization.Sealed<") -> {
