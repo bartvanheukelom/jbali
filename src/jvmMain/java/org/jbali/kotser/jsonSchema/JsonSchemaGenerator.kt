@@ -203,10 +203,10 @@ class JsonSchemaGenerator {
 
 
 
-                "kotlinx.serialization.json.JsonElement" -> "string | number | boolean | null"
-                "kotlinx.serialization.json.JsonObject" -> "{ [key: string]: (string | number | boolean | null) }"
-                "kotlinx.serialization.json.JsonArray" -> "(string | number | boolean | null)[]"
-                "kotlinx.serialization.json.JsonPrimitive" -> "string | number | boolean"
+                "kotlinx.serialization.json.JsonElement" -> "JsonElement"
+                "kotlinx.serialization.json.JsonObject" -> "JsonObject"
+                "kotlinx.serialization.json.JsonArray" -> "JsonArray"
+                "kotlinx.serialization.json.JsonPrimitive" -> "JsonPrimitive"
 
                 "kotlin.collections.LinkedHashSet",
                 "kotlin.collections.ArrayList" -> {
