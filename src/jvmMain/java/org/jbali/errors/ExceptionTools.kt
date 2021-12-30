@@ -6,7 +6,6 @@ import java.io.PrintWriter
 import java.io.StringWriter
 import java.lang.Integer.min
 import java.util.*
-import kotlin.NoSuchElementException
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -210,3 +209,47 @@ val Throwable.stackTraceString: String get() =
         printStackTrace(PrintWriter(it))
     }.toString()
 
+/**
+ * Runs [task] while doing its very best to ensure no exception ever propagates outside [noThrow].
+ * - If [task] throws anything, calls [catcher] with the [Throwable].
+ * - If that fails i.e. [catcher] throws, call [Throwable.printStackTrace] on the first exception.
+ * - If even that fails, do nothing and return.
+ */
+inline fun noThrow(
+    task: () -> Unit,
+    catcher: (Throwable) -> Unit,
+) {
+    try {
+        task()
+    } catch (e: Throwable) {
+        try {
+            catcher(e)
+        } catch (ee: Throwable) {
+            try {
+                e.addSuppressed(ee)
+                e.printStackTrace()
+            } catch (eee: Throwable) {
+                // fine!
+            }
+        }
+    }
+}
+
+/**
+ * Runs [task] while doing its very best to ensure no exception ever propagates outside [noThrow].
+ * - If [task] throws anything, call [Throwable.printStackTrace] on the exception.
+ * - If even that fails, do nothing and return.
+ */
+inline fun noThrow(
+    task: () -> Unit,
+) {
+    try {
+        task()
+    } catch (e: Throwable) {
+        try {
+            e.printStackTrace()
+        } catch (eee: Throwable) {
+            // fine!
+        }
+    }
+}

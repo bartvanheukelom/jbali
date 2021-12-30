@@ -4,7 +4,6 @@ import kotlinx.coroutines.*
 import kotlin.concurrent.thread
 
 
-// TODO move
 fun <T> startSingleThreadCoroutine(
     name: String,
     body: suspend CoroutineScope.() -> T,
