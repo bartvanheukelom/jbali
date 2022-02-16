@@ -3,11 +3,22 @@ package org.jbali.ktor
 import io.ktor.http.*
 
 
+
+// ================== Url ====================== //
+
 val Url.portIfSpecified: Int? get() =
     specifiedPort.takeUnless { it == DEFAULT_PORT }
 
+/**
+ * Whether this URL specifies (i.e. explicitly includes) the port
+ * that is the default port of its protocol.
+ * `false` if the protocol has no known default port.
+ */
 val Url.specifiesDefaultPort: Boolean get() =
-    specifiedPort == protocol.defaultPort
+    when (val p = protocol.defaultPortIfKnown) {
+        null -> false
+        else -> p == specifiedPort
+    }
 
 @Deprecated("", ReplaceWith("port"))
 val Url.portOrDefault: Int get() = port
@@ -33,6 +44,10 @@ fun Url.withoutDefaultPort(): Url =
         } else {
             copy(specifiedPort = DEFAULT_PORT)
         }
+
+
+
+// ================== URLProtocol ====================== //
 
 /**
  * For protocols having [isSecure], returns the insecure version.
@@ -75,3 +90,10 @@ fun URLProtocol.wsHttpEquivalent(): URLProtocol? =
  */
 fun URLProtocol.wsToHttp(): URLProtocol =
     wsHttpEquivalent() ?: this
+
+val URLProtocol.defaultPortIfKnown: Int?
+    get() = defaultPort.takeIf {
+        // NOTE: the doc says that it's -1 if unknown, but in practice
+        //       [URLProtocol.createOrDefault] sets it to 0 for unknown protocols!
+        it > 0
+    }

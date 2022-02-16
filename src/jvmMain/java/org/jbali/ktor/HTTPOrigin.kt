@@ -36,18 +36,22 @@ data class HTTPOrigin(
     val string: String = url.toString()
 
     init {
-        with (url) {
-            require(encodedPath.isEmpty()) {
-                "Url($url).encodedPath not empty: $encodedPath"
+        try {
+            with (url) {
+                require(encodedPath.isEmpty()) {
+                    "encodedPath not empty: $encodedPath"
+                }
+                require(parameters.isEmpty())
+                require(fragment.isEmpty())
+                require(user == null)
+                require(password == null)
+                require(!trailingQuery)
+                require(!specifiesDefaultPort) {
+                    "must not specify default port ${protocol.defaultPort} of protocol ${protocol.name}"
+                }
             }
-            require(parameters.isEmpty())
-            require(fragment.isEmpty())
-            require(user == null)
-            require(password == null)
-            require(!trailingQuery)
-            require(!specifiesDefaultPort) {
-                "Url($url) must not specify default port"
-            }
+        } catch (e: IllegalArgumentException) {
+            throw IllegalArgumentException("Illegal HTTPOrigin '${url}': ${e.message}")
         }
     }
 
@@ -58,7 +62,6 @@ data class HTTPOrigin(
         override fun toString(o: HTTPOrigin) = o.string
     }
 }
-
 
 val RequestConnectionPoint.httpOrigin: HTTPOrigin get() =
     this.let { c ->

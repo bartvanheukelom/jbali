@@ -1,7 +1,6 @@
 package org.jbali.ktor
 
-import io.ktor.http.HttpMethod
-import io.ktor.http.RequestConnectionPoint
+import io.ktor.http.*
 import org.jbali.util.FakeExpression
 import org.jbali.util.forEachWrappingExceptions
 import kotlin.test.Test
@@ -13,6 +12,8 @@ class HTTPOriginTest {
 
     @Test fun test() {
 
+        // HTTP
+        
         val httpExample = HTTPOrigin("http://example.com")
         val httpExample80 = HTTPOrigin("http://example.com:80")
         assertEquals(httpExample, httpExample80)
@@ -23,6 +24,8 @@ class HTTPOriginTest {
         val httpFoo = HTTPOrigin("http://foo.bar")
         assertNotEquals(httpExample, httpFoo)
 
+        // HTTPS
+        
         val httpsExample = HTTPOrigin("https://example.com")
         assertEquals("https://example.com", httpsExample.string)
         assertNotEquals(httpExample, httpsExample)
@@ -33,7 +36,12 @@ class HTTPOriginTest {
 
         val httpsExample555 = HTTPOrigin("https://example.com:555")
         assertEquals("https://example.com:555", httpsExample555.string)
+        
+        
+        // WEIRD STUFF
 
+        assertEquals("capacitor://localhost", HTTPOrigin("capacitor://localhost").string)
+        
     }
 
     @Test fun testRCE() {
