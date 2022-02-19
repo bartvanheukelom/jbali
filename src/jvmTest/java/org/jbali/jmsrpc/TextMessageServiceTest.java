@@ -194,7 +194,7 @@ public class TextMessageServiceTest {
 		TMSKotlinIfaceOlder clientK = TextMessageServiceClient.create(TMSKotlinIfaceOlder.class, svcK::handleRequest);
 		
 		System.out.println("----- toString, hashCode, equals -----");
-		assertEquals("TextMessageServiceClient[LocalEP]", client.toString());
+		assertEquals("TextMessageServiceClient[LocalEP].blocking", client.toString());
 		assertEquals(System.identityHashCode(client), client.hashCode());
 		assertEquals(client, client);
 		assertFalse(client.equals(TextMessageServiceClient.create(LocalEP.class, r -> null)));
@@ -226,7 +226,7 @@ public class TextMessageServiceTest {
 				e.printStackTrace();
 				for (int i = 0; i < stack.length; i++) {
 					if (stack[i].getClassName().startsWith("====")) {
-						assertEquals(TextMessageServiceTest.class.getName(), stack[i+1].getClassName());
+						assertEquals(TextMessageServiceTest.class.getName(), stack[i+2].getClassName());
 						break findBarrier;
 					}
 				}
