@@ -122,14 +122,25 @@ class TextMessageService<T : Any>(
                 JsonArray(listOf(
                     STATUS_ERROR.toJsonElement(),
                     JjsAsTms.transform(e),
+                    // TODO also return toString, in case the client can't deserialize the exception class.
+                    // TODO transform exception cause chain into list and serialize each exception individually.
                 ))
             } catch (serEr: Throwable) {
                 serEr.removeCurrentStack()
                 log.warn("!! Error while serializing error", serEr)
-                JsonArray(listOf(
-                    STATUS_ERROR.toJsonElement(),
-                    JjsAsTms.transform(RuntimeException("Error occurred but could not be serialized (see log for details)")),
-                ))
+                try {
+                    JsonArray(listOf(
+                        STATUS_ERROR.toJsonElement(),
+                        JjsAsTms.transform(RuntimeException("$e [exception class could not be serialized: $serEr]")),
+                    ))
+                } catch (serErEr: Throwable) {
+                    serErEr.removeCurrentStack()
+                    log.warn("!! Error while getting exception toString()", serErEr)
+                    JsonArray(listOf(
+                        STATUS_ERROR.toJsonElement(),
+                        JjsAsTms.transform(RuntimeException("Error occurred but could not be serialized (see server log for details)")),
+                    ))
+                }
             }
 
         }
