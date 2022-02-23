@@ -22,7 +22,7 @@ fun String.toSqlLiteral(): String =
     "'${replace("'", "''")}'"
 
 fun compoundAnd(vararg ops: Op<Boolean>): Op<Boolean> =
-    ops.toList().compoundAnd()
+    ops.toList().filter { it != Op.TRUE }.compoundAnd()
 
 val SortOrder.exposed get() = when (this) {
     SortOrder.ASCENDING  -> org.jetbrains.exposed.sql.SortOrder.ASC
