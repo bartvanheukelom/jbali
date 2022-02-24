@@ -32,3 +32,13 @@ fun ApplicationCallPipeline.installCallUuid() {
  */
 val ApplicationCall.uuid: UUID get() =
     UUID.fromString(callId!!)
+
+/**
+ * The call's UUID as provided by the `X-Request-ID` header, or generated locally
+ * if not provided.
+ *
+ * `null` if feature not installed with [installCallUuid] or a non-UUID version installed.
+ */
+val ApplicationCall.uuidOrNull: UUID? get() =
+    try { callId?.let(UUID::fromString) }
+    catch (e: IllegalArgumentException) { null }

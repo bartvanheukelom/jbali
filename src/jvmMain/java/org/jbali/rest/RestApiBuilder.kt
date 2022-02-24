@@ -19,6 +19,7 @@ import org.jbali.kotser.jsonString
 import org.jbali.ktor.BasicErrorException
 import org.jbali.ktor.handleAnyPath
 import org.jbali.ktor.routeExact
+import org.jbali.ktor.uuidOrNull
 import org.jbali.util.uuid
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -60,8 +61,9 @@ data class RestApi(
 
 @OptIn(ExperimentalStdlibApi::class)
 data class RestApiBuilder(
-        override val route: Route,
-        override val jsonFormat: Json
+    override val route: Route,
+    override val jsonFormat: Json,
+    private val callIdGetter: ApplicationCall.() -> Any? = { uuidOrNull }
 ) : RestRoute(), RestApiContext {
 
     // TODO api name or route
@@ -85,7 +87,7 @@ data class RestApiBuilder(
             install(StatusPages) {
                 exception { e: Throwable ->
                     e.removeCommonStack()
-                    log.warn("Rest Api Exception ${e.uuid}", e)
+                    log.warn("Rest Api call #${call.callIdGetter()} Exception ${e.uuid}", e)
 
                     when (e) {
 
@@ -179,12 +181,15 @@ data class RestApiBuilder(
 
 fun Route.restApi(
         jsonFormat: Json = DefaultJson.indented,
+        callIdGetter: ApplicationCall.() -> Any? = { uuidOrNull },
 
         config: RestApiBuilder.() -> Unit
 ): RestApi =
         RestApiBuilder(
                 route = this,
-                jsonFormat = jsonFormat
+            
+                jsonFormat = jsonFormat,
+                callIdGetter = callIdGetter,
         )
                 .apply(config)
                 .build()
