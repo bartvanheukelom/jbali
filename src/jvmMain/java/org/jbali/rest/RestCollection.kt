@@ -4,6 +4,7 @@ import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.routing.*
 import io.ktor.util.*
+import org.jbali.enums.EnumTool
 import org.jbali.ktor.getExact
 import org.jbali.util.ReifiedType
 import org.jbali.util.cast
@@ -76,43 +77,63 @@ class RestCollection(
     }
 
     inline fun <reified T : Any> item(
-            noinline config: Item<T>.() -> Unit
-    ): Item<T> =
-            item(
-                    type = reifiedTypeOf(),
-                    config = config
-            )
-
-    fun <T : Any> item(
+            noinline config: Item<T, String>.(key: ApplicationCall.() -> String) -> Unit
+    ): Item<T, String> =
+        item(
+            type = reifiedTypeOf(),
+            keyType = reifiedTypeOf<String>(),
+            keyParse = { it },
+            config = config
+        )
+    
+    inline fun <reified E : Enum<E>, reified T : Any> enumKeyItem(
+        noinline config: Item<T, E>.(key: ApplicationCall.() -> E) -> Unit
+    ): Item<T, E> =
+        item(
+            type = reifiedTypeOf(),
+            keyType = reifiedTypeOf(),
+            keyParse = EnumTool<E>()::valueOf,
+            config = config
+        )
+    
+    fun <T : Any, K : Any> item(
             type: ReifiedType<T>,
-            config: Item<T>.() -> Unit
-    ): Item<T> {
+            keyType: ReifiedType<K>,
+            keyParse: (String) -> K,
+            config: Item<T, K>.(key: ApplicationCall.() -> K) -> Unit
+    ): Item<T, K> {
         
         // attempt to make key name unique (rest collections can be nested),
         // yet also readable
-        val keyParName = "key${type.type.classifier!!.cast<KClass<*>>().simpleName!!}"
+        // TODO support multiple of same type
+        val keyParName = when (keyType) {
+            reifiedTypeOf<String>() -> "key" + type.type.classifier!!.cast<KClass<*>>().simpleName!!
+            else -> keyType.type.classifier!!.cast<KClass<*>>().simpleName!!
+        }
         
-        @OptIn(KtorExperimentalAPI::class)
         return Item(
             context = context,
             route = route.createChild(PathSegmentParameterRouteSelector(keyParName)),
             type = type,
-            getKey = { parameters.getOrFail(keyParName) }
+            getKey = { keyParse(parameters.getOrFail(keyParName)) }
         )
-            .configure(config)
+            .configure {
+                config(getKey)
+            }
     }
 
-    class Item<T : Any>(
+    class Item<T : Any, K : Any>(
             context: RestApiContext,
             route: Route,
             type: ReifiedType<T>,
-            val getKey: ApplicationCall.() -> String
+            val getKey: ApplicationCall.() -> K
     ) : RestObject<T>(
             context = context,
             route = route,
             type = type
     ) {
-        val ApplicationCall.key: String get() = getKey()
+        val ApplicationCall.key: K get() = getKey()
+        fun key(call: ApplicationCall) = call.getKey()
     }
 
 }

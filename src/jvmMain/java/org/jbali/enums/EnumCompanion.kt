@@ -1,5 +1,6 @@
 package org.jbali.enums
 
+import com.google.common.base.Enums
 import java.util.*
 import kotlin.reflect.KClass
 
@@ -26,6 +27,10 @@ open class EnumCompanion<E : Enum<E>>(
 ) {
 
     val javaClass = enum.javaObjectType
+    
+    fun valueOf(name: String): E =
+        Enums.getIfPresent(javaClass, name).orNull()
+            ?: throw IllegalArgumentException("No enum constant ${javaClass.name}.${name}")
 
     // TODO Kotlin EnumSet which overrides operators to results in EnumSets
     val none: Set<E> = EnumSet.noneOf(javaClass)

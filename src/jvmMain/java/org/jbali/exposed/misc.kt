@@ -1,10 +1,7 @@
 package org.jbali.exposed
 
 import org.jbali.util.SortOrder
-import org.jetbrains.exposed.sql.LongColumnType
-import org.jetbrains.exposed.sql.Op
-import org.jetbrains.exposed.sql.QueryBuilder
-import org.jetbrains.exposed.sql.compoundAnd
+import org.jetbrains.exposed.sql.*
 
 /**
  * Represents the expression `COUNT(*)`
@@ -18,8 +15,11 @@ object CountStar : org.jetbrains.exposed.sql.Function<Long>(LongColumnType()) {
 val <E : Enum<E>> E.sqlLiteral: String
     get() = name.toSqlLiteral()
 
+private val tct = TextColumnType()
+
 fun String.toSqlLiteral(): String =
-    "'${replace("'", "''")}'"
+//    "'${replace("'", "''")}'" - doesn't handle newlines
+    tct.nonNullValueToString(this)
 
 fun compoundAnd(vararg ops: Op<Boolean>): Op<Boolean> =
     ops.toList().filter { it != Op.TRUE }.compoundAnd()
