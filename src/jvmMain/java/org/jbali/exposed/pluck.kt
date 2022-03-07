@@ -13,8 +13,8 @@ open class PluckedField<T>(
     val slice: FieldSet,
 ) {
     inline fun select(where: SqlExpressionBuilder.() -> Op<Boolean>) =
-        select(SqlExpressionBuilder.where())
-    fun select(where: Op<Boolean>) =
+        selectWhere(SqlExpressionBuilder.where())
+    fun selectWhere(where: Op<Boolean>) =
         PluckingQuery(
             expr = expr,
             query = slice.select(where),
@@ -38,7 +38,7 @@ open class PluckedTableColumn<T : Table, E>(
     expr: Expression<E>,
 ) : PluckedField<E>(expr, table.slice(expr)) {
     inline fun select(where: SqlExpressionBuilder.(T) -> Op<Boolean>) =
-        select(SqlExpressionBuilder.where(table))
+        selectWhere(SqlExpressionBuilder.where(table))
 }
 
 
