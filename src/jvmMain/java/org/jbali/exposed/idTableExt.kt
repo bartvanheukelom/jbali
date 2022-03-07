@@ -2,11 +2,24 @@ package org.jbali.exposed
 
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
-import org.jetbrains.exposed.sql.Column
-import org.jetbrains.exposed.sql.Query
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.statements.InsertStatement
+import org.jetbrains.exposed.sql.statements.UpdateBuilder
+
+fun <T : Comparable<T>> IdTable<T>.idValue(id: T) = EntityID(id, this)
+
+fun <T : Comparable<T>, I : IdTable<T>> I.insert(idVal: T, body: I.(InsertStatement<Number>) -> Unit) =
+    insert {
+        it[id] = idValue(idVal)
+        body(it)
+    }
+
+fun <T : Comparable<T>, I : IdTable<T>> I.insertIgnore(idVal: T, body: I.(UpdateBuilder<*>) -> Unit) =
+    insertIgnore {
+        it[id] = idValue(idVal)
+        body(it)
+    }
 
 // TODO seems useless, id must always return 0 or 1
 fun <T : Comparable<T>> IdTable<T>.select(id: T): Query =
@@ -39,5 +52,11 @@ fun <T : Comparable<T>> IdTable<T>.deleteSingle(id: T): Boolean =
 
 open class VarcharIdTable(name: String = "", columnName: String = "id", length: Int = 255) : IdTable<String>(name) {
     override val id: Column<EntityID<String>> = varchar(columnName, length).entityId()
+    override val primaryKey by lazy { super.primaryKey ?: PrimaryKey(id) }
+}
+
+@OptIn(ExperimentalUnsignedTypes::class)
+open class ULongIdTable(name: String = "", columnName: String = "id") : IdTable<ULong>(name) {
+    override val id: Column<EntityID<ULong>> = ulong(columnName).entityId()
     override val primaryKey by lazy { super.primaryKey ?: PrimaryKey(id) }
 }

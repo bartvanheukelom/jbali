@@ -11,8 +11,8 @@ import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.Table
 import kotlin.reflect.KClass
 
-inline fun <reified T : Any> Table.myObjectAsJson(name: String): Column<T> =
-    registerColumn(name, ObjectAsJsonColumnType(T::class, serializer<T>()))
+inline fun <reified T : Any> Table.myObjectAsJson(name: String, serializer: KSerializer<T> = serializer<T>()): Column<T> =
+    registerColumn(name, ObjectAsJsonColumnType(T::class, serializer))
 
 class ObjectAsJsonColumnType<T : Any>(
     private val klass: KClass<T>,

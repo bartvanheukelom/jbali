@@ -1,6 +1,7 @@
 package org.jbali.exposed
 
 import org.jbali.collect.map
+import org.jbali.collect.singleIfAny
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.sql.*
 
@@ -59,7 +60,8 @@ class PluckedIdTableColumn<I : Comparable<I>, T : IdTable<I>, E>(
 
 fun <I : Comparable<I>, T : IdTable<I>, E> T.get(id: I, plucker: (T) -> Expression<E>): E =
     pluck(plucker).selectSingle(id)
-
+fun <I : Comparable<I>, T : IdTable<I>, E> T.getOrNull(id: I, plucker: (T) -> Expression<E>): E? =
+    pluck(plucker).select(id).singleIfAny()
 
 
 class PluckingQuery<T>(
