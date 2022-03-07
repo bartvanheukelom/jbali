@@ -1,5 +1,6 @@
 package org.jbali.jmsrpc
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.JsonArray
 import org.jbali.errors.removeCurrentStack
 import org.jbali.json2.JSONString
@@ -9,6 +10,7 @@ import org.jbali.serialize.JavaJsonSerializer
 import org.jbali.util.onceFunction
 import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
+import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
 import kotlin.reflect.full.instanceParameter
 
@@ -181,12 +183,17 @@ class TextMessageService<T : Any>(
 
 /**
  * Apply to interfaces, methods or parameters in a [TextMessageService] interface that should use kotlinx.serialization.
+ * @param with Serializer to use for the annotated _parameter_.
  */
-annotation class KoSe
+annotation class KoSe(
+    val with: KClass<out KSerializer<*>> = KSerializer::class // Default value indicates that auto-generated serializer is used
+)
 /**
  * Apply to methods in a [TextMessageService] interface that should use kotlinx.serialization _for the return value_.
  */
-annotation class KoSeReturn
+annotation class KoSeReturn(
+//    val with: KClass<out KSerializer<*>> = KSerializer::class // Default value indicates that auto-generated serializer is used
+)
 
 /**
  * Apply to interfaces, methods or parameters in a [TextMessageService] interface that should use the legacy [JavaJsonSerializer].

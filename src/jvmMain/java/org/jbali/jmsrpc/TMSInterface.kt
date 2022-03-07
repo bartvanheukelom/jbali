@@ -18,6 +18,7 @@ import java.util.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
+import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.jvm.javaMethod
@@ -101,19 +102,28 @@ internal class TMSInterface<I : Any>(
                     val params = func.parameters
                         .drop(1) // this
                         .mapIndexed { i, p ->
-                            val paramKose = when {
-                                p.hasAnnotation<KoSe>() -> true
-                                p.hasAnnotation<JJS >() -> false
-                                else                    -> methodKose
-                            }
-                            TParam(
-                                param = { f -> f.parameters[i + 1] },
-                                serializer = if (paramKose) {
-                                    p.type.let(::serializer).asTms()
-                                } else {
-                                    JjsAsTms
+                            try {
+                                val paramSer = when (val koa = p.findAnnotation<KoSe>()) {
+                                    null ->
+                                        if (!methodKose || p.hasAnnotation<JJS>()) {
+                                            JjsAsTms
+                                        } else {
+                                            serializer(p.type).asTms()
+                                        }
+                                    else ->
+                                        @Suppress("UNCHECKED_CAST")
+                                        when (val w = koa.with) {
+                                            KSerializer::class -> serializer(p.type)
+                                            else -> koa.with.objectInstance as KSerializer<Any?> // TODO good message e.g. if not object but class
+                                        }.asTms()
                                 }
-                            )
+                                TParam(
+                                    param = { f -> f.parameters[i + 1] },
+                                    serializer = paramSer,
+                                )
+                            } catch (e: Throwable) {
+                                throw RuntimeException("For parameter ${p.name}: $e", e)
+                            }
                         }
                     
                     val returnSer = if (returnKose) {
@@ -128,7 +138,7 @@ internal class TMSInterface<I : Any>(
                         returnSerializer = returnSer,
                     )
                 } catch (e: Exception) {
-                    throw RuntimeException("While processing ${func}: $e", e)
+                    throw RuntimeException("For function ${func.name}: $e", e)
                 }
             }
     }
