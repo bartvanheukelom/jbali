@@ -27,8 +27,14 @@ import java.lang.ref.WeakReference
 import java.time.Instant
 
 interface RestRouteContext : RestApiContext {
-    val ktorRouteForHacks: Route
+    
+    val route: Route
+    @Suppress("DeprecatedCallableAddReplaceWith")
+    @Deprecated("")
+    val ktorRouteForHacks get() = route
+    
     fun path(name: String, config: RestRoute.() -> Unit): RestRouteContext
+    fun exact(config: RestRoute.() -> Unit): Pair<RestRoute.Sub, RestRoute.Sub>
     
     fun <T> post(
         path: String,
@@ -90,12 +96,6 @@ fun <I : Any> RestRouteContext.post(
 abstract class RestRoute : RestRouteContext {
 
     private val log = LoggerFactory.getLogger(RestRoute::class.java)
-
-    internal abstract val route: Route
-
-    @Suppress("DeprecatedCallableAddReplaceWith")
-    @Deprecated("")
-    override val ktorRouteForHacks get() = route
 
     protected val allowedMethods = mutableSetOf<HttpMethod>()
 
@@ -270,6 +270,16 @@ abstract class RestRoute : RestRouteContext {
                     route = route.createRouteFromPath(name)
             )
                 .configure(config)
+    
+    override fun exact(config: RestRoute.() -> Unit): Pair<Sub, Sub> =
+        route.routeExact {
+            Sub(
+                context = context,
+                route = this,
+            )
+                .configure(config)
+        }
+        
 
     fun postConfig() {
         setupMethodNotAllowed()

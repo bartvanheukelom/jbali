@@ -123,5 +123,21 @@ open class RestObject<T>(
             }
         }
     }
+    
+    
+    // ---------------------------- DELETE ---------------------------- //
+    
+    fun delete(
+        impl: suspend (ApplicationCall) -> Unit
+    ) {
+        allowedMethods += HttpMethod.Delete
+        route.route("", HttpMethod.Delete) {
+            handle {
+                impl(call)
+                call.respondNoContent()
+            }
+        }
+    }
+    
 
 }
