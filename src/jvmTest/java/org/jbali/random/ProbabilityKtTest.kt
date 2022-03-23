@@ -1,5 +1,7 @@
 package org.jbali.random
 
+import org.jbali.util.Box
+import org.jbali.util.boxed
 import org.jetbrains.annotations.Range
 import org.junit.Test
 import kotlin.test.assertEquals
@@ -33,5 +35,19 @@ class ProbabilityKtTest {
         assertFailsWith<IllegalArgumentException> { ssc( 0.1,  0) }
         assertFailsWith<IllegalArgumentException> { ssc( 0.1, -4) }
     }
+    
+    @Test
+    fun testStepSuccessChanceBoxed() {
+    
+        val totalSuccessChance: Box<Probability> = Probability.wrap(0.9)
+        assertEquals(0.9, totalSuccessChance.contents.asUnitNum)
+        
+        val stepSuccessChance: Box<Probability> = stepSuccessChanceHelper(totalSuccessChance, 8)
+        assertEquals(0.9869162813660015, stepSuccessChance.contents.asUnitNum, absoluteTolerance = 0.0001)
+        
+    }
 
 }
+
+private fun stepSuccessChanceHelper(sequenceSuccessChance: Box<Probability>, steps: Int) =
+    stepSuccessChance(sequenceSuccessChance.unboxed(), steps).boxed()
