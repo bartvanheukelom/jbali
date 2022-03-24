@@ -101,10 +101,18 @@ class TextMessageService<T : Any>(
                 throw RuntimeException("TextMessageService internal error", e)
             }
 
+            // serialize response
+            val serRet = try {
+                method.returnSerializer.transform(ret)
+            } catch (e: Throwable) {
+                log.warn("${e.javaClass.name} while serializing return value $ret")
+                throw RuntimeException("Exception serializing return value of type ${ret?.javaClass?.name} (see log for contents): $e", e)
+            }
+            
             // return response
             JsonArray(listOf(
                 STATUS_OK.toJsonElement(),
-                method.returnSerializer.transform(ret),
+                serRet,
             ))
 
         } catch (e: Throwable) {
