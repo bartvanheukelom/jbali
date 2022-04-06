@@ -44,6 +44,10 @@ class StoredExtensionProperty<in R, T : Any>(
     override fun setValue(thisRef: R, property: KProperty<*>, value: T) {
         extensionPropertyStorage(thisRef ?: nullKey)[this] = value
     }
+    
+    fun clearValue(thisRef: R) {
+        extensionPropertyStorage(thisRef ?: nullKey).remove(this)
+    }
 
 }
 
