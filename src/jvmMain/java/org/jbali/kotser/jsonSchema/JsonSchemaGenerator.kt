@@ -195,7 +195,8 @@ class JsonSchemaGenerator {
                 "kotlin.Byte",
                 "kotlin.UInt",
                 "kotlin.UShort",
-                "kotlin.UByte"
+                "kotlin.UByte",
+                "kotlin.ULong"
                     -> "number"
 
                 "kotlin.String" -> "string"
