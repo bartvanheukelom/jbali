@@ -35,18 +35,29 @@ class StoredExtensionProperty<in R, T : Any>(
     // TODO provideDelegate, check if property is indeed an extension, and ensure exactly 1 delegate per prop
 
     private val nullKey = Any()
+    @Volatile private var invalidateCount: Int = 0
 
-    override fun getValue(thisRef: R, property: KProperty<*>): T =
-        extensionPropertyStorage(thisRef ?: nullKey).getOrPut(this) {
-            initer(loan(thisRef))
-        } as T
+    override fun getValue(thisRef: R, property: KProperty<*>): T {
+        val (ic, v) = extensionPropertyStorage(thisRef ?: nullKey).getOrPut(this) {
+            Pair(invalidateCount, initer(loan(thisRef)))
+        }
+        if (ic != invalidateCount) {
+            clearValue(thisRef)
+            return getValue(thisRef, property)
+        } else {
+            return v as T
+        }
+    }
 
     override fun setValue(thisRef: R, property: KProperty<*>, value: T) {
-        extensionPropertyStorage(thisRef ?: nullKey)[this] = value
+        extensionPropertyStorage(thisRef ?: nullKey)[this] = Pair(invalidateCount, value)
     }
     
     fun clearValue(thisRef: R) {
         extensionPropertyStorage(thisRef ?: nullKey).remove(this)
+    }
+    fun clearAll() {
+        invalidateCount++
     }
 
 }
@@ -54,7 +65,7 @@ class StoredExtensionProperty<in R, T : Any>(
 // _all_ stored extension props are stored in this single cache (or at least, 1 per copy of jbali).
 // this also means that StoredExtensionProperty instances are never garbage collected!
 private val extensionPropertyStorage =
-        weakKeyLoadingCache<ExtPropReceiver, ConcurrentHashMap<StoredExtensionProperty<*, *>, Any>> {
+        weakKeyLoadingCache<ExtPropReceiver, ConcurrentHashMap<StoredExtensionProperty<*, *>, Pair<Int, Any>>> {
             // TODO .. what?
             ConcurrentHashMap()
         }
