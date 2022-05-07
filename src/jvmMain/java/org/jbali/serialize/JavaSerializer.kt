@@ -72,7 +72,7 @@ object JavaSerializer {
      *
      * [https://docs.oracle.com/javase/7/docs/platform/serialization/spec/input.html#5903]
      */
-    // TODO implement this check as an annotation processor
+    // TODO implement this check as an annotation processor - update: actually just use @Serial
     fun assertReadResolve(clazz: Class<*>): ObjectStreamClass {
         val osc = ObjectStreamClass.lookup(clazz)
         // TODO fix for java 17 or remove
