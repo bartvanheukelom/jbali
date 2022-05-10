@@ -43,6 +43,13 @@ data class JsonSerializer<T>(
             override fun detransform(@Language("JSON") tf: String) = parse(JSONString(tf))
         }
 
+    
+    companion object {
+        // like str.decodeJson(), but with @Language annotation support
+        inline fun <reified T> parse(@Language("JSON") str: String): T =
+            jsonSerializer<T>().parseJsonString(str)
+    }
+    
 }
 
 fun <T> T.stringifyWith(s: JsonSerializer<T>): JSONString =

@@ -1,7 +1,8 @@
 package org.jbali.bytes
 
+import kotlinx.serialization.Serializable
 import java.util.*
-import kotlin.jvm.JvmInline
+import kotlin.reflect.typeOf
 
 /**
  * Represents one of the 3 standard Base64 encoding schemes.
@@ -55,8 +56,8 @@ interface StringEncoding<V, E : StringEncoding<V, E>> {
 infix fun <V, E : StringEncoding<V, E>> V.encodedAs(e: StringEncoding<V, E>): StringEncoded<V, E> =
         e.encodeToString(this)
 
-// TODO when serialization supports inline class, serialize this as the contents
 @JvmInline
+@Serializable
 value class StringEncoded<V, E : StringEncoding<V, E>>(
         private val v: String
 ) {
@@ -67,12 +68,25 @@ value class StringEncoded<V, E : StringEncoding<V, E>>(
     override fun toString() = string
 }
 
-typealias Base64String<E> = StringEncoded<ByteArray, E>
-typealias Base64BasicString = Base64String<Base64Encoding.Basic>
-// TODO the other 2
 
-fun Base64BasicString.decode(): ByteArray = Base64Encoding.Basic.decodeString(this)
-// TODO the other 2 (or can this be done with inline tricks?)
+
+typealias Base64String<E> = StringEncoded<ByteArray, E>
+
+typealias Base64BasicString = Base64String<Base64Encoding.Basic>
+typealias Base64MimeString = Base64String<Base64Encoding.Mime>
+typealias Base64UrlString = Base64String<Base64Encoding.Url>
+
+@OptIn(ExperimentalStdlibApi::class)
+inline fun <reified E : Base64Encoding<E>> Base64String<E>.decode(): ByteArray =
+    (when (typeOf<E>()) {
+        typeOf<Base64Encoding.Basic>() -> Base64Encoding.Basic
+        typeOf<Base64Encoding.Mime>() -> Base64Encoding.Mime
+        typeOf<Base64Encoding.Url>() -> Base64Encoding.Url
+        else -> throw AssertionError()
+    } as E).decodeString(this)
+
+
+
 
 /**
  * Container for a URL-safe Base64 string that
@@ -80,6 +94,7 @@ fun Base64BasicString.decode(): ByteArray = Base64Encoding.Basic.decodeString(th
  * a value of type [S].
  */
 @JvmInline
+@Serializable
 value class Base64Utf8String<E : Base64Encoding<E>, S>(
         val encoded: Base64String<E>
 ) {
@@ -102,4 +117,21 @@ value class Base64Utf8String<E : Base64Encoding<E>, S>(
                         .let { Base64Utf8String(it) }
     }
 }
+
+//fun <S> Base64Utf8String<Base64Encoding.Url, S>.decode(wrapper: String.() -> S): S =
+//    decode(Base64Encoding.Url, wrapper)
+
+@OptIn(ExperimentalStdlibApi::class)
+inline fun <reified E : Base64Encoding<E>, S> Base64Utf8String<E, S>.decode(noinline wrapper: (String) -> S): S =
+    decode(
+        // TODO does this get optimized when inlined, and what is the best way to do it?
+        encoding = when (typeOf<E>()) {
+            typeOf<Base64Encoding.Basic>() -> Base64Encoding.Basic
+            typeOf<Base64Encoding.Mime>() -> Base64Encoding.Mime
+            typeOf<Base64Encoding.Url>() -> Base64Encoding.Url
+            else -> throw AssertionError()
+        } as E
+    ) {
+        wrapper(this)
+    }
 
