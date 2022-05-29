@@ -14,33 +14,37 @@ fun <T> inTransactionOf(
     statement: Transaction.() -> T
 ): T {
     val before = TransactionManager.manager
-    val ectm = ExistingConTxManager(
-        con = connection,
-        ignoreCommit = ignoreCommit,
-    )
-    TransactionManager.resetCurrent(ectm)
-    val tx = TransactionManager.current()
     try {
-        
-        val res = tx.statement()
-        
-        // does not actually commit, but is required to run interceptors
-        // that e.g. flush entity inserts
-        tx.commit()
-        
-        return res
-        
-    } catch (e: Throwable) {
-        val currentStatement = tx.currentStatement
-        try {
-            tx.rollback()
-        } catch (e: Exception) {
-            exposedLogger.warn("Transaction rollback failed: ${e.message}. Statement: $currentStatement", e)
+        ExistingConTxManager(
+            con = connection,
+            ignoreCommit = ignoreCommit,
+        ).use { ectm ->
+            TransactionManager.resetCurrent(ectm)
+            val tx = TransactionManager.current()
+            try {
+                
+                val res = tx.statement()
+                
+                // does not actually commit, but is required to run interceptors
+                // that e.g. flush entity inserts
+                tx.commit()
+                
+                return res
+                
+            } catch (e: Throwable) {
+                val currentStatement = tx.currentStatement
+                try {
+                    tx.rollback()
+                } catch (e: Exception) {
+                    exposedLogger.warn("Transaction rollback failed: ${e.message}. Statement: $currentStatement", e)
+                }
+                throw e
+            } finally {
+                closeStatements(tx)
+            }
         }
-        throw e
     } finally {
         TransactionManager.resetCurrent(before)
-        closeStatements(tx)
     }
 }
 
@@ -59,30 +63,34 @@ private fun closeStatements(transaction: Transaction) {
 }
 
 
-internal class ExistingConTxManager(
+//internal - TODO enable when liveInstances not checked by external tests
+class ExistingConTxManager(
     con: Connection,
     ignoreCommit: Boolean,
-) : TransactionManager {
+) : TransactionManager, AutoCloseable {
+    
+    companion object {
+        var liveInstances = 0
+    }
+    
+    // TODO use safeInit
+    private val db: Database =
+        Database.connect(
+            getNewConnection = { throw unsup() },
+            manager = { this@ExistingConTxManager },
+        )
     
     private val trans =
         Transaction(object : TransactionInterface {
             
             override val connection = JdbcConnectionImpl(con)
             
-            override val db: Database =
-                Database.connect(
-                    getNewConnection = { throw unsup() },
-                    manager = { this@ExistingConTxManager },
-                )
+            override val db get() = this@ExistingConTxManager.db
             
-            override val outerTransaction: Transaction?
-                get() = null
-            override val transactionIsolation: Int
-                get() = con.transactionIsolation
+            override val outerTransaction: Transaction? get() = null
+            override val transactionIsolation: Int get() = con.transactionIsolation
             
-            override fun close() {
-//                throw unsup()
-            }
+            override fun close() {}
             
             override fun commit() {
 //                if (!ignoreCommit) {
@@ -95,6 +103,8 @@ internal class ExistingConTxManager(
             }
             
         })
+    
+    init { liveInstances++ }
     
     override var defaultIsolationLevel: Int
         get() = throw unsup()
@@ -114,5 +124,11 @@ internal class ExistingConTxManager(
         throw unsup()
     
     private fun unsup() = UnsupportedOperationException("inTransactionOf does not support this operation")
+    
+    override fun close() {
+        // undo call to TransactionManager.registerManager that was performed by Database.connect
+        TransactionManager.closeAndUnregister(db)
+        liveInstances--
+    }
     
 }
