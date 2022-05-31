@@ -1,9 +1,9 @@
 package org.jbali.threads;
 
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Static container for a single <code>Executors.newCachedThreadPool()</code>
@@ -17,7 +17,24 @@ public final class ThreadPool {
 
 	// TODO require explicit init.
 	// TODO delegate executor.
-	public static ExecutorService executor = Executors.newCachedThreadPool();
+	public static ExecutorService executor = new ThreadPoolExecutor(
+			Runtime.getRuntime().availableProcessors(), 2147483647, 10L, TimeUnit.SECONDS,
+			new SynchronousQueue<>(),
+			new ThreadFactory() {
+				private final AtomicInteger threadNumber = new AtomicInteger(1);
+				@Override
+				public Thread newThread(@NotNull Runnable runnable) {
+					Thread t = new Thread(runnable, ThreadPool.class.getName() + "-" + this.threadNumber.getAndIncrement());
+					if (t.isDaemon()) {
+						t.setDaemon(false);
+					}
+					if (t.getPriority() != 5) {
+						t.setPriority(5);
+					}
+					return t;
+				}
+			}
+	);
 
 	/**
 	 * @see java.util.concurrent.Executor#execute(java.lang.Runnable)
