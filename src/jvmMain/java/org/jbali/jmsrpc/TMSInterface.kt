@@ -9,9 +9,9 @@ import org.jbali.kotser.Transformer
 import org.jbali.kotser.jsonSerializer
 import org.jbali.serialize.JavaJsonSerializer
 import org.jbali.text.toMessageString
-import org.jbali.util.Borrowed
+import org.jbali.memory.Borrowed
 import org.jbali.util.cast
-import org.jbali.util.loan
+import org.jbali.memory.loan
 import org.slf4j.LoggerFactory
 import java.lang.reflect.Method
 import java.util.*

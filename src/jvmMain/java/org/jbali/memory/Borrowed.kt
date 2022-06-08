@@ -1,4 +1,4 @@
-package org.jbali.util
+package org.jbali.memory
 
 import java.lang.ref.WeakReference
 

@@ -1,5 +1,7 @@
 package org.jbali.util
 
+import org.jbali.memory.Borrowed
+import org.jbali.memory.loan
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty

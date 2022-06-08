@@ -1,12 +1,13 @@
 package org.jbali.util;
 
+import org.jbali.memory.Alloc;
 import org.jetbrains.annotations.NotNull;
 
 public class HexBytes {
 
 	public static String toAscii(byte[] dd, int pad) {
 		int w = pad+1;
-		char[] s = new char[dd.length*w];
+		char[] s = Alloc.newCharArray(dd.length*w);
 		for (int i = 0; i < dd.length; i++) {
 			byte b = dd[i];
 			char c = b >= 32 && b < 127 ? (char) b : '\u2022';
@@ -25,7 +26,7 @@ public class HexBytes {
 	}
 	
 	public static @NotNull byte[] parseHex(@NotNull String hex) {
-		byte[] b = new byte[hex.length() / 2];
+		byte[] b = Alloc.newByteArray(hex.length() / 2);
 		for (int i = 0; i < b.length; i++) {
 			String hexByte = hex.substring(i * 2, i * 2 + 2);
 			b[i] = (byte) (Integer.parseInt(hexByte, 16) & 0xFF);
