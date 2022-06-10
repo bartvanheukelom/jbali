@@ -42,7 +42,7 @@ initKotlinProject(
     group = JBali.group,
     name = JBali.aJbali,
     acceptableKotlinVersions = setOf(
-        KotlinVersions.V1_6_0,
+        KotlinVersions.V1_7_0,
     )
 )
 
@@ -68,7 +68,7 @@ kotlin {
 
         commonMain {
             dependencies {
-                api(KotlinX.Serialization.json, "1.3.1")
+                api(KotlinX.Serialization.json, "1.3.2")
             }
         }
 
@@ -83,8 +83,7 @@ kotlin {
 
 tasks.withType<KotlinCompile<*>>().configureEach {
     kotlinOptions {
-        inlineClasses()
-        use(Experimentals.RequiresOptIn)
+        setBackendThreads()
     }
 }
 
