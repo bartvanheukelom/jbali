@@ -29,13 +29,14 @@ plugins {
 
 // check gradle version, for when not running with the included wrapper (e.g. included in another project)
 val supportedGradleVersions = setOf(
-    "6.7.1",
-    "7.0",
-    "7.2",
-    "7.3"
+//    "6.7.1",
+//    "7.0",
+//    "7.2",
+//    "7.3",
+    "7.4.2"
 )
-check(org.gradle.util.GradleVersion.current().version in supportedGradleVersions) {
-    "This build script is untested with Gradle version ${org.gradle.util.GradleVersion.current()}. Tested versions are $supportedGradleVersions"
+check(GradleVersion.current().version in supportedGradleVersions) {
+    "This build script is untested with Gradle version ${GradleVersion.current()}. Tested versions are $supportedGradleVersions"
 }
 
 initKotlinProject(
@@ -81,9 +82,18 @@ kotlin {
     }
 }
 
-tasks.withType<KotlinCompile<*>>().configureEach {
-    kotlinOptions {
-        setBackendThreads()
+tasks {
+    
+    val wrapper by existing(Wrapper::class) {
+        gradleVersion = "7.4.2"
+        // get sources
+        distributionType = Wrapper.DistributionType.ALL
+    }
+    
+    withType<KotlinCompile<*>>().configureEach {
+        kotlinOptions {
+            setBackendThreads()
+        }
     }
 }
 
