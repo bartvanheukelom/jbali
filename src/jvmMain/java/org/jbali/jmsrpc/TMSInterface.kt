@@ -7,11 +7,11 @@ import org.jbali.json.fromJson2
 import org.jbali.json.toJson2
 import org.jbali.kotser.Transformer
 import org.jbali.kotser.jsonSerializer
+import org.jbali.memory.Borrowed
+import org.jbali.memory.loan
 import org.jbali.serialize.JavaJsonSerializer
 import org.jbali.text.toMessageString
-import org.jbali.memory.Borrowed
 import org.jbali.util.cast
-import org.jbali.memory.loan
 import org.slf4j.LoggerFactory
 import java.lang.reflect.Method
 import java.util.*
@@ -49,6 +49,10 @@ internal class TMSInterface<I : Any>(
         val param: DeepMemberPointer<KFunction<*>, KParameter>,
         val serializer: TMSSerializer,
     )
+    
+    val name = bIface().qualifiedName
+    
+    override fun toString() = "TMSInterface(name=$name)"
     
     val methods: Map<String, TMethod> = run {
     

@@ -84,7 +84,12 @@ class TextMessageServiceClient<S : Any>(
                     
                     // --- ok, it's a real method --- //
                     
-                    val tMethod = ifaceInfo.methodsByJavaMethod.getValue(method)
+                    val tMethod = ifaceInfo.methodsByJavaMethod[method]
+                        ?: throw NoSuchElementException("'$method' not found in $ifaceInfo. Methods with the same name:\n\t${
+                            ifaceInfo.methodsByJavaMethod.keys
+                                .filter { it.name == method.name }
+                                .joinToString("\n\t")
+                        }")
                     val func = tMethod.method(ifaceK)
                     
                     // serialize the invocation to JSON
