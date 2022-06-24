@@ -10,6 +10,7 @@ import kotlinx.serialization.json.buildJsonArray
 import org.jbali.coroutines.Suspending
 import org.jbali.json2.JSONString
 import org.jbali.kotser.toJsonElement
+import org.jbali.kotser.toJsonObject
 import org.jbali.kotser.unwrap
 import org.jbali.reflect.Proxies
 import org.jbali.reflect.kClassOrNull
@@ -93,21 +94,22 @@ class TextMessageServiceClient<S : Any>(
                     val func = tMethod.method(ifaceK)
                     
                     // serialize the invocation to JSON
-                    // TODO send args object instead of array
                     val reqJson = buildJsonArray {
                         add(method.name.toJsonElement())
-                        
-                        args?.asSequence()
-                            ?.mapIndexed { p, arg ->
-                                val par = tMethod.params[p]
-                                val kpar = par.param(func)
-                                try {
-                                    par.serializer.transform(arg)
-                                } catch (e: Exception) {
-                                    throw RuntimeException("Error serializing arg of type ${arg.kClassOrNull} for $kpar.name: $e", e)
+                        if (args != null) {
+                            add(args.asSequence()
+                                .mapIndexed { p, arg ->
+                                    val par = tMethod.params[p]
+                                    val kpar = par.param(func)
+                                    try {
+                                        par.name to par.serializer.transform(arg)
+                                    } catch (e: Exception) {
+                                        throw RuntimeException("Error serializing arg of type ${arg.kClassOrNull} for $kpar.name: $e", e)
+                                    }
                                 }
-                            }
-                            ?.forEach(::add)
+                                .toJsonObject()
+                            )
+                        }
                     }
                     
                     // send the request

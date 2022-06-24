@@ -1,6 +1,7 @@
 package org.jbali.jmsrpc;
 
 import org.jbali.json.JSONArray;
+import org.jbali.json.JSONObject;
 import org.jbali.threads.ThreadPool;
 import org.junit.Test;
 
@@ -121,11 +122,11 @@ public class TextMessageServiceTest {
 		assertTrue(resp, new JSONArray(resp).getInt(0) == 0);
 
 		// no method name
-		resp = svc.handleRequest(JSONArray.create("", "").toString());
+		resp = svc.handleRequest(JSONArray.create("").toString());
 		assertTrue(resp, new JSONArray(resp).getInt(0) == 0);
 
 		// unexisting method
-		resp = svc.handleRequest(JSONArray.create("asdasd", "").toString());
+		resp = svc.handleRequest(JSONArray.create("asdasd").toString());
 		assertTrue(resp, new JSONArray(resp).getInt(0) == 0);
 
 		// throws error
@@ -140,22 +141,25 @@ public class TextMessageServiceTest {
 
 		// ********* success ********* //
 		
-		resp = svc.handleRequest(JSONArray.create("setVal", "HI").toString());
+		resp = svc.handleRequest(JSONArray.create("setVal", JSONObject.create("v", "HI")).toString());
 		assertTrue(resp, new JSONArray(resp).getInt(0) == 1);
 		assertEquals("HI", ep.val);
 
 		// even case insensitive
-		resp = svc.handleRequest(JSONArray.create("SETval", "HI2").toString());
+		resp = svc.handleRequest(JSONArray.create("SETval", JSONObject.create("v", "HI2")).toString());
 		assertTrue(resp, new JSONArray(resp).getInt(0) == 1);
 		assertEquals("HI2", ep.val);
 		
 		// too few
-		resp = svc.handleRequest(JSONArray.create("setVal").toString());
-		assertTrue(resp, new JSONArray(resp).getInt(0) == 1);
-		assertEquals(null, ep.val);
+//		resp = svc.handleRequest(JSONArray.create("setVal").toString());
+//		assertTrue(resp, new JSONArray(resp).getInt(0) == 1);
+//		assertEquals(null, ep.val);
 		
 		// too many
-		resp = svc.handleRequest(JSONArray.create("setVal", "O", "HI").toString());
+		resp = svc.handleRequest(JSONArray.create("setVal", JSONObject.create(
+				"v", "O",
+				"extra", "HI"
+		)).toString());
 		assertTrue(resp, new JSONArray(resp).getInt(0) == 1);
 		assertEquals("O", ep.val);
 		
@@ -259,10 +263,10 @@ public class TextMessageServiceTest {
 		
 		// too few/many, should still be compatible
 		client.foo(12, 13);
-		client.bar(12);
+//		client.bar(12); - not since move from args array to args object
 		
 		// too few but it's nullable
-		assertNull(clientK.withNullable());
+//		assertNull(clientK.withNullable()); - not since move from args array to args object
 		// too few but it has a default value
 		assertEquals("hello", clientK.withDefault());
 		

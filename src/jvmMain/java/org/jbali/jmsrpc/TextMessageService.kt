@@ -2,8 +2,11 @@ package org.jbali.jmsrpc
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import org.jbali.errors.removeCurrentStack
 import org.jbali.json2.JSONString
+import org.jbali.kotser.empty
 import org.jbali.kotser.string
 import org.jbali.kotser.toJsonElement
 import org.jbali.serialize.JavaJsonSerializer
@@ -51,36 +54,18 @@ class TextMessageService<T : Any>(
             val func = method.method(ifaceK)
             
             // read arguments
-            // TODO support reading from object instead of array
+            val inArgs = if (reqJson.size > RQIDX_ARGS) reqJson[RQIDX_ARGS].jsonObject else JsonObject.empty
             val pars = method.params
             val args = mutableMapOf<KParameter, Any?>(
                 func.instanceParameter!! to endpoint
             )
-            pars.forEachIndexed { p, par ->
-                val kPar = par.param(func)
-                val indexInReq = p + 1
-                if (reqJson.size < indexInReq + 1) {
-                    // this parameter has no argument
-//                    logTheRequest()
-//                    log.info("- Arg ${par.name} omitted")
-                    if (kPar.isOptional) {
-                        // not putting it in args, will result in the default value being used
-                    } else {
-                        // let's hope this is good enough
-                        args[kPar] = null
-                    }
-                } else {
-                    val serVal = reqJson[indexInReq]
+            inArgs.forEach { (name, serVal) ->
+                method.paramsByName[name]?.let { par ->
+                    val kPar = par.param(func)
                     args[kPar] = par.serializer.detransform(serVal)
                 }
+                // TODO log a warning once, for each redundant arg
             }
-
-            // check for more args than used
-//            val extraArgs = reqJson.size - 1 - pars.size
-//            if (extraArgs > 0) {
-//                logTheRequest()
-//                log.info("- $extraArgs args too many ignored.")
-//            }
 
             // execute
             val ret = try {
@@ -167,6 +152,7 @@ class TextMessageService<T : Any>(
     companion object {
 
         const val RQIDX_METHOD = 0
+        const val RQIDX_ARGS = 1
 
         const val RSIDX_STATUS = 0
         const val RSIDX_RESPONSE = 1

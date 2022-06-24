@@ -23,9 +23,9 @@ interface TMSKotlinIface : TMSKotlinIfaceParent {
     fun withDefault(
         s: String = "hello"
     ): String
-    fun withNullable(
-        s: String?
-    ): String?
+//    fun withNullable(
+//        s: String?
+//    ): String?
     
     fun koseEcho(x: KoSeThingy): KoSeThingy
     @JJS // override will make this interface the "declaring class" - TODO is that what we want?
@@ -37,9 +37,9 @@ interface TMSKotlinIfaceOlder : TMSKotlinIfaceParent {
     fun withDefault(
         // doesn't know about s yet
     ): String
-    fun withNullable(
-        // doesn't know about s yet
-    ): String?
+//    fun withNullable(
+//        // doesn't know about s yet
+//    ): String?
     
     fun koseEcho(x: KoSeThingy): KoSeThingy
     @JJS // see above
@@ -48,7 +48,7 @@ interface TMSKotlinIfaceOlder : TMSKotlinIfaceParent {
 
 object TMSKotlinEndpoint : TMSKotlinIface {
     override fun withDefault(s: String): String = s
-    override fun withNullable(s: String?): String? = s
+//    override fun withNullable(s: String?): String? = s
     override fun jjsEcho(x: JavaSerThingy) = x
     override fun koseEcho(x: KoSeThingy): KoSeThingy = x
     override fun openJjsEcho(x: JavaSerThingy): JavaSerThingy = x

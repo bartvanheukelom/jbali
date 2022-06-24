@@ -44,9 +44,12 @@ internal class TMSInterface<I : Any>(
         val method: DeepMemberPointer<KClass<*>, KFunction<*>>,
         val params: List<TParam>,
         val returnSerializer: TMSSerializer,
-    )
+    ) {
+        val paramsByName = params.associateBy { it.name }
+    }
     class TParam(
         val param: DeepMemberPointer<KFunction<*>, KParameter>,
+        val name: String,
         val serializer: TMSSerializer,
     )
     
@@ -123,6 +126,7 @@ internal class TMSInterface<I : Any>(
                                 }
                                 TParam(
                                     param = { f -> f.parameters[i + 1] },
+                                    name = p.name ?: throw IllegalArgumentException("Method has unsupported param $p"),
                                     serializer = paramSer,
                                 )
                             } catch (e: Throwable) {
