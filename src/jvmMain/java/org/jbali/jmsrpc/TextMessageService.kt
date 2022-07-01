@@ -5,8 +5,10 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import org.jbali.errors.removeCurrentStack
+import org.jbali.errors.stackTraceString
 import org.jbali.json2.JSONString
 import org.jbali.kotser.empty
+import org.jbali.kotser.jsonString
 import org.jbali.kotser.string
 import org.jbali.kotser.toJsonElement
 import org.jbali.serialize.JavaJsonSerializer
@@ -117,6 +119,7 @@ class TextMessageService<T : Any>(
                 JsonArray(listOf(
                     STATUS_ERROR.toJsonElement(),
                     JjsAsTms.transform(e),
+                    jsonString(e.stackTraceString),
                     // TODO also return toString, in case the client can't deserialize the exception class.
                     // TODO transform exception cause chain into list and serialize each exception individually.
                 ))
@@ -127,6 +130,7 @@ class TextMessageService<T : Any>(
                     JsonArray(listOf(
                         STATUS_ERROR.toJsonElement(),
                         JjsAsTms.transform(RuntimeException("$e [exception class could not be serialized: $serEr]")),
+                        jsonString(e.stackTraceString),
                     ))
                 } catch (serErEr: Throwable) {
                     serErEr.removeCurrentStack()
@@ -134,6 +138,7 @@ class TextMessageService<T : Any>(
                     JsonArray(listOf(
                         STATUS_ERROR.toJsonElement(),
                         JjsAsTms.transform(RuntimeException("Error occurred but could not be serialized (see server log for details)")),
+                        jsonString(""),
                     ))
                 }
             }
