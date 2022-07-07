@@ -5,11 +5,13 @@ import arrow.core.left
 import arrow.core.right
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
+import io.ktor.client.features.*
 import io.ktor.client.features.auth.*
 import io.ktor.client.features.auth.providers.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.http.content.*
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.json.JsonElement
@@ -25,16 +27,22 @@ class KtorJsonRPCClient(
     url: Url,
     val client: HttpClient = HttpClient(CIO) {
         if (url.user != null) {
+            val creds = BasicAuthCredentials(url.user!!, url.password!!)
             install(Auth) {
                 basic {
-                    username = url.user!!
-                    password = url.password!!
+                    credentials { creds }
                 }
             }
         }
 //        install(Logging) {
 //            level = LogLevel.ALL
 //        }
+        engine {
+            requestTimeout = 10_000L
+        }
+        install(HttpTimeout) {
+            requestTimeoutMillis = 10_250L
+        }
     },
     val logging: Boolean = false,
 ) {
@@ -68,27 +76,29 @@ class KtorJsonRPCClient(
     ): Either<E, R> {
         
         val resp: String =
-            client.post(url) {
-                val req: JsonRPCRequest<UUID, JsonObject> =
-                    JsonRPCRequest(
-                        method = method,
-                        params = RequestBuilder()
-                            .apply(build)
-                            .requestBody(),
-                        id = UUID.randomUUID(),
+            withTimeout(10_500L) {
+                client.post(url) {
+                    val req: JsonRPCRequest<UUID, JsonObject> =
+                        JsonRPCRequest(
+                            method = method,
+                            params = RequestBuilder()
+                                .apply(build)
+                                .requestBody(),
+                            id = UUID.randomUUID(),
+                        )
+                    val bodyText = DefaultJson.plain.encodeToString(
+                        serializer = JsonRPCRequest.serializer(UUIDSerializer, JsonObject.serializer()),
+                        value = req
                     )
-                val bodyText = DefaultJson.plain.encodeToString(
-                    serializer = JsonRPCRequest.serializer(UUIDSerializer, JsonObject.serializer()),
-                    value = req
-                )
-                if (logging) {
-                    log.info("Request: POST ${this@KtorJsonRPCClient.url} $bodyText")
+                    if (logging) {
+                        log.info("Request: POST ${this@KtorJsonRPCClient.url} $bodyText")
+                    }
+                    body =
+                        TextContent(
+                            text = bodyText,
+                            contentType = ContentType.Application.Json.withCharset(Charsets.UTF_8),
+                        )
                 }
-                body =
-                    TextContent(
-                        text = bodyText,
-                        contentType = ContentType.Application.Json.withCharset(Charsets.UTF_8),
-                    )
             }
         
         if (logging) {

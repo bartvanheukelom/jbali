@@ -1,8 +1,11 @@
 package org.jbali.coroutines
 
 import kotlinx.coroutines.*
+import org.slf4j.LoggerFactory
 import kotlin.concurrent.thread
 
+
+private val log = LoggerFactory.getLogger("org.jbali.coroutines.loops")
 
 fun <T> startSingleThreadCoroutine(
     name: String,
@@ -68,13 +71,23 @@ suspend fun runDelayLoop(
         delay(delayMs)
         try {
             body()
-        } catch (ce: CancellationException) {
-            throw ce
+//        } catch (ce: CancellationException) {
+//            throw ce
         } catch (e: Throwable) {
             try {
                 errorLogger(e)
             } catch (le: Throwable) {
-                // dude...
+                try {
+                    log.warn("runDelayLoop errorLogger failed to log a ${e.javaClass.canonicalName}", le)
+                } catch (lle: Throwable) {
+                    try {
+                        e.printStackTrace()
+                        le.printStackTrace()
+                        lle.printStackTrace()
+                    } catch (llle: Throwable) {
+                        // dude...
+                    }
+                }
             }
         }
     }
