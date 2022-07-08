@@ -28,7 +28,7 @@ pluginManagement {
     }
 
     repositories {
-        jcenter()
+        mavenCentral()
         gradlePluginPortal()
 
         if (kotlinEAP) {

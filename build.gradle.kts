@@ -5,7 +5,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
 
 buildscript {
     repositories {
-        jcenter()
+        mavenCentral()
     }
     dependencies {
         // supplied by included build `gradle-tools`
@@ -42,7 +42,7 @@ check(kotlinVersionString == KotlinCompilerVersion.VERSION)
 
 
 repositories {
-    jcenter()
+    mavenCentral()
 }
 
 kotlin {
