@@ -5,7 +5,8 @@ import java.lang.Long.min
 import java.time.Duration
 import java.time.Instant
 
-private val log = LoggerFactory.getLogger("retry")
+@PublishedApi
+internal val retryLog = LoggerFactory.getLogger("retry")
 
 class GivenUpException(msg: String, cause: Throwable) : RuntimeException(msg, cause)
 
@@ -15,12 +16,12 @@ class GivenUpException(msg: String, cause: Throwable) : RuntimeException(msg, ca
  * If a non-retryable exception is thrown, throws that exception.
  * If max attempts are exceed, throws GivenUpException with the last retryable exception as cause.
  */
-fun <T> retry(
+inline fun <T> retry(
         initialSleep: Long = 250,
         maxSleep: Long = 5000,
         maxAttempts: Int? = null,
         maxDuration: Duration? = null,
-        errorCallback: (e: Exception, attempt: Int) -> Boolean = { e, i -> log.warn("Error in retry attempt #$i", e); true },
+        errorCallback: (e: Exception, attempt: Int) -> Boolean = { e, i -> retryLog.warn("Error in retry attempt #$i", e); true },
         operation: () -> T
 ): T {
     var attempts = 0
