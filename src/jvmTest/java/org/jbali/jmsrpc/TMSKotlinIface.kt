@@ -31,6 +31,9 @@ interface TMSKotlinIface : TMSKotlinIfaceParent {
     @JJS // override will make this interface the "declaring class" - TODO is that what we want?
     override fun openJjsEcho(x: JavaSerThingy): JavaSerThingy
     
+    fun returningUnit()
+    fun returningUnitOrNull(unit: Boolean): Unit?
+    
 }
 @KoSe
 interface TMSKotlinIfaceOlder : TMSKotlinIfaceParent {
@@ -44,6 +47,10 @@ interface TMSKotlinIfaceOlder : TMSKotlinIfaceParent {
     fun koseEcho(x: KoSeThingy): KoSeThingy
     @JJS // see above
     override fun openJjsEcho(x: JavaSerThingy): JavaSerThingy
+    
+    fun returningUnit()
+    fun returningUnitOrNull(unit: Boolean): Unit?
+    
 }
 
 object TMSKotlinEndpoint : TMSKotlinIface {
@@ -52,4 +59,6 @@ object TMSKotlinEndpoint : TMSKotlinIface {
     override fun jjsEcho(x: JavaSerThingy) = x
     override fun koseEcho(x: KoSeThingy): KoSeThingy = x
     override fun openJjsEcho(x: JavaSerThingy): JavaSerThingy = x
+    override fun returningUnit() {}
+    override fun returningUnitOrNull(unit: Boolean) = if (unit) Unit else null
 }

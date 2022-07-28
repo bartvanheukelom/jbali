@@ -72,8 +72,6 @@ class TextMessageService<T : Any>(
             // execute
             val ret = try {
                 func.callBy(args)
-                    // "void" KFunction returns Unit, which should be returned as null
-                    .takeIf { it !is Unit }
             } catch (e: InvocationTargetException) {
                 // InvocationTargetException: actual exception inside method.
                 throw e.cause!!

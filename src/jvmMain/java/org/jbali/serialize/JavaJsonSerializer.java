@@ -1,5 +1,6 @@
 package org.jbali.serialize;
 
+import kotlin.Unit;
 import kotlinx.serialization.json.JsonElement;
 import org.apache.commons.codec.binary.Base64;
 import org.jbali.collect.Maps;
@@ -71,6 +72,7 @@ public class JavaJsonSerializer {
 	 */
 	public static Object serialize(Object val) {
 		if (val == null || val instanceof Boolean || val instanceof String || val instanceof Double) return val;
+		if (val instanceof Unit) return null;
 		if (val instanceof JsonElement) return complex(ValType.JSON_ELEMENT, JsonConvertKt.convertToLegacy((JsonElement) val));
 		if (val instanceof byte[]) return complex(ValType.BYTE_ARRAY, Base64.encodeBase64String((byte[]) val));
 //		if (val instanceof Maybe<?>) return complex(ValType.MAYBE, serialize(((Maybe<?>) val).orNull()));

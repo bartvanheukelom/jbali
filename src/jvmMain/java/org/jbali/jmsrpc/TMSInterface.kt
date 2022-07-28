@@ -21,6 +21,7 @@ import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.jvm.javaMethod
+import kotlin.reflect.typeOf
 
 
 fun interface DeepMemberPointer<TContainer, TMember> {
@@ -146,6 +147,9 @@ internal class TMSInterface<I : Any>(
                     val returnSer = if (returnKose) {
                         func.returnType.let(::serializer).asTms()
                     } else {
+                        check(func.returnType != typeOf<Unit?>()) {
+                            "JavaJsonSerializer cannot be used for `Unit?` as it cannot distinguish between Unit and null"
+                        }
                         JjsAsTms
                     }
         

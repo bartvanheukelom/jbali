@@ -1,5 +1,6 @@
 package org.jbali.jmsrpc;
 
+import kotlin.Unit;
 import org.jbali.json.JSONArray;
 import org.jbali.json.JSONObject;
 import org.jbali.threads.ThreadPool;
@@ -26,6 +27,7 @@ public class TextMessageServiceTest {
 		void nestedLocalFail();
 		@KoSe
 		TestKoseData kose(@Nullable TestKoseData data, @JJS TestJavaSerData mixer);
+		@KoSeReturn void koseVoid();
 	}
 	public interface LocalEP {
 		void setVal(int v);
@@ -39,6 +41,7 @@ public class TextMessageServiceTest {
 		void nestedLocalFail();
 		@KoSe
 		TestKoseData kose(@Nullable TestKoseData data, @JJS TestJavaSerData mixer);
+		@KoSeReturn void koseVoid();
 		
 		void localFail(); // hackyhack, will never be submitted
 	}
@@ -101,6 +104,9 @@ public class TextMessageServiceTest {
 			if (data != null && data.getFibonacciMaybe().isEmpty()) throw new IllegalArgumentException("no fib?");
 			return data != null ? data : new TestKoseData(Arrays.asList(1, 2, 3));
 		}
+		
+		@Override
+		public void koseVoid() {}
 	}
 	
 	@Test
@@ -202,6 +208,7 @@ public class TextMessageServiceTest {
 		assertEquals(System.identityHashCode(client), client.hashCode());
 		assertEquals(client, client);
 		assertFalse(client.equals(TextMessageServiceClient.create(LocalEP.class, r -> null)));
+		client.koseVoid();
 		
 		// errors
 
@@ -286,6 +293,10 @@ public class TextMessageServiceTest {
 		assertEquals(78, clientK.jjsEcho(new JavaSerThingy(78)).getX());
 		assertEquals(32, clientK.koseEcho(new KoSeThingy(32)).getX());
 		assertEquals(44, clientK.openJjsEcho(new JavaSerThingy(44)).getX());
+		
+		clientK.returningUnit(); // simply should not throw
+		assertEquals(Unit.INSTANCE, clientK.returningUnitOrNull(true));
+		assertNull(clientK.returningUnitOrNull(false));
 
 	}
 	
