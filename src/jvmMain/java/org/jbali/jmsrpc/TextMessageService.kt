@@ -51,7 +51,7 @@ class TextMessageService<T : Any>(
 
             // determine method
             methName = reqJson[RQIDX_METHOD].string
-            val method = ifaceInfo.methodsLowerName[methName.lowercase()]
+            val method = ifaceInfo.methods[methName.lowercase()]
                 ?: throw NoSuchElementException("Unknown method '$methName'")
             val func = method.method(ifaceK)
             

@@ -15,8 +15,10 @@ import org.jbali.kotser.unwrap
 import org.jbali.reflect.Proxies
 import org.jbali.reflect.kClassOrNull
 import org.jbali.serialize.JavaJsonSerializer
+import org.slf4j.LoggerFactory
 import java.util.function.Function
 import kotlin.reflect.KClass
+import kotlin.reflect.jvm.javaMethod
 
 class TextMessageServiceClient<S : Any>(
     private val ifaceK: KClass<out S>,
@@ -24,6 +26,8 @@ class TextMessageServiceClient<S : Any>(
 ) : AutoCloseable {
     
     companion object {
+        
+        private val log = LoggerFactory.getLogger(TextMessageServiceClient::class.java)
     
         /**
          * Create an implementation of the given interface that will:
@@ -85,13 +89,12 @@ class TextMessageServiceClient<S : Any>(
                     
                     // --- ok, it's a real method --- //
                     
-                    val tMethod = ifaceInfo.methodsByJavaMethod[method]
-                        ?: throw NoSuchElementException("'$method' not found in $ifaceInfo. Methods with the same name:\n\t${
-                            ifaceInfo.methodsByJavaMethod.keys
-                                .filter { it.name == method.name }
-                                .joinToString("\n\t")
-                        }")
+                    val tMethod = ifaceInfo.methods.getValue(method.name.lowercase())
                     val func = tMethod.method(ifaceK)
+                    if (func.javaMethod != method) {
+                        // TODO does this happen?
+                        log.warn("Called '$method' is not equal to found '${func.javaMethod}'. Argument serialization may fail.")
+                    }
                     
                     // serialize the invocation to JSON
                     val reqJson = buildJsonArray {

@@ -10,11 +10,10 @@ import org.jbali.kotser.jsonSerializer
 import org.jbali.memory.Borrowed
 import org.jbali.memory.loan
 import org.jbali.serialize.JavaJsonSerializer
+import org.jbali.text.showing
 import org.jbali.text.toMessageString
 import org.jbali.util.cast
 import org.slf4j.LoggerFactory
-import java.lang.reflect.Method
-import java.util.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
@@ -39,6 +38,7 @@ internal class TMSInterface<I : Any>(
     }
     
     class TMethod(
+        val name: String,
         // we can't store the KFunction because we only Borrowed the interface
         // TODO oh noooo... the KSerializers probably do keep references to their classes. can we weakref them?
         val method: DeepMemberPointer<KClass<*>, KFunction<*>>,
@@ -57,6 +57,9 @@ internal class TMSInterface<I : Any>(
     
     override fun toString() = "TMSInterface(name=$name)"
     
+    /**
+     * Keyed by lowercase method name.
+     */
     val methods: Map<String, TMethod> = run {
     
         val iface = bIface()
@@ -81,18 +84,24 @@ internal class TMSInterface<I : Any>(
                 }
             }
         
-        memFunPointers
+        /*methods=*/ memFunPointers
+            
+            // omit toString(), hashCode(), etc.
             .filter {
                 it(iface).javaMethod!!.declaringClass != Object::class.java
             }
-            .groupBy { it(iface).name }
+            
+            // associate by lowercase name
+            // TODO make associateByUnique/Distinct
+            .groupBy { it(iface).name.lowercase() }
             .mapValues { (n, f) ->
                 if (f.size == 1) f.single()
                 else throw IllegalArgumentException(f.toMessageString(
-                    "Encountered duplicate methods. TextMessageService does not support overloads."
+                    "Encountered duplicate methods. TextMessageService does not support overloads, or method names that are different only in case."
                 ))
             }
-            .mapValues { (n, fp) ->
+            
+            .mapValues { (_, fp) ->
                 val func = fp(iface)
                 try {
                     val methodKose = when {
@@ -141,6 +150,7 @@ internal class TMSInterface<I : Any>(
                     }
         
                     TMethod(
+                        name = func.name,
                         method = fp,
                         params = params,
                         returnSerializer = returnSer,
@@ -151,13 +161,11 @@ internal class TMSInterface<I : Any>(
             }
     }
     
-    val methodsLowerName: Map<String, TMethod> = methods
-        .mapKeys { it.key.lowercase() }
-    
-    val methodsByJavaMethod: Map<Method, TMethod> = methods
-        .values.associateByTo(WeakHashMap()) {
-            it.method(bIface()).javaMethod
-        }
+    init {
+        log.info("$this methods" showing methods.values.map { m ->
+            "${m.name}(${m.params.joinToString { p -> p.name }})"
+        })
+    }
     
 }
 
