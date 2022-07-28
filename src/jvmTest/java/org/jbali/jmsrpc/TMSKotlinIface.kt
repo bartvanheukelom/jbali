@@ -33,6 +33,9 @@ interface TMSKotlinIface : TMSKotlinIfaceParent {
     
     fun returningUnit()
     fun returningUnitOrNull(unit: Boolean): Unit?
+    fun returnChangedToSomething(): Int
+    fun returnNumberNarrowed(): Int
+    fun returnTypeNarrowed(): String
     
 }
 @KoSe
@@ -50,6 +53,9 @@ interface TMSKotlinIfaceOlder : TMSKotlinIfaceParent {
     
     fun returningUnit()
     fun returningUnitOrNull(unit: Boolean): Unit?
+    fun returnChangedToSomething()
+    fun returnNumberNarrowed(): Long
+    fun returnTypeNarrowed(): String?
     
 }
 
@@ -61,4 +67,7 @@ object TMSKotlinEndpoint : TMSKotlinIface {
     override fun openJjsEcho(x: JavaSerThingy): JavaSerThingy = x
     override fun returningUnit() {}
     override fun returningUnitOrNull(unit: Boolean) = if (unit) Unit else null
+    override fun returnChangedToSomething(): Int = 43
+    override fun returnNumberNarrowed(): Int = 55
+    override fun returnTypeNarrowed(): String = "definitely a piece of text"
 }

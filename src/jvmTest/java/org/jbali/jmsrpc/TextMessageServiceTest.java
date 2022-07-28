@@ -297,6 +297,13 @@ public class TextMessageServiceTest {
 		clientK.returningUnit(); // simply should not throw
 		assertEquals(Unit.INSTANCE, clientK.returningUnitOrNull(true));
 		assertNull(clientK.returningUnitOrNull(false));
+		
+		// returns Int, but we expected Unit. Int should be succesfully ignored for backwards-compatiblity.
+		clientK.returnChangedToSomething();
+		// changed Long -> Int, should be able to read as Long
+		assertEquals(55L, clientK.returnNumberNarrowed());
+		// changed String? -> String, should be able to read
+		assertEquals("definitely a piece of text", clientK.returnTypeNarrowed());
 
 	}
 	

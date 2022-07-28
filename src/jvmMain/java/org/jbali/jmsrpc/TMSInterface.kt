@@ -1,6 +1,7 @@
 package org.jbali.jmsrpc
 
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.serializer
 import org.jbali.json.fromJson2
@@ -145,7 +146,10 @@ internal class TMSInterface<I : Any>(
                         }
                     
                     val returnSer = if (returnKose) {
-                        func.returnType.let(::serializer).asTms()
+                        when (val rt = func.returnType) {
+                            typeOf<Unit>() -> UnitTMSSerializer
+                            else -> rt.let(::serializer).asTms()
+                        }
                     } else {
                         check(func.returnType != typeOf<Unit?>()) {
                             "JavaJsonSerializer cannot be used for `Unit?` as it cannot distinguish between Unit and null"
@@ -195,4 +199,14 @@ internal object JjsAsTms : TMSSerializer {
     override fun detransform(tf: JsonElement): Any? =
         JavaJsonSerializer.unserialize(tf.fromJson2())
     
+}
+
+/**
+ * Lenient serializer for [Unit] which ignores the JSON value when unserializing, allowing a method to start returning
+ * something, while remaining compatible with callers that expect Unit.
+ */
+internal object UnitTMSSerializer : TMSSerializer {
+    private val ser = Unit.serializer().asTms()
+    override fun transform(obj: Any?) = ser.transform(obj)
+    override fun detransform(tf: JsonElement) = Unit
 }
