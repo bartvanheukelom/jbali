@@ -134,18 +134,26 @@ class TextMessageServiceClient<S : Any>(
                             // the response should be an exception
                             JjsAsTms
                                 .detransform(respJsonEl)
-                                .let { it as? Throwable ?: error("Service returned an error that is not Throwable but ${it?.javaClass}") }
                                 
                                 // add the local stack trace to the remote exception,
                                 // otherwise that info is lost - unless we wrap the exception in a new local one,
                                 // which we don't want because it breaks the remote API.
-                                .also { augmentStackTrace(
+                                .also { if (it is Throwable) augmentStackTrace(
                                     err = it,
                                     // discard traces like:
                                     //     at org.jbali.jmsrpc.TextMessageServiceClient.create$lambda-6(TextMessageServiceClient.kt:106)
                                     //     at com.sun.proxy.$Proxy8.${ifaceMethodThatWasInvoked}(Unknown Source)
                                     discard = 2
                                 ) }
+                                
+                                .let { when (it) {
+                                    is TextMessageServiceClientException ->
+                                        RuntimeException("Service returned the following exception, i.e. it wasn't generated locally: $it", it)
+                                    is Throwable ->
+                                        it
+                                    else ->
+                                        RuntimeException("Service returned an error that is not Throwable but ${it?.javaClass}")
+                                } }
                                 
                                 .left()
                     }

@@ -219,11 +219,13 @@ public class TextMessageServiceTest {
 			assertTrue(e.getCause().getMessage().startsWith("Internet fail"));
 		}
 		
+		// remote will return a TextMessageServiceClientException, which should be wrapped in RuntimeException locally
 		try {
 			client.nestedLocalFail();
 			fail();
-		} catch (TextMessageServiceClientException e) {
-			assertEquals("MUHAHAHA", e.getMessage());
+		} catch (RuntimeException e) {
+			assertTrue(e.getCause() instanceof TextMessageServiceClientException);
+			assertEquals("MUHAHAHA", e.getCause().getMessage());
 		}
 		
 		System.out.println("----- nope -----");
