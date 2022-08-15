@@ -1,9 +1,6 @@
 package org.jbali.coroutines
 
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.*
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -28,16 +25,32 @@ suspend fun <T> withOptionalTimeout(timeout: Duration? = null, block: suspend ()
     }
 }
 
+
+/**
+ * Calls [Deferred.await]. If an exception is thrown by await, e.g. because it's cancelled by a
+ * containing [withTimeout], the deferred is cancelled (if it needs to be) with [Job.cancel],
+ * before rethrowing the exception.
+ *
+ * Any exception throw during the cancellation is added to the supressed of the original exception.
+ */
 suspend fun <T> Deferred<T>.awaitOrCancel() =
     try {
         await()
-    } catch (ce: CancellationException) {
+    } catch (ce: Throwable) {
         try {
             if (!isCancelled) {
-                cancelAndJoin()
+                try {
+                    cancel()
+                } catch (jc: CancellationException) {
+                    // alrighty then
+                }
             }
         } catch (e: Throwable) {
             ce.addSuppressed(e)
         }
         throw ce
     }
+
+@ExperimentalTime
+suspend fun <T> Deferred<T>.awaitFor(timeout: Duration) =
+    withTimeout(timeout) { awaitOrCancel() }
