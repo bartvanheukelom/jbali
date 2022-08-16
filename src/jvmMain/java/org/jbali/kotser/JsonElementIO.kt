@@ -75,14 +75,14 @@ fun UShort.toJsonElementU() = JsonPrimitive(toDouble())
 fun UInt.toJsonElementU() = JsonPrimitive(toDouble())
 
 fun JsonableMap.toJsonElement() =
-        buildJsonObject {
-            entries.forEach { (k, v) ->
-                k to v.toJsonElement()
-            }
+    buildJsonObject {
+        entries.forEach { (k, v) ->
+            put(k, v.toJsonElement())
         }
+    }
 
 fun JsonableList.toJsonElement() =
-        mapToJsonArray()
+    mapToJsonArray()
 
 @Deprecated("Useless JsonElement.toJsonElement(). Did you expect the receiver to be something else?", ReplaceWith("this"))
 fun JsonElement.toJsonElement(): JsonElement = this
