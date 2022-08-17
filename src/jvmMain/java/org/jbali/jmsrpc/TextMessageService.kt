@@ -11,6 +11,7 @@ import org.jbali.kotser.empty
 import org.jbali.kotser.jsonString
 import org.jbali.kotser.string
 import org.jbali.kotser.toJsonElement
+import org.jbali.reflect.callByWithBetterExceptions
 import org.jbali.serialize.JavaJsonSerializer
 import org.jbali.util.onceFunction
 import org.slf4j.LoggerFactory
@@ -71,7 +72,7 @@ class TextMessageService<T : Any>(
 
             // execute
             val ret = try {
-                func.callBy(args)
+                func.callByWithBetterExceptions(args)
             } catch (e: InvocationTargetException) {
                 // InvocationTargetException: actual exception inside method.
                 throw e.cause!!

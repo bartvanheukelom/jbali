@@ -1,7 +1,9 @@
 package org.jbali.reflect
 
 import java.lang.reflect.Field
+import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
+import kotlin.reflect.KParameter
 import kotlin.reflect.KType
 
 /**
@@ -89,3 +91,32 @@ val Class<*>.binaryName: String get() {
 
 val Class<*>.qualifiedBinaryName: String get() =
         "${`package`.name}.$binaryName"
+
+
+/**
+ * Normally equal to [KCallable.callBy], but tries to throw more helpful exceptions if:
+ * - the type of an argument does not match the type of the parameter
+ */
+fun <R> KCallable<R>.callByWithBetterExceptions(args: Map<KParameter, Any?>): R =
+    try {
+        callBy(args)
+    } catch (iae: IllegalArgumentException) {
+        if (iae.message == "argument type mismatch") {
+            
+            // this condition was already detected, hence we got iae, but unfortunately it's message isn't so useful, so reconstruct it
+            parameters.forEach { param ->
+                (param.type.classifier as? KClass<*>)?.let { paramClass ->
+                    val arg = args[param]
+                    if (!paramClass.isInstance(arg)) {
+                        throw IllegalArgumentException("Argument to\n    $param\nis of invalid type\n    ${arg?.javaClass}")
+                    }
+                }
+            }
+            
+        }
+        val argsNameType: Map<String, String?> =
+            args.entries.associate { (k, v) ->
+                k.name!! to v.kClassOrNull?.qualifiedName
+            }
+        throw IllegalArgumentException("($this)\n\t.callBy($argsNameType): $iae", iae)
+    }
