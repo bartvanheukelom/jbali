@@ -21,10 +21,10 @@ fun String.toSqlLiteral(): String =
 //    "'${replace("'", "''")}'" - doesn't handle newlines
     tct.nonNullValueToString(this)
 
-fun compoundAnd(vararg ops: Op<Boolean>): Op<Boolean> =
-    ops.toList().filter { it != Op.TRUE }.compoundAnd()
-
 val SortOrder.exposed get() = when (this) {
     SortOrder.ASCENDING  -> org.jetbrains.exposed.sql.SortOrder.ASC
     SortOrder.DESCENDING -> org.jetbrains.exposed.sql.SortOrder.DESC
 }
+
+fun ColumnSet.count(where: Op<Boolean>): Long =
+    slice(CountStar).select(where).single()[CountStar]
