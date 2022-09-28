@@ -5,7 +5,12 @@ import org.jetbrains.exposed.sql.QueryBuilder
 import org.jetbrains.exposed.sql.compoundAnd
 
 fun compoundAnd(vararg ops: Op<Boolean>): Op<Boolean> =
-    ops.toList().filter { it != Op.TRUE }.compoundAnd()
+    ops.toList()
+        .filter { it != Op.TRUE }
+        .let {
+            if (it.isEmpty()) Op.TRUE
+            else it.compoundAnd()
+        }
 
 class SqlOp<T>(private val sqlText: String) : Op<T>() {
     override fun toQueryBuilder(queryBuilder: QueryBuilder) {
