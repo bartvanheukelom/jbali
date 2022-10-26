@@ -4,10 +4,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 import org.jbali.kotser.BasicJson
 import org.jbali.util.cast
-import org.jetbrains.exposed.sql.Column
-import org.jetbrains.exposed.sql.ColumnType
-import org.jetbrains.exposed.sql.IDateColumnType
-import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.dao.id.IdTable
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.`java-time`.JavaInstantColumnType
 import org.jetbrains.exposed.sql.vendors.DatabaseDialect
 import org.jetbrains.exposed.sql.vendors.MysqlDialect
@@ -15,6 +13,32 @@ import org.jetbrains.exposed.sql.vendors.currentDialect
 import java.sql.ResultSet
 import java.time.Instant
 import kotlin.reflect.KClass
+
+
+// TODO this style results in api combinatory explosion. replace with:
+//      - some kind of builder
+//      - a column modifier (could use replaceColumn like nullable() does, but why? the column itself is mutable...)
+
+/**
+ * A [Table.reference] that cascades updates and deletes.
+ */
+fun <T : Comparable<T>> Table.parentReference(name: String, foreign: IdTable<T>, fkName: String? = null) =
+    reference(
+        name = name, foreign = foreign, fkName = fkName,
+        onDelete = ReferenceOption.CASCADE, onUpdate = ReferenceOption.CASCADE,
+    )
+/**
+ * A nullable [Table.reference] that cascades updates and sets null on delete.
+ */
+fun <T : Comparable<T>> Table.weakReference(name: String, foreign: IdTable<T>, fkName: String? = null) =
+    reference(
+        name = name, foreign = foreign, fkName = fkName,
+        onDelete = ReferenceOption.SET_NULL, onUpdate = ReferenceOption.CASCADE,
+    ).nullable()
+
+
+
+
 
 inline fun <reified T : Enum<T>> Table.myEnum(name: String): Column<T> =
     myEnum(name, T::class)
