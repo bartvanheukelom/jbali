@@ -3,14 +3,6 @@ package org.jbali.exposed
 import org.jbali.util.SortOrder
 import org.jetbrains.exposed.sql.*
 
-/**
- * Represents the expression `COUNT(*)`
- */
-object CountStar : org.jetbrains.exposed.sql.Function<Long>(LongColumnType()) {
-    override fun toQueryBuilder(queryBuilder: QueryBuilder): Unit = queryBuilder {
-        +"COUNT(*)"
-    }
-}
 
 val <E : Enum<E>> E.sqlLiteral: String
     get() = name.toSqlLiteral()
@@ -26,5 +18,11 @@ val SortOrder.exposed get() = when (this) {
     SortOrder.DESCENDING -> org.jetbrains.exposed.sql.SortOrder.DESC
 }
 
-fun ColumnSet.count(where: Op<Boolean>): Long =
-    slice(CountStar).select(where).single()[CountStar]
+
+// TODO Slice should extend ColumnSet
+fun FieldSet.slice(columns: List<Expression<*>>) =
+    when (this) {
+        is ColumnSet -> slice(columns)
+        is Slice -> source.slice(columns)
+        else -> throw IllegalArgumentException("Cannot slice $this")
+    }
