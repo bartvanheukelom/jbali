@@ -44,6 +44,7 @@ initKotlinProject(
     name = JBali.aJbali,
     acceptableKotlinVersions = setOf(
         KotlinVersions.V1_7_0,
+        KotlinVersions.V1_7_20,
     )
 )
 
