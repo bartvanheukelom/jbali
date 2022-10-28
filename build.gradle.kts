@@ -158,18 +158,18 @@ if (doJvm) {
                         api(Kotlin.reflect)
                         
                         api(Arrow.core, "1.0.1")
-                        api("org.jetbrains:annotations", "20.1.0")
+                        api("org.jetbrains:annotations", "23.0.0")
                         api("javax.annotation:javax.annotation-api", "1.3.2")
                         api("javax.xml.bind:jaxb-api", "2.3.0")
                         
-                        api("com.google.guava:guava", "31.0.1-jre")
+                        api("com.google.guava:guava", "31.1-jre")
                         api("org.slf4j:slf4j-api", vSlf4j)
                         
                         api("commons-codec:commons-codec", "1.15")
                         api("org.apache.commons:commons-lang3", "3.12.0")
                         api("org.apache.httpcomponents:httpclient", "4.5.13")
                         api("org.apache.httpcomponents:httpcore", "4.4.14")
-                        api("org.threeten:threeten-extra", "1.6.0")
+                        api("org.threeten:threeten-extra", "1.7.1")
                         
                         // for test library code used in other projects' actual tests
                         compileOnly(Kotlin.Test.jvm)
@@ -188,9 +188,9 @@ if (doJvm) {
                         compileOnly("org.jetbrains.exposed:exposed-java-time", vExposed)
                         compileOnly("org.jetbrains.exposed:exposed-jdbc",      vExposed)
                         
-                        compileOnly("com.google.code.gson:gson", "2.8.6")
-                        compileOnly("org.apache.activemq:activemq-client", "5.16.2")
-                        compileOnly("org.springframework:spring-context", "5.3.7")
+                        compileOnly("com.google.code.gson:gson", "2.10")
+                        compileOnly("org.apache.activemq:activemq-client", "5.17.2")
+                        compileOnly("org.springframework:spring-context", "5.3.23")
                         
                     }
                 }
