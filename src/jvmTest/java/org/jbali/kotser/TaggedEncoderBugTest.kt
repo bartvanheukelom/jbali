@@ -21,7 +21,10 @@ import org.jbali.threads.withValue
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import org.slf4j.LoggerFactory
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 // https://github.com/Kotlin/kotlinx.serialization/issues/1774 //
 
@@ -124,11 +127,12 @@ class TaggedEncoderBugTest(
                 json.encodeToString(Name("henk")),
             )
             // but to element fails, with the exact same serializer and value
-            assertFailsWith<SerializationException> {
+            // UPDATE: has been fixed
+//            assertFailsWith<SerializationException> {
                 json.encodeToJsonElement(Name("henk"))
-            }.let { e ->
-                assertEquals("No tag in stack for requested element", e.message)
-            }
+//            }.let { e ->
+//                assertEquals("No tag in stack for requested element", e.message)
+//            }
             // but it would work in the fixed version
             assertTrue(Name.serializer().descriptor.needTopLevelTag)
     
@@ -292,11 +296,12 @@ class TaggedEncoderUndescriptiveTest {
                     cj.encodeToString(ctxNameSer, Name("beppie")),
                 )
                 // will encode as a string, and throws No tag in stack
-                assertFailsWith<SerializationException> {
+                // UPDATE: has been fixed
+//                assertFailsWith<SerializationException> {
                     cj.encodeToJsonElement(ctxNameSer, Name("beppie"))
-                }.let { e ->
-                    assertEquals("No tag in stack for requested element", e.message)
-                }
+//                }.let { e ->
+//                    assertEquals("No tag in stack for requested element", e.message)
+//                }
                 // and would still fail in the new version
                 assertFalse(ctxNameSer.descriptor.needTopLevelTag)
             }
