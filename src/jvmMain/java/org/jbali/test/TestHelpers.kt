@@ -38,6 +38,27 @@ fun assertComparesEqual(expected: BigDecimal, actual: BigDecimal, message: Strin
     assertEquals(expected.setScale(ms), actual.setScale(ms), message)
 }
 
+// this name makes it pop up as suggestion when asserting a compatible type
+fun <K, V> assertEquals(expected: Map<K, V>, actual: Map<K, V>) =
+    assertMapEquals(expected, actual)
+// this name is unambiguous
+fun <K, V> assertMapEquals(expected: Map<K, V>, actual: Map<K, V>) {
+    val missingKeys = expected.keys - actual.keys
+    assert(missingKeys.isEmpty()) {
+        "Actual Map is missing expected keys $missingKeys"
+    }
+    val extraKeys = actual.keys - expected.keys
+    assert(extraKeys.isEmpty()) {
+        "Actual Map has unexpected keys $extraKeys"
+    }
+    expected.forEach { (k, v) ->
+        assertEquals(v, actual[k], "Map value for key $k")
+    }
+    
+    // in case the above is buggy, or either map's implementation is buggy
+    kotlin.test.assertEquals(expected, actual, "Map fallback")
+}
+
 
 // for these extension functions, use "must" instead of "assert" because
 // it's otherwise very easy to accidentally call these instead of the normal asserts, like e.g.:
