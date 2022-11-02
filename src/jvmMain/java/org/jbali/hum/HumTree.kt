@@ -188,7 +188,8 @@ sealed class HumTree<R : HumValue<R>, G : R>(
     override fun listIterator(): ListIterator<R> = late.values.listIterator()
     override fun listIterator(index: Int): ListIterator<R> = late.values.listIterator(index)
     override fun subList(fromIndex: Int, toIndex: Int): List<R> = late.values.subList(fromIndex, toIndex)
-
+    
+    // TODO why is this commented out?
     //    fun <G, V> associateWith(valueGetter: (G) -> V): Map<G, V> =
 //            HumMap<G, V>(
 //                    type = this,
