@@ -189,7 +189,6 @@ if (doJvm) {
                         compileOnly("org.jetbrains.exposed:exposed-jdbc",      vExposed)
                         
                         compileOnly("com.google.code.gson:gson", "2.10")
-                        compileOnly("org.apache.activemq:activemq-client", "5.17.2")
                         compileOnly("org.springframework:spring-context", "5.3.23")
                         
                     }
