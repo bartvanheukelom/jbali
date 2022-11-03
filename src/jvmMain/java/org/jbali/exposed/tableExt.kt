@@ -92,14 +92,21 @@ class JsonColumnType : ColumnType() {
  *
  * @param name The column name
  */
-fun Table.realTimestamp(name: String): Column<Instant> = registerColumn(name, InstantAsTimestampColumnType())
+fun Table.realTimestamp(name: String, fsp: Int? = null): Column<Instant> =
+    registerColumn(name, InstantAsTimestampColumnType())
 
 /**
- * Maps [Instant] to SQL `TIMESTAMP`, if available, as opposed to Exposed's default of mapping to `DATETIME`.
+ * Maps [Instant] to SQL `TIMESTAMP`, as opposed to Exposed's default of mapping to `DATETIME`.
+ *
+ * @param fsp Fractional second precision.
+ *            If `null`, defaults to the maximum precision supported by the database.
+ *            If a number is given, an error is thrown if it's not supported.
  */
-class InstantAsTimestampColumnType : ColumnType(), IDateColumnType {
+class InstantAsTimestampColumnType(
+    val fsp: Int? = null
+) : ColumnType(), IDateColumnType {
     override val hasTimePart: Boolean = true
-    override fun sqlType(): String = currentDialect.timestampType()
+    override fun sqlType(): String = currentDialect.timestampType(fsp)
     
     private val original = JavaInstantColumnType()
     override fun nonNullValueToString(value: Any): String    = original.nonNullValueToString(value)
@@ -108,7 +115,12 @@ class InstantAsTimestampColumnType : ColumnType(), IDateColumnType {
     override fun notNullValueToDB(value: Any): Any           = original.notNullValueToDB(value)
 }
 
-fun DatabaseDialect.timestampType(): String =
-    (this as? MysqlDialect)?.let {
-        if (it.isFractionDateTimeSupported()) "TIMESTAMP(6)" else "TIMESTAMP"
-    } ?: "DATETIME"
+fun DatabaseDialect.timestampType(fsp: Int? = null): String {
+    require(fsp in 0 .. 6)
+    return when {
+        this !is MysqlDialect -> throw IllegalArgumentException("Timestamp support unknown for this database")
+        isFractionDateTimeSupported() -> "TIMESTAMP(${fsp ?: 6})"
+        fsp != null && fsp > 0 -> throw IllegalArgumentException("fsp $fsp not supported by this version of MySQL")
+        else -> "TIMESTAMP"
+    }
+}
