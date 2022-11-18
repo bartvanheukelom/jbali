@@ -18,7 +18,7 @@ import kotlin.reflect.KClass
  */
 open class JsonSerialized<T : Any>
 constructor(
-    var json: JSONString
+    open var json: JSONString
 ) : Externalizable {
 
     internal constructor() : this(JSONString(stringToBeUnmarshalled))
@@ -118,9 +118,16 @@ abstract class ResolvableJsonSerializedBase<T : Any>(
 ) : JsonSerialized<T>(json) {
     
     protected abstract val jsonSerializer: JsonSerializer<T>
+    protected open val className get() = jsonSerializer.serializer.descriptor.serialName
     
-    @Serial
-    fun readResolve(): T = jsonSerializer.parse(json)
+    override fun toString(): String = "JsonSerialized<$className>($json)"
+    
+    @Serial fun readResolve(): T = trueReadResolve()
+    
+    /**
+     * Exists only so it can be overridden, which the original [readResolve] apparently can't (at least, trying that caused a test to fail).
+     */
+    protected open fun trueReadResolve(): T  = jsonSerializer.parse(json)
     
     @OptIn(InternalSerializationApi::class)
     abstract class CompanionBase<T : Any>(
