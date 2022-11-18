@@ -37,6 +37,7 @@ class SerializedObject(
 
 abstract class SerializableObject : Serializable {
 
+    @Serial
     protected fun writeReplace(): SerializedObject =
             SerializedObject(javaClass.name)
 
