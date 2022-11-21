@@ -4,6 +4,7 @@ import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.serializer
 import org.jbali.json2.JSONString
 import org.jbali.reflect.kClass
+import org.jbali.util.cast
 import org.jbali.util.stringToBeUnmarshalled
 import java.io.Externalizable
 import java.io.ObjectInput
@@ -113,9 +114,8 @@ constructor(
     
 }
 
-abstract class ResolvableJsonSerializedBase<T : Any>(
-    json: JSONString
-) : JsonSerialized<T>(json) {
+abstract class ResolvableJsonSerializedBase<T : Any>
+    protected constructor() : JsonSerialized<T>(JSONString(stringToBeUnmarshalled)) {
     
     protected abstract val jsonSerializer: JsonSerializer<T>
     protected open val className get() = jsonSerializer.serializer.descriptor.serialName
@@ -139,10 +139,14 @@ abstract class ResolvableJsonSerializedBase<T : Any>(
         // TODO add elegant way to test/define this at start time instead of when first used
         val writeReplace: (T) -> Any by lazy {
             Class.forName(javaClass.name.removeSuffix("\$Companion"))
-                // TODO use empty constructor since it must exists anyway, then assign json
-                .getDeclaredConstructor(String::class.java)
+                .getDeclaredConstructor()
                 .apply { isAccessible = true }
-                .let { c -> { c.newInstance(classJsonSerializer.stringify(it).string) } }
+                .let { c -> {
+                    c.newInstance()
+                        .cast<ResolvableJsonSerializedBase<T>>()
+                        .apply { json = classJsonSerializer.stringify(it) }
+                } }
+                
         }
     }
     

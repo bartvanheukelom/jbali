@@ -3,7 +3,8 @@ package org.jbali.kotser
 import kotlinx.serialization.Serializable
 import org.jbali.json2.JSONString
 import org.jbali.serialize.JavaSerializer
-import org.jbali.util.stringToBeUnmarshalled
+import org.jetbrains.annotations.TestOnly
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.Serial
 import kotlin.test.Test
@@ -16,9 +17,9 @@ class ResolvableJsonSerializedTest {
     @Test fun test() {
         
         log.info("test: resolve flying=true")
-        assertEquals(Flubber(flying = true ), Flubber.JsonSerialized(JSONString("""{"flying": true}""")).readResolve())
+        assertEquals(Flubber(flying = true ), Flubber.JsonSerialized("""{"flying": true}""").readResolve())
         log.info("test: resolve flying=undefined")
-        assertEquals(Flubber(flying = false), Flubber.JsonSerialized(JSONString("""{              }""")).readResolve())
+        assertEquals(Flubber(flying = false), Flubber.JsonSerialized("""{              }""").readResolve())
     
         log.info("test: copy")
         val flub = Flubber(flying = true)
@@ -34,33 +35,38 @@ internal data class Flubber(
     
     companion object {
         @Serial const val serialVersionUid = 1L
-        val log = LoggerFactory.getLogger(Flubber::class.java)
+        val log: Logger = LoggerFactory.getLogger(Flubber::class.java)
     }
     
     init {
         log.info("constructing $this")
     }
     
-    class JsonSerialized(json: JSONString) : ResolvableJsonSerializedBase<Flubber>(json) {
+    class JsonSerialized constructor() : ResolvableJsonSerializedBase<Flubber>() {
         
         init {
             log.info("${javaClass.name} constructing with json=$json")
         }
         
-        internal constructor() : this(JSONString(stringToBeUnmarshalled))
+        @TestOnly
+        constructor(jsonStr: String) : this() {
+            json = JSONString(jsonStr)
+        }
+        
         companion object : CompanionBase<Flubber>(Flubber::class) {
             @Serial const val serialVersionUid = 1L
         }
         override val jsonSerializer get() = classJsonSerializer
-        
+    
+        @set:TestOnly
         override var json: JSONString
             get() = super.json
             set(v) {
                 log.info("$this.json = $v")
                 super.json = v
             }
-
-
+    
+        @TestOnly
 //        @Serial override fun readResolve(): Flubber { // TODO this caused the test to fail, why?
         override fun trueReadResolve(): Flubber {
             log.info("$this.readResolve() = ...")
