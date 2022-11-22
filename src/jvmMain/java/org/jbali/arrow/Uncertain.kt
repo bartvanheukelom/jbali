@@ -20,7 +20,7 @@ value class ErrorMessage(val msg: String) {
  * and a [Right] is called the [result].
  *
  * Utility functions related to this usage are:
- * - [getOrThrow]
+ * - [getOrThrowAs]
  * - [nullToError]
  */
 typealias Uncertain<T> = Either<ErrorMessage, T>
