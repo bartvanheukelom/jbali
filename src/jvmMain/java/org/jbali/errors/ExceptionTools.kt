@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalContracts::class)
+
 package org.jbali.errors
 
 import org.jbali.collect.findLastIndex
@@ -22,7 +24,7 @@ import kotlin.contracts.contract
  * - readFromSocket()
  * - Thread.run()
  *
- * and you're calling removeCommonStack(e) from handler(), e's stack will be truncated to
+ * and you're calling removeCurrentStack(e) from handler(), e's stack will be truncated to
  * - internalCode()
  * - someMethod()
  * - handler()
@@ -40,15 +42,20 @@ fun Throwable.removeCurrentStack(): () -> Unit =
  * according to the rules of [removeCurrentStack].
  * After this method returns, the stack trace is as it was before this call.
  */
-fun <T> Throwable.withoutCurrentStack(block: () -> T): T {
+fun <T, E : Throwable> E.withoutCurrentStack(block: (E) -> T): T {
+    contract {
+        callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+    }
+    
     // +1 = withoutCurrentStack
     val sig = currentStackSignature(1)
     if (sig == null) {
-        return block()
+        // no common stack so nothing to modify
+        return block(this)
     } else {
         val undo = removeStackFrom(sig)
         try {
-            return block()
+            return block(this)
         } finally {
             try {
                 undo()
