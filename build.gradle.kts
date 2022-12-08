@@ -45,6 +45,7 @@ initKotlinProject(
     acceptableKotlinVersions = setOf(
         KotlinVersions.V1_7_0,
         KotlinVersions.V1_7_20,
+        KotlinVersions.V1_7_21,
     )
 )
 
