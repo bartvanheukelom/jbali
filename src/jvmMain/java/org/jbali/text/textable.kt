@@ -38,6 +38,18 @@ inline fun <reified T : Any> textable(data: Iterable<T>): Sequence<String> {
     
 }
 
+fun <R> textable(
+    cols: List<Pair<String, (R) -> Any?>>,
+    rows: Iterable<R>,
+) =
+    // TODO make this function accept sequence and use that
+    textable(
+        colHeaders = cols.map { it.first },
+        rows = rows.map { r ->
+            cols.map { c -> c.second(r)?.toString() ?: "<null>" }
+        },
+    )
+
 // TODO look into existing dataframe libraries
 fun textable(
     colHeaders: List<String>,
