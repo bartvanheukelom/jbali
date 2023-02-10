@@ -33,7 +33,8 @@ val supportedGradleVersions = setOf(
 //    "7.0",
 //    "7.2",
 //    "7.3",
-    "7.4.2"
+//    "7.4.2",
+    "7.6",
 )
 check(GradleVersion.current().version in supportedGradleVersions) {
     "This build script is untested with Gradle version ${GradleVersion.current()}. Tested versions are $supportedGradleVersions"
@@ -43,8 +44,6 @@ initKotlinProject(
     group = JBali.group,
     name = JBali.aJbali,
     acceptableKotlinVersions = setOf(
-        KotlinVersions.V1_7_0,
-        KotlinVersions.V1_7_20,
         KotlinVersions.V1_7_21,
     )
 )
@@ -87,7 +86,7 @@ kotlin {
 tasks {
     
     val wrapper by existing(Wrapper::class) {
-        gradleVersion = "7.4.2"
+        gradleVersion = "7.6"
         // get sources
         distributionType = Wrapper.DistributionType.ALL
     }
