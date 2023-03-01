@@ -116,7 +116,9 @@ class InstantAsTimestampColumnType(
 }
 
 fun DatabaseDialect.timestampType(fsp: Int? = null): String {
-    require(fsp == null || fsp in 0 .. 6)
+    require(fsp == null || fsp in 0 .. 6) {
+        "Illegal fractional second precision $fsp. Must be null or in 0 .. 6."
+    }
     return when {
         this !is MysqlDialect -> throw IllegalArgumentException("Timestamp support unknown for this database")
         isFractionDateTimeSupported() -> "TIMESTAMP(${fsp ?: 6})"
