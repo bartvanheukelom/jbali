@@ -202,8 +202,7 @@ class JsonSchemaGenerator {
                 "kotlin.String" -> "string"
                 "kotlin.Boolean" -> "boolean"
 
-
-
+                "kotlinx.serialization.LongAsStringSerializer" -> "LongAsString"
                 "kotlinx.serialization.json.JsonElement" -> "JsonElement"
                 "kotlinx.serialization.json.JsonObject" -> "JsonObject"
                 "kotlinx.serialization.json.JsonArray" -> "JsonArray"
@@ -307,14 +306,20 @@ class JsonSchemaGenerator {
             e.printStackTrace()
         }
     }
-
+    
+    /**
+     * Tries to find a class of this name, whose parts are initially separated by '.',
+     * e.g. "com.example.MyClass.InnerThing".
+     * If not found, recursively replaces the last '.' with '$' and tries again.
+     * @throws IllegalArgumentException if all attempts fail
+     */
     private fun String.scanClassName(): KClass<*> =
-            classByName() ?:
-                    when (val dotRepl = reversed().replaceFirst('.', '$').reversed()) {
-                        this ->
-                            throw IllegalArgumentException(this)
-                        else -> dotRepl.scanClassName()
-                    }
+        classByName() ?:
+            when (val dotRepl = reversed().replaceFirst('.', '$').reversed()) {
+                this ->
+                    throw IllegalArgumentException(this)
+                else -> dotRepl.scanClassName()
+            }
 
     private fun String.classByName(): KClass<*>? =
             try {

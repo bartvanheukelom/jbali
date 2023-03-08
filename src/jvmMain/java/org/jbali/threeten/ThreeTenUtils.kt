@@ -2,6 +2,7 @@ package org.jbali.threeten
 
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.util.*
 
 // TODO instantMinDate etc
@@ -44,11 +45,16 @@ val instantFarFuture: Instant =
 val instantForeseeableFuture get() = instantMaxUnix
 
 /**
- * The last instant that be represented as 32-bits signed UNIX time,
+ * The last instant that can be represented as 32-bits signed UNIX time,
  * i.e. `2038-01-19T03:14:07Z`.
  */
 val instantMaxUnix: Instant =
         Instant.ofEpochMilli(Int.MAX_VALUE * 1000L)
+
+
+val dateLongTimeAgo: LocalDate = LocalDate.of(1970, 1, 1)
+val dateFarFarAway: LocalDate = LocalDate.of(2999, 12, 31)
+
 
 // TODO toDateExact
 fun Instant.toDate(): Date =
