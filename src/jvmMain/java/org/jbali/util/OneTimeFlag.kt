@@ -24,7 +24,10 @@ class OneTimeFlag {
      */
     fun flagIfUnflagged() =
             a.compareAndSet(null, Instant.now())
-
+    
+    /**
+     * If unflagged, flags and then runs the block.
+     */
     inline fun <reified T> ifUnflagged(block: () -> T) {
         if (flagIfUnflagged()) {
             block()
