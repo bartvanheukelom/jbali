@@ -4,7 +4,9 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import org.jbali.kotser.Transformer
 import org.jbali.kotser.transformingSerializer
+import org.jbali.math.toIntExact
 import org.jbali.util.toHexString
+import kotlin.random.Random
 
 /**
  * Simple container for a byte array that gives it:
@@ -28,6 +30,8 @@ class BinaryData(
     
     fun toBase64() =
         Base64Encoding.Basic.encodeToString(data).string
+    
+    val size get() = data.size.toULong()
 
     override fun equals(other: Any?): Boolean =
             when {
@@ -41,6 +45,9 @@ class BinaryData(
             data.contentHashCode()
     
     companion object {
+        
+        @JvmField val EMPTY = BinaryData(ByteArray(0))
+        
         /**
          * Conveniently create a [BinaryData] from a Base64 string.
          * Whitespace is removed from the input, which must otherwise conform to the Basic Base64 decoding rules.
@@ -70,3 +77,6 @@ class BinaryData(
 }
 
 fun ByteArray.asData() = BinaryData(this)
+
+fun Random.nextData(size: ULong): BinaryData = nextBytes(size.toIntExact()).asData()
+fun Random.nextData(size: Int):   BinaryData = nextBytes(size             ).asData()

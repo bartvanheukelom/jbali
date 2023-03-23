@@ -12,11 +12,19 @@ inline fun <reified T : Any, reified P> singlePropertySerializer(
 ): KSerializer<T> =
         singlePropertySerializer(prop = prop, wrap = construct)
 
+/**
+ * Example:
+ *
+ * ```
+ * @Serializable(with = Word.Companion::class)
+ * data class Word(val v: String) {
+ *     companion object : KSerializer<Word> by singlePropertySerializer(prop = Word::v, wrap = ::Word)
+ * }
+ * ```
+ */
 inline fun <reified T : Any, reified P> singlePropertySerializer(
         prop: KProperty1<T, P> = T::class.declaredMemberProperties.single().checkReturnType(),
-        serialName: String =
-                @OptIn(ExperimentalStdlibApi::class)
-                typeOf<T>().toString(),
+        serialName: String = typeOf<T>().toString(),
         // TODO can this be generated, either at compile time, or at runtime using information from reflection?
         crossinline wrap: (P) -> T
 ): KSerializer<T> =

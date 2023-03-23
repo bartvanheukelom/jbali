@@ -1,9 +1,12 @@
 package org.jbali.util
 
-import java.io.Serializable
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import org.jbali.kotser.singlePropertySerializer
 import javax.xml.bind.annotation.XmlAccessType
 import javax.xml.bind.annotation.XmlAccessorType
 import javax.xml.bind.annotation.XmlValue
+import java.io.Serializable as JavaSerializable
 
 /**
  * Can be used to store a password or other secret, prevents accidentally
@@ -12,7 +15,10 @@ import javax.xml.bind.annotation.XmlValue
  * Contains no countermeasures against runtime (memory) hacks or anything like that!
  */
 @XmlAccessorType(XmlAccessType.FIELD)
-data class Password(@field:XmlValue private val value: String) : Serializable {
+@Serializable(with = Password.Companion::class)
+data class Password(
+    @field:XmlValue private val value: String
+) : JavaSerializable {
 
     // no-arg constructor for JAXB metadata, unmarshalling is not supported!
     @Suppress("unused") private constructor() : this(fakeConstructorValue())
@@ -25,7 +31,9 @@ data class Password(@field:XmlValue private val value: String) : Serializable {
 
     override fun toString() = "Password(*****)"
 
-    companion object {
+    companion object :
+        KSerializer<Password> by singlePropertySerializer(prop = Password::value, wrap = ::Password)
+    {
         const val serialVersionUID = 1L
     }
 

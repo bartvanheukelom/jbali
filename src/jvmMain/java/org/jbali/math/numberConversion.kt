@@ -1,13 +1,41 @@
-@file:OptIn(ExperimentalUnsignedTypes::class)
-
 package org.jbali.math
 
 import org.jbali.reflect.kClass
 import java.math.BigDecimal
 import java.math.BigInteger
+import kotlin.experimental.and
 
-fun Long.toIntExact(): Int =
-        Math.toIntExact(this)
+
+// exact narrowing conversions
+
+fun Long.toIntExact(): Int = if (this and 0xFFFF_FFFFL == this) toInt() else throw ArithmeticException("$this is not representable as int")
+fun Long.toShortExact(): Short = if (this and 0xFFFFL == this) toShort() else throw ArithmeticException("$this is not representable as short")
+fun Long.toByteExact(): Byte = if (this and 0xFFL == this) toByte() else throw ArithmeticException("$this is not representable as byte")
+
+fun Int.toShortExact(): Short = if (this and 0xFFFF == this) toShort() else throw ArithmeticException("$this is not representable as short")
+fun Int.toByteExact(): Byte = if (this and 0xFF == this) toByte() else throw ArithmeticException("$this is not representable as byte")
+
+fun Short.toByteExact(): Byte = if (this and 0xFF == this) toByte() else throw ArithmeticException("$this is not representable as byte")
+
+
+// unsigned to signed
+
+fun ULong.toLongExact(): Long = if (this and 0x7FFF_FFFF_FFFF_FFFFUL == this) toLong()  else throw ArithmeticException("$this is not representable as long")
+fun ULong.toIntExact():  Int  = if (this and           0x7FFF_FFFFUL == this) toInt()   else throw ArithmeticException("$this is not representable as int")
+fun ULong.toShortExact(): Short = if (this and              0x7FFFUL == this) toShort() else throw ArithmeticException("$this is not representable as short")
+fun ULong.toByteExact():  Byte  = if (this and                0x7FUL == this) toByte()  else throw ArithmeticException("$this is not representable as byte")
+
+fun UInt.toIntExact():   Int   = if (this and 0x7FFF_FFFFU == this) toInt()   else throw ArithmeticException("$this is not representable as int")
+fun UInt.toShortExact(): Short = if (this and      0x7FFFU == this) toShort() else throw ArithmeticException("$this is not representable as short")
+fun UInt.toByteExact():  Byte  = if (this and        0x7FU == this) toByte()  else throw ArithmeticException("$this is not representable as byte")
+
+fun UShort.toShortExact(): Short = if (this and 0x7FFFU == this) toShort() else throw ArithmeticException("$this is not representable as short")
+fun UShort.toByteExact():  Byte  = if (this and   0x7FU == this) toByte()  else throw ArithmeticException("$this is not representable as byte")
+
+fun UByte.toByteExact():  Byte  = if (this and 0x7FU == this) toByte()  else throw ArithmeticException("$this is not representable as byte")
+
+
+// exact float to int conversions
 
 fun Float.toLongExact(): Long = toDouble().toLongExact()
 
@@ -18,6 +46,10 @@ fun Double.toLongExact(): Long =
                 throw ArithmeticException("$this is not representable as long")
             }
         }
+
+
+
+
 
 /**
  * Convert this number to a [BigDecimal] without precision loss.

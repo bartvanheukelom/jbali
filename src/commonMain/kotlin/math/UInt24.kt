@@ -4,6 +4,9 @@ package org.jbali.math
 import kotlin.experimental.*
 import kotlin.jvm.*
 
+// TODO USLong, USInt, USShort, USByte. numbers that are unsigned but also fit in the related signed type,
+//      e.g. USByte range is 0 .. 127
+
 @JvmInline
 value class UInt24 @PublishedApi internal constructor(@PublishedApi internal val data: Int) : Comparable<UInt24> {
     

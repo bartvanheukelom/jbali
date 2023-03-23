@@ -6,12 +6,15 @@ import java.time.Duration
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
+import kotlin.random.asKotlinRandom
 import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.full.valueParameters
 
+// TODO thread-safety is not guaranteed. but perhaps all providers are in practice?
 val globalSecureRandom = SecureRandom()
+val secureRandom = globalSecureRandom.asKotlinRandom()
 
 
 /**
