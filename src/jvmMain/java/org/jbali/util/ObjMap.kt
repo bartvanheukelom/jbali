@@ -149,7 +149,10 @@ private class ClassMapInfo<T : Any>(clazz: KClass<T>) {
 
 }
 
-private val <T : Any> KClass<T>.classMapInfo: ClassMapInfo<T>
-        by StoredExtensionProperty {
-            ClassMapInfo(this())
-        }
+private val KClass<Any>.classMapInfoUntyped: ClassMapInfo<Any>
+    by StoredExtensionProperty {
+        ClassMapInfo(this())
+    }
+@Suppress("UNCHECKED_CAST")
+private val <T : Any> KClass<T>.classMapInfo: ClassMapInfo<T> get() =
+    (this as KClass<Any>).classMapInfoUntyped as ClassMapInfo<T>

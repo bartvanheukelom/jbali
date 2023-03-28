@@ -112,14 +112,14 @@ abstract class RestRoute : RestRouteContext {
     // TODO cache TextContent, or at least the bytes.
     // TODO the assumption made the in StoredExtensionProperty implementation, that the delegates themselves are basically
     //      static, is now proven false. theoretically, could leak memory if rest routes are created and removed repeatedly.
-    private val <T> T.jsonCache: (KSerializer<T>) -> String
+    private val Any.jsonCacheUntyped: (KSerializer<Any>) -> String
             by StoredExtensionProperty {
 
                 val objStr = toString()
                 val cache = "(created @ ${Instant.now()})"
 
-                val obj: WeakReference<T> = this.weakReference()
-                weakKeyLoadingCache<KSerializer<T>, String> { ser ->
+                val obj: WeakReference<Any> = this.weakReference()
+                weakKeyLoadingCache<KSerializer<Any>, String> { ser ->
                     val o = obj.get()
                         ?: throw IllegalStateException(
                             "Object collected while using its jsonCache???" +
@@ -128,6 +128,9 @@ abstract class RestRoute : RestRouteContext {
                     jsonFormat.encodeToString(ser, o)
                 }
             }
+    @Suppress("UNCHECKED_CAST")
+    private val <T> T.jsonCache: (KSerializer<T>) -> String get() =
+        jsonCacheUntyped as (KSerializer<T>) -> String
 
     inline fun <reified I : Any> PipelineContext<Unit, ApplicationCall>.readInput(): I =
             readInput(type = reifiedTypeOf())

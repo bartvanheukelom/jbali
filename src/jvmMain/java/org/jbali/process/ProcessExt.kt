@@ -89,7 +89,7 @@ fun Process.waitForExit(
 ): ProcessExitValue {
     try {
         if (timeout != null) {
-            if (!waitFor(timeout.toLongMilliseconds(), TimeUnit.MILLISECONDS)) {
+            if (!waitFor(timeout.inWholeMilliseconds, TimeUnit.MILLISECONDS)) {
                 throw TimeoutException("Timeout while waiting for process ${name?.let { " '$name'" } ?: ""} to terminate")
             }
         } else {

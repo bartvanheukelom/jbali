@@ -28,13 +28,9 @@ plugins {
 }
 
 // check gradle version, for when not running with the included wrapper (e.g. included in another project)
+val recommendedGradleVersion = "7.6"
 val supportedGradleVersions = setOf(
-//    "6.7.1",
-//    "7.0",
-//    "7.2",
-//    "7.3",
-//    "7.4.2",
-    "7.6",
+    recommendedGradleVersion,
 )
 check(GradleVersion.current().version in supportedGradleVersions) {
     "This build script is untested with Gradle version ${GradleVersion.current()}. Tested versions are $supportedGradleVersions"
@@ -44,12 +40,13 @@ initKotlinProject(
     group = JBali.group,
     name = JBali.aJbali,
     acceptableKotlinVersions = setOf(
-        KotlinVersions.V1_7_21,
+        KotlinVersions.V1_8_10,
     )
 )
 
 // TODO centralize
 check(kotlinVersionString == KotlinCompilerVersion.VERSION)
+val kLibVs = kotlinLinkedLibVersions.getValue(kotlinVersion!!)
 
 val javaVersionMajor = projectOrBuildProp("java.version.major").toString().toInt()
 val javaVersion = JavaVersion.toVersion(javaVersionMajor)
@@ -70,7 +67,7 @@ kotlin {
 
         commonMain {
             dependencies {
-                api(KotlinX.Serialization.json, "1.3.2")
+                api(KotlinX.Serialization.json, kLibVs.serialization)
             }
         }
 
@@ -86,7 +83,7 @@ kotlin {
 tasks {
     
     val wrapper by existing(Wrapper::class) {
-        gradleVersion = "7.6"
+        gradleVersion = recommendedGradleVersion
         // get sources
         distributionType = Wrapper.DistributionType.ALL
     }
