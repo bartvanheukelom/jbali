@@ -28,7 +28,7 @@ plugins {
 }
 
 // check gradle version, for when not running with the included wrapper (e.g. included in another project)
-val recommendedGradleVersion = "7.6"
+val recommendedGradleVersion = "8.0.2"
 val supportedGradleVersions = setOf(
     recommendedGradleVersion,
 )
@@ -84,8 +84,8 @@ tasks {
     
     val wrapper by existing(Wrapper::class) {
         gradleVersion = recommendedGradleVersion
-        // get sources
-        distributionType = Wrapper.DistributionType.ALL
+        distributionType = Wrapper.DistributionType.ALL  // get sources
+        distributionSha256Sum = "47a5bfed9ef814f90f8debcbbb315e8e7c654109acd224595ea39fca95c5d4da"
     }
     
     withType<KotlinCompile<*>>().configureEach {
