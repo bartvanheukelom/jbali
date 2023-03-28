@@ -21,7 +21,10 @@ data class Password(
 ) : JavaSerializable {
 
     // no-arg constructor for JAXB metadata, unmarshalling is not supported!
-    @Suppress("unused") private constructor() : this(fakeConstructorValue())
+    @Suppress("unused") private constructor() : this(fakeConstructorValue<String>())
+    
+    @Deprecated("Argument is already a Password", ReplaceWith("value"))
+    constructor(value: Password) : this(value.value)
 
     /**
      * Returns the value.
