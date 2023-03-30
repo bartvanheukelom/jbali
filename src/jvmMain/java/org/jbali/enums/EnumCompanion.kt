@@ -17,7 +17,10 @@ import kotlin.reflect.KClass
  *
  *     enum class Colour {
  *         Red, Green, Blue;
- *         companion object : EnumCompanion<Colour>(Colour::class)
+ *         companion object : EnumCompanion<Colour>(Colour::class) {
+ *             // this is fine, because the companion object is initialized after the enum constants
+ *             val shipBoards = setOf(Red, Green)
+ *         }
  *     }
  *
  *     val boring: EnumSet<Colour> = Colour.none
@@ -27,6 +30,8 @@ open class EnumCompanion<E : Enum<E>>(
 ) {
 
     val javaClass = enum.javaObjectType
+    
+    override fun toString() = "EnumCompanion(${enum.qualifiedName})"
     
     fun valueOf(name: String): E =
         Enums.getIfPresent(javaClass, name).orNull()

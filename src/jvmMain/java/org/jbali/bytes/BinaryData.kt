@@ -6,6 +6,7 @@ import org.jbali.kotser.Transformer
 import org.jbali.kotser.transformingSerializer
 import org.jbali.math.toIntExact
 import org.jbali.util.toHexString
+import java.nio.charset.Charset
 import kotlin.random.Random
 
 /**
@@ -77,6 +78,7 @@ class BinaryData(
 }
 
 fun ByteArray.asData() = BinaryData(this)
+fun String.toData(charset: Charset = Charsets.UTF_8) = toByteArray(charset).asData()
 
 fun Random.nextData(size: ULong): BinaryData = nextBytes(size.toIntExact()).asData()
 fun Random.nextData(size: Int):   BinaryData = nextBytes(size             ).asData()

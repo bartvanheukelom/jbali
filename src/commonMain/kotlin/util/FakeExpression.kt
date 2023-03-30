@@ -34,6 +34,9 @@ object FakeExpression {
 fun <T> fakeConstructorValue(): T =
     throw RuntimeException("Using this constructor is not actually supported")
 
+fun <T> todoExpression(name: String = "<unnamed>"): T =
+    FakeExpression.TODO(name)
+
 /**
  * Marker interface that is implemented by [FakeException] and [FakeError].
  */
