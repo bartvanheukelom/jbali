@@ -12,7 +12,6 @@ import org.jetbrains.exposed.sql.vendors.MysqlDialect
 import org.jetbrains.exposed.sql.vendors.currentDialect
 import java.sql.ResultSet
 import java.time.Instant
-import kotlin.reflect.KClass
 
 
 // TODO this style results in api combinatory explosion. replace with:
@@ -40,23 +39,6 @@ fun <T : Comparable<T>> Table.weakReference(name: String, foreign: IdTable<T>, f
 
 
 
-inline fun <reified T : Enum<T>> Table.myEnum(name: String): Column<T> =
-    myEnum(name, T::class)
-
-fun <T : Enum<T>> Table.myEnum(name: String, klass: KClass<T>): Column<T> {
-    
-    val vals = klass.java.enumConstants!!
-    val byName = vals.associateBy { it.name }
-    
-    return customEnumeration(
-        name = name,
-        sql = "ENUM(${vals.joinToString {
-            it.sqlLiteral
-        }})",
-        fromDb = { byName.getValue(it as String) },
-        toDb = { it.name }
-    )
-}
 
 fun <T : JsonElement> Table.myJson(name: String): Column<T> =
     registerColumn(name, JsonColumnType())
