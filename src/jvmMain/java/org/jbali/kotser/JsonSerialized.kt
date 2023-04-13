@@ -17,7 +17,7 @@ import kotlin.reflect.KClass
  * This container is [Externalizable] and can be passed through Java's serialization mechanism.
  * It does not contain type information, the receiver must know the type to deserialize to.
  */
-open class JsonSerialized<T : Any>
+open class JsonSerialized<T>
 constructor(
     open var json: JSONString
 ) : Externalizable {
@@ -32,7 +32,7 @@ constructor(
 
         val format = DefaultJson.indented
 
-        inline fun <reified T : Any> wrap(obj: T): JsonSerialized<T> =
+        inline fun <reified T> wrap(obj: T): JsonSerialized<T> =
             JsonSerialized(JSONString.stringify(format, serializer(), obj))
     
         /**
