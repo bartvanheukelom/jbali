@@ -78,6 +78,13 @@ interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T>, ReadOnlyPrope
      */
     fun <D> sub(getter: (T) -> D): Observable<D> =
             ObservableSub(this, getter)
+    
+    companion object {
+        /**
+         * Create a static [Observable] (i.e. one that never changes) around [value].
+         */
+        fun <T> of(value: T): Observable<T> = MutableObservable(value)
+    }
 
 }
 
