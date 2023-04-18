@@ -27,21 +27,29 @@ data class LoggedBean(
 
 fun ApplicationContext.allSingletons() =
     getBeansOfType<Any>(
-        includeNonSingletons = true,
+        includeNonSingletons = true, // huh?
         allowEagerInit = false,
     )
 
-fun ApplicationContext.singletonBeanTable(): String {
-    return allSingletons().entries
-            .sortedBy { (n, _) -> n }
-            .map { (n, b) ->
-                LoggedBean(
-                    name = n,
-                    type = b.javaClass.simpleName,
-                    toString =
-                    @Suppress("UNNECESSARY_SAFE_CALL") // some weirdo beans actually return null for toString()
-                    b.toString()?.layout(maxWidth = 128),
-                )
-            }
-            .toTableString()
-}
+fun ApplicationContext.singletonBeanTable(): String =
+    getBeanNamesForType(
+        Any::class.java,
+        true, // includeNonSingletons
+        false, // allowEagerInit
+    )
+        .sorted()
+        .map { name ->
+            val bean = getBean(name) // TODO only if it exists, which this doesn't
+            name to bean
+        }
+        .map { (n, b) ->
+            LoggedBean(
+                name = n,
+                type = b.javaClass.simpleName,
+                toString =
+                @Suppress("UNNECESSARY_SAFE_CALL") // some weirdo beans actually return null for toString()
+                b.toString()?.layout(maxWidth = 128),
+            )
+        }
+        .toTableString()
+
