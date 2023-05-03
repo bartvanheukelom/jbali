@@ -18,10 +18,19 @@ enum class SpiceGirl(
     companion object : EnumCompanion<SpiceGirl>(SpiceGirl::class) {
         init { println("init $this") }
         val mels = setOf(Scary, Sporty)
-        init { println("/init $this") }
+        init { println("/init $this; mels=$mels") }
     }
     
     init { println("/init $this") }
+    
+    // output:
+    // init Scary
+    // /init Scary
+    // init Sporty
+    // /init Sporty
+    // ...
+    // init EnumCompanion(org.jbali.enums.SpiceGirl)
+    // /init EnumCompanion(org.jbali.enums.SpiceGirl); mels=[Scary, Sporty]
 }
 
 class EnumCompanionTest {
