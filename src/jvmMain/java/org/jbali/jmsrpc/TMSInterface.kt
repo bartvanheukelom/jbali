@@ -13,6 +13,7 @@ import org.jbali.memory.loan
 import org.jbali.serialize.JavaJsonSerializer
 import org.jbali.text.showing
 import org.jbali.text.toMessageString
+import org.jbali.util.Box
 import org.jbali.util.cast
 import org.slf4j.LoggerFactory
 import kotlin.reflect.KClass
@@ -210,3 +211,10 @@ internal object UnitTMSSerializer : TMSSerializer {
     override fun transform(obj: Any?) = ser.transform(obj)
     override fun detransform(tf: JsonElement) = Unit
 }
+
+/**
+ * Use this alias for [Box] to indicate that it's used to work around
+ * a bug in [TextMessageService], e.g. to wrap an inline class.
+ */
+typealias TMSBox<T> = Box<T>
+fun <T> T.tmsBoxed() = TMSBox(this)

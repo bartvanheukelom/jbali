@@ -17,33 +17,45 @@ import static org.junit.Assert.*;
 public class TextMessageServiceTest {
 
 	// these interfaces are "the same" but different versions,
-	// to simulate backwards-compatibility testing
+	// to simulate backwards-compatibility testing.
+	// methods with differences are listed last.
 	public interface ServerEP {
-		void setVal(String v);
+		
+		// SAME //
 		void eur();
-		void foo(int a);
-		void bar(int a, Object b);
 		Object echo(Object a);
-		void nestedLocalFail();
-		@KoSe
-		TestKoseData kose(@Nullable TestKoseData data, @JJS TestJavaSerData mixer);
-		@KoSeReturn void koseVoid();
-	}
-	public interface LocalEP {
-		void setVal(int v);
-		void foo(int a, int b); // has 1 more parameter
-		void bar(int a); // has 1 less parameter
-		void eur();
-		void nope(); // missing in server version
-		Object echo(Object a);
-		@Override
-		boolean equals(Object obj); // ?
 		void nestedLocalFail();
 		@KoSe
 		TestKoseData kose(@Nullable TestKoseData data, @JJS TestJavaSerData mixer);
 		@KoSeReturn void koseVoid();
 		
+		// DIFFERENT //
+		void setVal(String v);
+		void foo(int a);
+		void bar(int a, Object b);
+		
+	}
+	public interface LocalEP {
+		
+		// SAME //
+		void eur();
+		Object echo(Object a);
+		void nestedLocalFail();
+		@KoSe
+		TestKoseData kose(@Nullable TestKoseData data, @JJS TestJavaSerData mixer);
+		@KoSeReturn void koseVoid();
+		
+		// DIFFERENT //
+		void setVal(int v); // different param type
+		void foo(int a, int b); // has 1 more parameter
+		void bar(int a); // has 1 less parameter
+		void nope(); // missing in server version
+		
+		@Override
+		boolean equals(Object obj); // ?
+		
 		void localFail(); // hackyhack, will never be submitted
+		
 	}
 
 	static class Endpoint implements ServerEP {
@@ -295,6 +307,8 @@ public class TextMessageServiceTest {
 		assertEquals(78, clientK.jjsEcho(new JavaSerThingy(78)).getX());
 		assertEquals(32, clientK.koseEcho(new KoSeThingy(32)).getX());
 		assertEquals(44, clientK.openJjsEcho(new JavaSerThingy(44)).getX());
+		// TODO move the rest above into this:
+		TMSKotlinIfaceKt.runTmsKotlinIfaceTest(clientK);
 		
 		clientK.returningUnit(); // simply should not throw
 		assertEquals(Unit.INSTANCE, clientK.returningUnitOrNull(true));
