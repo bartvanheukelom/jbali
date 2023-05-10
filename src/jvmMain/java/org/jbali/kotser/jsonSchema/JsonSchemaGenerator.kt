@@ -22,8 +22,9 @@ import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.typeOf
 
-@OptIn(ExperimentalStdlibApi::class)
-class JsonSchemaGenerator {
+class JsonSchemaGenerator(
+    private val pw: PrintWriter,
+) : AutoCloseable {
 
     @Serializable
     object PH0
@@ -63,16 +64,16 @@ class JsonSchemaGenerator {
         }
     }
 
-    inline fun <reified T> PrintWriter.generate() {
+    inline fun <reified T> generate() {
         generate(T::class)
     }
 
-    fun PrintWriter.generate(
+    fun generate(
         type: KClass<*>,
 //        strat:
     ) {
         queue(type)
-        processQueue()
+        pw.processQueue()
     }
 
     private val nothing: Nothing get() = throw AssertionError()
@@ -109,23 +110,29 @@ class JsonSchemaGenerator {
             val split = clazz.qualifiedName!!.split(".")
             val rn = split.last()
             val ns = split.subList(0, split.size - 1).joinToString(".")
-    
+//            println("// ns: $ns")
+//            println("// inNamespace: $inNamespace")
             if (inNamespace != ns) {
+//                println("// before close, inNamespace: $inNamespace")
                 closeNs()
+//                println("// after close, inNamespace: $inNamespace")
                 println("export namespace $ns {")
                 inNamespace = ns
+//                println("// after inNamespace = ns, inNamespace: $inNamespace")
+            } else {
+//                println("// inNamespace unchanged: $inNamespace")
             }
     
             when {
                 clazz.isValue -> {
                     val typeDef = desc.typeName()
-                    println("\n  export type $rn = $typeDef")
+                    println("\n  export type $rn = $typeDef;")
                 }
                 clazz.isSubclassOf(Enum::class) -> {
                     val typeDef = clazz.java.enumConstants!!.joinToString(" | ") {
                         jsonString((it as Enum<*>).name).toString() // TODO SerialName
                     }
-                    println("\n  export type $rn = $typeDef")
+                    println("\n  export type $rn = $typeDef;")
                 }
                 else -> {
     
@@ -176,9 +183,10 @@ class JsonSchemaGenerator {
             }
             
         }
+    }
     
-        closeNs()
-        
+    override fun close() {
+        pw.closeNs()
     }
 
     private fun SerialDescriptor.typeName(): String =
