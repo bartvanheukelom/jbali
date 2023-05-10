@@ -43,7 +43,7 @@ enum class DaemonShutdownTrigger {
     /**
      * The daemon is shut down when the returned callback is called, e.g. in unit tests.
      */
-    Callback
+    Callback,
 }
 
 /**
@@ -53,6 +53,7 @@ enum class DaemonShutdownTrigger {
 fun basicDaemonMain(
     shutdownTrigger: DaemonShutdownTrigger = DaemonShutdownTrigger.SigInt,
     requireCleanShutdown: Boolean = shutdownTrigger != DaemonShutdownTrigger.SigInt,
+    onShutdown: () -> Unit = {},
     mainAppCreator: () -> Closeable
 ): () -> Unit {
     
@@ -114,6 +115,7 @@ fun basicDaemonMain(
             try {
                 log.info("$$$$$$$$$$$$$$$$$$$$$$ [shutting down by $by] $$$$$$$$$$$$$$$$$$$$$$")
                 app.close()
+                onShutdown()
                 shutdownGlobalPools()
                 log.info("##################### [ready for termination] #######################")
                 
