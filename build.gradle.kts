@@ -91,6 +91,7 @@ tasks {
     withType<KotlinCompile<*>>().configureEach {
         kotlinOptions {
             setBackendThreads()
+            compilerXArg("context-receivers")
         }
     }
 }
