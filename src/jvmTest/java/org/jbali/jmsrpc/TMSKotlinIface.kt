@@ -1,8 +1,10 @@
 package org.jbali.jmsrpc
 
 import kotlinx.serialization.Serializable
+import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import java.io.Serializable as JavaIoSerializable
 
 data class JavaSerThingy(val x: Int) : JavaIoSerializable {
@@ -35,6 +37,10 @@ interface TMSKotlinIfaceLayer2 : TMSKotlinIfaceLayer1 {
     
     fun returningUnit()
     fun returningUnitOrNull(unit: Boolean): Unit?
+    
+    // custom serializers
+    fun returningUuid(): UUID
+    fun returningUuidOrNull(dewit: Boolean): UUID?
 }
 
 @KoSe
@@ -89,6 +95,12 @@ fun runTmsKotlinIfaceTest(clientK: TMSKotlinIfaceOlder) {
     }
     
     assertEquals("X", clientK.koseInlineReturnBoxed().contents.y)
+    
+    
+    // custom serializers
+    assertEquals(UUID(12345678L, 87654321L), clientK.returningUuid())
+    assertEquals(UUID(9999999L, 666666L), clientK.returningUuidOrNull(true))
+    assertNull(clientK.returningUuidOrNull(false))
 }
 
 object TMSKotlinEndpoint : TMSKotlinIface {
@@ -108,4 +120,7 @@ object TMSKotlinEndpoint : TMSKotlinIface {
     override fun returnChangedToSomething(): Int = 43
     override fun returnNumberNarrowed(): Int = 55
     override fun returnTypeNarrowed(): String = "definitely a piece of text"
+    
+    override fun returningUuid(): UUID = UUID(12345678L, 87654321L)
+    override fun returningUuidOrNull(dewit: Boolean): UUID? = if (dewit) UUID(9999999L, 666666L) else null
 }

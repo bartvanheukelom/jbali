@@ -6,11 +6,13 @@ import org.jbali.json.JSONObject;
 import org.jbali.threads.ThreadPool;
 import org.junit.Test;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.NoSuchElementException;
+import java.util.UUID;
 
 import static org.junit.Assert.*;
 
@@ -28,6 +30,7 @@ public class TextMessageServiceTest {
 		@KoSe
 		TestKoseData kose(@Nullable TestKoseData data, @JJS TestJavaSerData mixer);
 		@KoSeReturn void koseVoid();
+		@KoSe @Nonnull UUID javaUuidType(); // was UUID! i.e. no nullability info, but made that an error
 		
 		// DIFFERENT //
 		void setVal(String v);
@@ -44,6 +47,7 @@ public class TextMessageServiceTest {
 		@KoSe
 		TestKoseData kose(@Nullable TestKoseData data, @JJS TestJavaSerData mixer);
 		@KoSeReturn void koseVoid();
+		@KoSe @Nonnull UUID javaUuidType(); // UUID! i.e. no nullability info
 		
 		// DIFFERENT //
 		void setVal(int v); // different param type
@@ -119,6 +123,11 @@ public class TextMessageServiceTest {
 		
 		@Override
 		public void koseVoid() {}
+		
+		@Override
+		public @Nonnull UUID javaUuidType() {
+			return new UUID(77777, 888888);
+		}
 	}
 	
 	@Test
@@ -221,6 +230,7 @@ public class TextMessageServiceTest {
 		assertEquals(client, client);
 		assertFalse(client.equals(TextMessageServiceClient.create(LocalEP.class, r -> null)));
 		client.koseVoid();
+		assertEquals(new UUID(77777, 888888), client.javaUuidType());
 		
 		// errors
 

@@ -1,6 +1,7 @@
 package org.jbali.jmsrpc
 
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.serializer
@@ -8,6 +9,7 @@ import org.jbali.json.fromJson2
 import org.jbali.json.toJson2
 import org.jbali.kotser.Transformer
 import org.jbali.kotser.jsonSerializer
+import org.jbali.kotser.std.UUIDSerializer
 import org.jbali.memory.Borrowed
 import org.jbali.memory.loan
 import org.jbali.serialize.JavaJsonSerializer
@@ -16,6 +18,7 @@ import org.jbali.text.toMessageString
 import org.jbali.util.Box
 import org.jbali.util.cast
 import org.slf4j.LoggerFactory
+import java.util.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
@@ -147,8 +150,24 @@ internal class TMSInterface<I : Any>(
                         }
                     
                     val returnSer = if (returnKose) {
-                        when (val rt = func.returnType) {
+                        val rt = func.returnType
+                        if ("$rt".endsWith("!")) { // TODO find better way
+                            // TODO make error when have time to fix it all
+                            log.warn("Method $func return type does not declare nullability, i.e. is a platform type. This may lead to issues finding a serializer and will be an error in the future.")
+                            
+                            // nice try but the whole problem is that this annotation is not retained at runtime
+//                            if (func.hasAnnotation<NotNull>()) {
+//                                log.warn("Method was annotated with @org.jetbrains.annotations.NotNull. Use @javax.annotation.Nonnull to get the desired effect.")
+//                            }
+                        }
+                        when (rt) {
                             typeOf<Unit>() -> UnitTMSSerializer
+                            
+                            // TODO is this clean? in any case, allow specifying custom serializers somehow.
+                            // TODO in any case, duplicating the logic for nullable or not is not good. similarly, List<UUID> etc should also work.
+                            typeOf<UUID >() -> UUIDSerializer         .asTms()
+                            typeOf<UUID?>() -> UUIDSerializer.nullable.asTms()
+                            
                             else -> rt.let(::serializer).asTms()
                         }
                     } else {
