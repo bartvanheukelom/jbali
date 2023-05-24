@@ -45,6 +45,18 @@ class RateLimitExceededException(message: String) : RuntimeException(message)
 
 
 
+// ------------------------ NOP IMPLEMENTATION ------------------------ //
+
+/**
+ * A rate "limiter" that doesn't actually limit anything. Useful for unit tests.
+ */
+class RateUnlimiter : RateLimiter {
+    override fun getAvailablePermits(key: String): UInt = UInt.MAX_VALUE
+    override fun requestPermits(key: String, permits: UInt, partial: Boolean): UInt = permits
+    override fun requirePermits(key: String, permits: UInt) {}
+    override suspend fun waitForPermits(key: String, permits: UInt, onWait: () -> Unit) {}
+}
+
 
 // -------------------- TOKEN BUCKET IMPLEMENTATION -------------------- //
 
