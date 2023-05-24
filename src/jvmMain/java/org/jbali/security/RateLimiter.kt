@@ -9,8 +9,6 @@ import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
-import kotlin.math.max
-
 
 
 interface RateLimiter {
@@ -32,7 +30,7 @@ interface RateLimiter {
     /**
      * Consume the given number of permits for the given key.
      *
-     * @throws IllegalStateException if there are not enough permits available.
+     * @throws RateLimitExceededException if there are not enough permits available.
      */
     fun requirePermits(key: String = "", permits: UInt = 1u)
     
@@ -42,6 +40,12 @@ interface RateLimiter {
     suspend fun waitForPermits(key: String = "", permits: UInt = 1u)
 }
 
+class RateLimitExceededException(message: String) : RuntimeException(message)
+
+
+
+
+// -------------------- TOKEN BUCKET IMPLEMENTATION -------------------- //
 
 
 @Serializable
@@ -80,6 +84,10 @@ class TokenBucketRateLimiter(
     initialState: TokenBucketRateLimiterState? = null,
 ) : RateLimiter {
     
+//    companion object {
+//        private val log = LoggerFactory.getLogger(TokenBucketRateLimiter::class.java)
+//    }
+    
     private val stateMutex = ReentrantLock()
     var state = (initialState ?: TokenBucketRateLimiterState())
         .also(onStateChange)
@@ -101,6 +109,9 @@ class TokenBucketRateLimiter(
                 partial -> available
                 else -> 0u
             }
+//            if (consumedNow > 0u) {
+//                log.info("Consuming $consumedNow permits for key '$key'")
+//            }
             updateState(key, TokenBucketRateLimiterState.KeyState(
                 lastRefill = stateBefore?.lastRefill ?: now,
                 permitsConsumed = consumedBefore + consumedNow,
@@ -112,14 +123,14 @@ class TokenBucketRateLimiter(
     private fun cleanUpAndGetState(key: String): TokenBucketRateLimiterState.KeyState? {
         if (!cleanUpIfNeeded()) {
             state.perKey[key]?.let { keyState ->
-                updateState(key, refill(keyState))
+                updateState(key, refill(key, keyState))
             }
         }
         return state.perKey[key]
     }
     
     context(FreezeFrame)
-    private fun refill(keyState: TokenBucketRateLimiterState.KeyState): TokenBucketRateLimiterState.KeyState? {
+    private fun refill(key: String, keyState: TokenBucketRateLimiterState.KeyState): TokenBucketRateLimiterState.KeyState? {
         val timeElapsed = Duration.between(keyState.lastRefill, now).secondsDouble
         val permitsToRefill = (config.refillRate * timeElapsed).toUInt()
         val ns = when {
@@ -130,6 +141,7 @@ class TokenBucketRateLimiter(
                 null
             }
             else -> {
+//                log.info("Refilling $permitsToRefill permits for key '$key'. permitsConsumed:=${keyState.permitsConsumed}-${permitsToRefill}")
                 keyState.copy(
                     permitsConsumed = keyState.permitsConsumed - permitsToRefill,
                     lastRefill = now,
@@ -142,20 +154,25 @@ class TokenBucketRateLimiter(
     override fun requirePermits(key: String, permits: UInt) {
         val available = requestPermits(key, permits, partial = false)
         if (available < permits) {
-            error("Rate limited")
+            throw RateLimitExceededException("Rate limited")
         }
     }
     
     override suspend fun waitForPermits(key: String, permits: UInt) {
-        var waitTime = 0.0 // in seconds
         while (true) {
             when (val available = requestPermits(key, permits, partial = false)) {
                 permits -> break
                 0u -> {
-                    val remainingRefillTime = if (waitTime > 0) 0.0 else max(0.0, 1.0 / config.refillRate - waitTime)
-                    val requiredTime = (permits.toDouble() - available.toDouble()) / config.refillRate
-                    waitTime += requiredTime + remainingRefillTime
-                    delay((waitTime * 1000).toLong()) // convert to milliseconds
+//                    log.info("$available/$permits permits available")
+                    
+                    // TODO calculate ideal delay using last refill timestamp
+                    val worstCaseNextPermitTime = 1.0 / config.refillRate
+                    val fractionOfWorstCase = worstCaseNextPermitTime / 16.0
+                    val nextCheckDelay = fractionOfWorstCase.coerceAtMost(1.0)
+                    val delayMs = (nextCheckDelay * 1000.0).toLong()
+                    
+//                    log.info("checking again after $delayMs ms")
+                    delay(delayMs)
                 }
                 else -> error("Unexpected available permits: $available")
             }
@@ -190,7 +207,7 @@ class TokenBucketRateLimiter(
             
             // refill all keys
             val perKey = state.perKey.mapNotNull { (key, keyState) ->
-                val ns = refill(keyState)
+                val ns = refill(key, keyState)
                 if (ns == null) {
                     null
                 } else {
