@@ -1,10 +1,11 @@
 package org.jbali.security
 
+import kotlinx.coroutines.*
 import org.junit.Test
 import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.time.ZoneOffset
-import kotlin.test.assertEquals
+import kotlin.test.*
 
 class TokenBucketRateLimiterTest {
     
@@ -39,6 +40,9 @@ class TokenBucketRateLimiterTest {
         
         // request more than available
         assertEquals(0u, rateLimiter.requestPermits(permits = 8u, partial = false))
+        assertFailsWith<RateLimitExceededException> {
+            rateLimiter.requirePermits(permits = 8u)
+        }
         assertEquals(7u, rateLimiter.getAvailablePermits())
         
         // request more than available, but allow partial fulfillment
@@ -70,30 +74,59 @@ class TokenBucketRateLimiterTest {
         // state should now equal base state. if so, no need to test again.
         rateLimiter.cleanUpNow(force = true)
         assertEquals(baseState, rateLimiter.state)
+        
     }
     
-//    @Test
-//    fun testRequirePermits() {
-//        var now = Instant.now()
-//        val config = TokenBucketRateLimiterConfig(bufferSize = 10u, refillRate = 1.0)
-//        val rateLimiter = TokenBucketRateLimiter(config, clock = { now })
-//
-//        rateLimiter.requirePermits(permits = 5u)
-//        assertFailsWith<RuntimeException> { rateLimiter.requirePermits(permits = 6u) }
-//    }
-    
-//    @Test
-//    fun testWaitForPermits() {
-////        var now = Instant.now()
-//        val config = TokenBucketRateLimiterConfig(bufferSize = 10u, refillRate = 1.0)
-//        val rateLimiter = TokenBucketRateLimiter(config)
-//
-//        runBlocking {
-//            rateLimiter.waitForPermits(permits = 5u)
-////            now = now.plusSeconds(10)  // simulate time passing
-//            rateLimiter.waitForPermits(permits = 5u) // should not block because enough time has passed for refill
-//        }
-//    }
+    @Test
+    fun testWaitForPermits() {
+        val config = TokenBucketRateLimiterConfig(bufferSize = 10u, refillRate = 1.0)
+        val rateLimiter = TokenBucketRateLimiter(
+            config,
+            onStateChange = { log.info("state: $it") },
+        )
+        
+        runBlocking {
+            // greedy
+            rateLimiter.requirePermits(permits = 10u)
+            assertEquals(0u, rateLimiter.getAvailablePermits())
+            
+            var gotten = false
+            val waiter = launch {
+                assertEquals(0u, rateLimiter.getAvailablePermits())
+                log.info("WAITER: waiting for 1 permit")
+                rateLimiter.waitForPermits(permits = 1u)
+                log.info("WAITER: got 1 permit")
+                gotten = true
+            }
+            
+            // 1 permit should become available after 1 second, but not before
+            log.info("T+0.000: assert not gotten")
+            assertFalse(gotten)
+            delay(800)
+            log.info("T+0.800: assert not gotten")
+            assertFalse(gotten)
+            delay(300)
+            log.info("T+1.100: assert gotten")
+            assertTrue(gotten)
+            
+            // taking 3 permits within 1 second should be impossible
+            val available = rateLimiter.getAvailablePermits()
+            assertFailsWith<TimeoutCancellationException> {
+                withTimeout(1_000) {
+                    log.info("waiting for 3 permits")
+                    rateLimiter.waitForPermits(permits = 3u)
+                    fail("should not have gotten 3 permits")
+                }
+            }.also { log.info("$it") }
+            log.info("T+2.100: timed out")
+            
+            // as the waiter was cancelled, assert that they are not still consumed as soon as they become available
+            delay(3_000)
+            log.info("T+5.100: assert not taken after cancel")
+            assertTrue(rateLimiter.getAvailablePermits() >= available + 3u)
+            
+        }
+    }
     
 //    @Test
 //    fun testCleanUpNow() {
