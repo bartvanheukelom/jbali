@@ -79,7 +79,7 @@ class TokenBucketRateLimiterTest {
     
     @Test
     fun testWaitForPermits() {
-        val config = TokenBucketRateLimiterConfig(bufferSize = 10u, refillRate = 1.0)
+        val config = TokenBucketRateLimiterConfig(bufferSize = 10u, refillRate = 10.0)
         val rateLimiter = TokenBucketRateLimiter(
             config,
             onStateChange = { log.info("state: $it") },
@@ -99,30 +99,30 @@ class TokenBucketRateLimiterTest {
                 gotten = true
             }
             
-            // 1 permit should become available after 1 second, but not before
+            // 1 permit should become available after 100ms, but not before
             log.info("T+0.000: assert not gotten")
             assertFalse(gotten)
-            delay(800)
-            log.info("T+0.800: assert not gotten")
+            delay(60)
+            log.info("T+0.060: assert not gotten")
             assertFalse(gotten)
-            delay(300)
-            log.info("T+1.100: assert gotten")
+            delay(50)
+            log.info("T+0.110: assert gotten")
             assertTrue(gotten)
             
-            // taking 3 permits within 1 second should be impossible
+            // taking 3 permits within 100ms should be impossible
             val available = rateLimiter.getAvailablePermits()
             assertFailsWith<TimeoutCancellationException> {
-                withTimeout(1_000) {
+                withTimeout(100) {
                     log.info("waiting for 3 permits")
                     rateLimiter.waitForPermits(permits = 3u)
                     fail("should not have gotten 3 permits")
                 }
             }.also { log.info("$it") }
-            log.info("T+2.100: timed out")
+            log.info("T+0.210: timed out")
             
             // as the waiter was cancelled, assert that they are not still consumed as soon as they become available
-            delay(3_000)
-            log.info("T+5.100: assert not taken after cancel")
+            delay(300)
+            log.info("T+0.510: assert not taken after cancel")
             assertTrue(rateLimiter.getAvailablePermits() >= available + 3u)
             
         }
