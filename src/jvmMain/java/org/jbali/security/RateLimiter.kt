@@ -36,8 +36,9 @@ interface RateLimiter {
     
     /**
      * Wait until the given number of permits are available for the given key, then consume them.
+     * @param onWait Called once when the coroutine is about to be suspended waiting for permits. Not called if no waiting is needed.
      */
-    suspend fun waitForPermits(key: String = "", permits: UInt = 1u)
+    suspend fun waitForPermits(key: String = "", permits: UInt = 1u, onWait: () -> Unit = {})
 }
 
 class RateLimitExceededException(message: String) : RuntimeException(message)
@@ -158,20 +159,26 @@ class TokenBucketRateLimiter(
         }
     }
     
-    override suspend fun waitForPermits(key: String, permits: UInt) {
+    override suspend fun waitForPermits(key: String, permits: UInt, onWait: () -> Unit) {
+        var onWaitCalled = false
         while (true) {
             when (val available = requestPermits(key, permits, partial = false)) {
                 permits -> break
                 0u -> {
 //                    log.info("$available/$permits permits available")
                     
-                    // TODO calculate ideal delay using last refill timestamp
+                    // TODO calculate ideal delay using last refill timestamp.
+                    // TODO akshually, implement a proper queue. first come, first serve. lots of tasks waiting for 1 permit should not be able to starve somebody waiting for 4 permits.
                     val worstCaseNextPermitTime = 1.0 / config.refillRate
                     val fractionOfWorstCase = worstCaseNextPermitTime / 16.0
                     val nextCheckDelay = fractionOfWorstCase.coerceAtMost(1.0)
                     val delayMs = (nextCheckDelay * 1000.0).toLong()
                     
 //                    log.info("checking again after $delayMs ms")
+                    if (!onWaitCalled) {
+                        onWait()
+                        onWaitCalled = true
+                    }
                     delay(delayMs)
                 }
                 else -> error("Unexpected available permits: $available")
