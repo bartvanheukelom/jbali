@@ -18,6 +18,32 @@ fun <A, B> B?.nullToLeftOf(default: () -> A): Either<A, B> =
  */
 fun <C> Either<C, C>.value() = fold({it},{it})
 
+
+/**
+ * If this is a `Left`, applies the provided function to the `Left` value and returns the result.
+ * If this is a `Right`, returns this `Either` unchanged.
+ * Basically the mirror version of [Either.flatMap].
+ *
+ * Use case:
+ *
+ * ```
+ * fun Pigs.house(mat: Material): Either<BlownAway, StillStanding>;
+ * val goodHouse = sciencePig.house(Material.Straw)
+ *     .or { sciencePig.house(Material.Sticks) }
+ *     .or { sciencePig.house(Material.Bricks) }
+ *     .getOrHandle { log.error("All out of materials!") }
+ * ```
+ */
+fun <A, B> Either<A, B>.or(transform: (A) -> Either<A, B>): Either<A, B> =
+    fold(
+        ifLeft = { a -> transform(a) },
+        ifRight = { this }
+    )
+
+
+
+// ------------------- Either<Throwable, *> ------------------- //
+
 /**
  * @return the right value if this is [Right].
  * @throws A the left value if this is [Left].
