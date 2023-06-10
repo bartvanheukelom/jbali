@@ -1,5 +1,7 @@
 package org.jbali.rest
 
+import com.google.common.cache.Cache
+import com.google.common.cache.CacheBuilder
 import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.http.content.*
@@ -26,6 +28,7 @@ import org.slf4j.LoggerFactory
 import java.lang.ref.WeakReference
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 interface RestRouteContext : RestApiContext {
     
@@ -203,7 +206,24 @@ abstract class RestRoute : RestRouteContext {
         )
     }
     
-    private val serializers: MutableMap<ReifiedType<*>, KSerializer<*>> = ConcurrentHashMap()
+    
+    private val serializers: MutableMap<ReifiedType<*>, CachingSerializer<*>> = ConcurrentHashMap()
+    
+    private inner class CachingSerializer<T>(
+        val ser: KSerializer<T>,
+    ) {
+        private val serializedResponses: Cache<Any, String> = CacheBuilder.newBuilder()
+            .expireAfterAccess(10, TimeUnit.MINUTES)
+            .maximumSize(65536)
+            .build()
+        
+        fun serialize(obj: T): String =
+            obj?.let {
+                serializedResponses.get(it) {
+                    jsonFormat.encodeToString(ser, it)
+                }
+            } ?: jsonFormat.encodeToString(ser, obj)
+    }
 
     override suspend fun <T> ApplicationCall.respondObject(
             returnType: ReifiedType<T>,
@@ -214,21 +234,30 @@ abstract class RestRoute : RestRouteContext {
         if (returnType.extends(reifiedTypeOf<ByteArrayContent>())) {
             respondWithETag(returnVal as ByteArrayContent)
         } else {
-    
-            // get serializer
-            @Suppress("UNCHECKED_CAST")
-            val ser = serializers.getOrPut(returnType) {
-                jsonFormat.serializersModule.serializer(returnType.type)
-            } as KSerializer<T>
             
-            // serialize return value
-            val returnJson: String =
-                // TODO fix
+            val returnJson: String = try {
+                
+                // get serializer
+                @Suppress("UNCHECKED_CAST")
+                val ser = serializers.getOrPut(returnType) {
+                    CachingSerializer(
+                        ser = jsonFormat.serializersModule.serializer(returnType.type)
+                    )
+                } as CachingSerializer<T>
+                
+                // serialize return value
+                ser.serialize(returnVal)
+            } catch (e: Exception) {
+                log.warn("Error in cached serialization of returnVal: $e")
+                jsonFormat.encodeToString(jsonFormat.serializersModule.serializer(returnType.type), returnVal)
+            }
+            
+            // TODO this always throws an exception, fix or remove
     //            try {
     //                returnVal.jsonCache.invoke(returnType.serializer)
     //            } catch (e: Throwable) {
     //                log.warn("Error invoking jsonCache for returnVal=$returnVal, returnType.serializer=${returnType.serializer}", e)
-                    jsonFormat.encodeToString(ser, returnVal)
+//                    jsonFormat.encodeToString(ser, returnVal)
     //            }
     
             // instruct client how to deserialize the response
