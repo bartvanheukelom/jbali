@@ -25,6 +25,7 @@ import org.jbali.util.weakKeyLoadingCache
 import org.slf4j.LoggerFactory
 import java.lang.ref.WeakReference
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 
 interface RestRouteContext : RestApiContext {
     
@@ -201,6 +202,8 @@ abstract class RestRoute : RestRouteContext {
                 returnVal = returnVal
         )
     }
+    
+    private val serializers: MutableMap<ReifiedType<*>, KSerializer<*>> = ConcurrentHashMap()
 
     override suspend fun <T> ApplicationCall.respondObject(
             returnType: ReifiedType<T>,
@@ -212,6 +215,12 @@ abstract class RestRoute : RestRouteContext {
             respondWithETag(returnVal as ByteArrayContent)
         } else {
     
+            // get serializer
+            @Suppress("UNCHECKED_CAST")
+            val ser = serializers.getOrPut(returnType) {
+                jsonFormat.serializersModule.serializer(returnType.type)
+            } as KSerializer<T>
+            
             // serialize return value
             val returnJson: String =
                 // TODO fix
@@ -219,7 +228,7 @@ abstract class RestRoute : RestRouteContext {
     //                returnVal.jsonCache.invoke(returnType.serializer)
     //            } catch (e: Throwable) {
     //                log.warn("Error invoking jsonCache for returnVal=$returnVal, returnType.serializer=${returnType.serializer}", e)
-                    jsonFormat.encodeToString(jsonFormat.serializersModule.serializer(returnType.type), returnVal)
+                    jsonFormat.encodeToString(ser, returnVal)
     //            }
     
             // instruct client how to deserialize the response
