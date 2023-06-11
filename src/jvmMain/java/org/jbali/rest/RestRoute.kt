@@ -10,6 +10,9 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
+import io.micrometer.core.instrument.Metrics
+import io.micrometer.core.instrument.Tag
+import io.micrometer.core.instrument.binder.cache.GuavaCacheMetrics
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.serializer
@@ -210,12 +213,21 @@ abstract class RestRoute : RestRouteContext {
     private val serializers: MutableMap<ReifiedType<*>, CachingSerializer<*>> = ConcurrentHashMap()
     
     private inner class CachingSerializer<T>(
+        type: ReifiedType<T>,
         val ser: KSerializer<T>,
     ) {
         private val serializedResponses: Cache<Any, String> = CacheBuilder.newBuilder()
             .expireAfterAccess(10, TimeUnit.MINUTES)
             .maximumSize(65536)
+            .recordStats()
             .build()
+        
+        init {
+            GuavaCacheMetrics.monitor(Metrics.globalRegistry, serializedResponses, "org.jbali.rest.RestRoute.serializedResponses", listOf(
+                Tag.of("route", route.toString()),
+                Tag.of("type", type.toString()),
+            ))
+        }
         
         fun serialize(obj: T): String =
             obj?.let {
@@ -241,7 +253,8 @@ abstract class RestRoute : RestRouteContext {
                 @Suppress("UNCHECKED_CAST")
                 val ser = serializers.getOrPut(returnType) {
                     CachingSerializer(
-                        ser = jsonFormat.serializersModule.serializer(returnType.type)
+                        type = returnType,
+                        ser = jsonFormat.serializersModule.serializer(returnType.type) as KSerializer<T>
                     )
                 } as CachingSerializer<T>
                 

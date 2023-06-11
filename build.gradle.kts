@@ -162,6 +162,7 @@ if (doJvm) {
                         
                         api("com.google.guava:guava", "31.1-jre")
                         api("org.slf4j:slf4j-api", vSlf4j)
+                        api("io.micrometer:micrometer-core:1.11.0")
                         
                         api("commons-codec:commons-codec", "1.15")
                         api("org.apache.commons:commons-lang3", "3.12.0")
