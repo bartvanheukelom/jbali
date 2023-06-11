@@ -80,7 +80,8 @@ class TextMessageServiceClient<S : Any>(
     private val ifaceInfo = ifaceK.asTMSInterface
     
     val blocking: S = Proxies.create(ifaceK.java) { proxy, method, args ->
-        
+        var resultCounted = false
+        TMSMeters.countRequestsActive.incrementAndGet()
         try {
             
             Proxies.handleTEH(proxy, method, args, "${toStringed}.blocking")
@@ -115,6 +116,8 @@ class TextMessageServiceClient<S : Any>(
                         }
                     }
                     
+                    TMSMeters.countRequests.increment()
+                    
                     // send the request
                     val respJson = requestHandler(JSONString.stringify(reqJson, prettyPrint = false).string)
                     
@@ -126,11 +129,15 @@ class TextMessageServiceClient<S : Any>(
                     // return or throw it
                     when (respStatus) {
                         TextMessageService.STATUS_OK -> {
+                            TMSMeters.countResponsesSuccess.increment()
+                            resultCounted = true
                             tMethod.returnSerializer
                                 .detransform(respJsonEl)
                                 .right()
                         }
-                        else ->
+                        else -> {
+                            TMSMeters.countResponsesError.increment()
+                            resultCounted = true
                             // the response should be an exception
                             JjsAsTms
                                 .detransform(respJsonEl)
@@ -156,12 +163,16 @@ class TextMessageServiceClient<S : Any>(
                                 } }
                                 
                                 .left()
+                        }
                     }
                     
                 }
             
         } catch (e: Throwable) {
+            if (!resultCounted) TMSMeters.countResponsesError.increment()
             throw TextMessageServiceClientException("A local/meta exception occured when invoking $toStringed.${method.name}: $e", e)
+        } finally {
+            TMSMeters.countRequestsActive.decrementAndGet()
         }.getOrHandle { throw it }
         
     }
