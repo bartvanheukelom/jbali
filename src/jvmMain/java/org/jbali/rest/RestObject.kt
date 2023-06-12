@@ -43,25 +43,32 @@ open class RestObject<T>(
     // ---------------------------- GET ---------------------------- //
 
     inline fun <reified I : Any> get(
-            noinline impl: suspend I.(ApplicationCall) -> T
+        cacheSerialization: Boolean = true,
+        noinline impl: suspend I.(ApplicationCall) -> T
     ) {
         get(
-                inputType = reifiedTypeOf(),
-                impl = impl
+            inputType = reifiedTypeOf(),
+            cacheSerialization = cacheSerialization,
+            impl = impl
         )
     }
 
     fun get(
-            impl: suspend (ApplicationCall) -> T
+        cacheSerialization: Boolean = true,
+        impl: suspend (ApplicationCall) -> T
     ) {
-        get(inputType = ReifiedType.unit) {
+        get(
+            inputType = ReifiedType.unit,
+            cacheSerialization = cacheSerialization,
+        ) {
             impl(it)
         }
     }
 
     fun <I : Any> get(
-            inputType: ReifiedType<I>,
-            impl: suspend I.(ApplicationCall) -> T
+        inputType: ReifiedType<I>,
+        cacheSerialization: Boolean = true,
+        impl: suspend I.(ApplicationCall) -> T
     ) {
         allowedMethods += HttpMethod.Get
         route.getExact {
@@ -70,7 +77,8 @@ open class RestObject<T>(
                 .let { rv ->
                     call.respondObject(
                         returnType = type,
-                        returnVal = rv
+                        returnVal = rv,
+                        cacheSerialization = cacheSerialization,
                     )
                 }
         }

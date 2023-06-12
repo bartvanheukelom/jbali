@@ -32,6 +32,7 @@ import java.lang.ref.WeakReference
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import java.util.function.Supplier
 
 interface RestRouteContext : RestApiContext {
     
@@ -70,7 +71,8 @@ interface RestRouteContext : RestApiContext {
     suspend fun <T> ApplicationCall.respondObject(
         returnType: ReifiedType<T>,
         returnVal: T,
-        status: HttpStatusCode = HttpStatusCode.OK
+        status: HttpStatusCode = HttpStatusCode.OK,
+        cacheSerialization: Boolean = true,
     )
 }
 
@@ -212,10 +214,14 @@ abstract class RestRoute : RestRouteContext {
     
     private val serializers: MutableMap<ReifiedType<*>, CachingSerializer<*>> = ConcurrentHashMap()
     
+    private interface ResponseSerializer<T> {
+        fun serialize(obj: T): String
+    }
+    // TODO not inner
     private inner class CachingSerializer<T>(
-        type: ReifiedType<T>,
-        val ser: KSerializer<T>,
-    ) {
+        private val type: ReifiedType<T>,
+        private val ser: KSerializer<T>,
+    ) : ResponseSerializer<T> {
         private val serializedResponses: Cache<Any, String> = CacheBuilder.newBuilder()
             .expireAfterAccess(10, TimeUnit.MINUTES)
             .maximumSize(65536)
@@ -229,18 +235,35 @@ abstract class RestRoute : RestRouteContext {
             ))
         }
         
-        fun serialize(obj: T): String =
+        override fun serialize(obj: T): String =
             obj?.let {
                 serializedResponses.get(it) {
-                    jsonFormat.encodeToString(ser, it)
+                    serializeNoCache(it)
                 }
-            } ?: jsonFormat.encodeToString(ser, obj)
+            } ?: serializeNoCache(obj)
+            
+        fun serializeNoCache(obj: T): String =
+            Metrics.timer("jbali_rest_response_serialization", listOf(
+                Tag.of("route", route.toString()),
+                Tag.of("type", type.toString()),
+            )).record(Supplier {
+                jsonFormat.encodeToString(ser, obj)
+            })!!
+            
+    }
+    private inner class MutableResponseSerializer<T>(
+        type: ReifiedType<T>,
+        val ser: KSerializer<T>,
+    ) : ResponseSerializer<T> {
+        override fun serialize(obj: T): String =
+            jsonFormat.encodeToString(ser, obj)
     }
 
     override suspend fun <T> ApplicationCall.respondObject(
-            returnType: ReifiedType<T>,
-            returnVal: T,
-            status: HttpStatusCode
+        returnType: ReifiedType<T>,
+        returnVal: T,
+        status: HttpStatusCode,
+        cacheSerialization: Boolean,
     ) {
         
         if (returnType.extends(reifiedTypeOf<ByteArrayContent>())) {
@@ -252,14 +275,28 @@ abstract class RestRoute : RestRouteContext {
                 // get serializer
                 @Suppress("UNCHECKED_CAST")
                 val ser = serializers.getOrPut(returnType) {
+                    
+                    val kser = Metrics.timer("jbali_rest_response_serializer_lookup", listOf(
+                        Tag.of("route", route.toString()),
+                        Tag.of("type", returnType.toString()),
+                    )).record(Supplier {
+                        jsonFormat.serializersModule.serializer(returnType.type)
+                    }) as KSerializer<T>
+                    
+                    // must always return Caching, even if cacheSerialization is false, because that may change from request to request
+                    // TODO fix that
                     CachingSerializer(
                         type = returnType,
-                        ser = jsonFormat.serializersModule.serializer(returnType.type) as KSerializer<T>
+                        ser = kser
                     )
                 } as CachingSerializer<T>
                 
                 // serialize return value
-                ser.serialize(returnVal)
+                if (cacheSerialization) {
+                    ser.serialize(returnVal)
+                } else {
+                    ser.serializeNoCache(returnVal)
+                }
             } catch (e: Exception) {
                 log.warn("Error in cached serialization of returnVal: $e")
                 jsonFormat.encodeToString(jsonFormat.serializersModule.serializer(returnType.type), returnVal)
