@@ -40,115 +40,122 @@ class TextMessageService<T : Any>(
 
         var methName = "?"
         val logTheRequest = onceFunction { log.info("In text request $svcName.$methName:") }
-
-        val response: JsonArray = try {
-
-            // parse request json
-            val reqJson = try {
-                JSONString(request).parse() as JsonArray
-            } catch (e: Throwable) {
-                throw IllegalArgumentException("Could not parse request", e)
-            }
-
-            // determine method
-            methName = reqJson[RQIDX_METHOD].string
-            val method = ifaceInfo.methods[methName.lowercase()]
-                ?: throw NoSuchElementException("Unknown method '$methName'")
-            val func = method.method(ifaceK)
-            
-            // read arguments
-            val inArgs = if (reqJson.size > RQIDX_ARGS) reqJson[RQIDX_ARGS].jsonObject else JsonObject.empty
-            val pars = method.params
-            val args = mutableMapOf<KParameter, Any?>(
-                func.instanceParameter!! to endpoint
-            )
-            inArgs.forEach { (name, serVal) ->
-                method.paramsByName[name]?.let { par ->
-                    val kPar = par.param(func)
-                    args[kPar] = par.serializer.detransform(serVal)
+        
+        TMSMeters.startServerRequest(ifaceInfo.name).use { meter ->
+    
+            val response: JsonArray = try {
+    
+                // parse request json
+                val reqJson = try {
+                    JSONString(request).parse() as JsonArray
+                } catch (e: Throwable) {
+                    throw IllegalArgumentException("Could not parse request", e)
                 }
-                // TODO log a warning once, for each redundant arg
-            }
-
-            // execute
-            val ret = try {
-                func.callByWithBetterExceptions(args)
-            } catch (e: InvocationTargetException) {
-                // InvocationTargetException: actual exception inside method.
-                throw e.cause!!
-            } catch (e: ExceptionInInitializerError) {
-                // ExceptionInInitializerError: always unchecked (initializers can't throw checked).
-                throw e.cause!!
-            } catch (e: IllegalAccessException) {
-                // IllegalAccessException: method is public, should not happen.
-                throw RuntimeException("TextMessageService internal error", e)
-            } catch (e: NullPointerException) {
-                // NullPointerException: endpoint is not null, should not happen.
-                throw RuntimeException("TextMessageService internal error", e)
-            }
-
-            // serialize response
-            val serRet = try {
-                method.returnSerializer.transform(ret)
-            } catch (e: Throwable) {
-                log.warn("${e.javaClass.name} while serializing return value $ret")
-                throw RuntimeException("Exception serializing return value of type ${ret?.javaClass?.name} (see log for contents): $e", e)
-            }
-            
-            // return response
-            JsonArray(listOf(
-                STATUS_OK.toJsonElement(),
-                serRet,
-            ))
-
-        } catch (e: Throwable) {
-
-            // remove the current stack trace from the error stacktraces,
-            // because it's not relevant to the client or logs.
-            // TODO remove up to the endpoint as well, e.g.:
-            //			at com.blabla.DataServer$RemoteDataServerImpl.authByXId(DataServer.java:123) ~[dataserver.jar:na]
-            //			...
-            //			at org.jbali.jmsrpc.TextMessageService.handleRequest(TextMessageService.java:95) ~[bali.jar:na]
-            e.removeCurrentStack()
-
-            logTheRequest()
-            log.warn("Error handling request", e)
-
-            try {
+    
+                // determine method
+                methName = reqJson[RQIDX_METHOD].string
+                meter.methodName = methName
+                val method = ifaceInfo.methods[methName.lowercase()]
+                    ?: throw NoSuchElementException("Unknown method '$methName'")
+                val func = method.method(ifaceK)
+                
+                // read arguments
+                val inArgs = if (reqJson.size > RQIDX_ARGS) reqJson[RQIDX_ARGS].jsonObject else JsonObject.empty
+                val pars = method.params
+                val args = mutableMapOf<KParameter, Any?>(
+                    func.instanceParameter!! to endpoint
+                )
+                inArgs.forEach { (name, serVal) ->
+                    method.paramsByName[name]?.let { par ->
+                        val kPar = par.param(func)
+                        args[kPar] = par.serializer.detransform(serVal)
+                    }
+                    // TODO log a warning once, for each redundant arg
+                }
+    
+                // execute
+                val ret = try {
+                    func.callByWithBetterExceptions(args)
+                } catch (e: InvocationTargetException) {
+                    // InvocationTargetException: actual exception inside method.
+                    throw e.cause!!
+                } catch (e: ExceptionInInitializerError) {
+                    // ExceptionInInitializerError: always unchecked (initializers can't throw checked).
+                    throw e.cause!!
+                } catch (e: IllegalAccessException) {
+                    // IllegalAccessException: method is public, should not happen.
+                    throw RuntimeException("TextMessageService internal error", e)
+                } catch (e: NullPointerException) {
+                    // NullPointerException: endpoint is not null, should not happen.
+                    throw RuntimeException("TextMessageService internal error", e)
+                }
+    
+                // serialize response
+                val serRet = try {
+                    method.returnSerializer.transform(ret)
+                } catch (e: Throwable) {
+                    log.warn("${e.javaClass.name} while serializing return value $ret")
+                    throw RuntimeException("Exception serializing return value of type ${ret?.javaClass?.name} (see log for contents): $e", e)
+                }
+                
+                // return response
+                meter.success = true
                 JsonArray(listOf(
-                    STATUS_ERROR.toJsonElement(),
-                    JjsAsTms.transform(e),
-                    jsonString(e.stackTraceString),
-                    // TODO also return toString, in case the client can't deserialize the exception class.
-                    // TODO transform exception cause chain into list and serialize each exception individually.
+                    STATUS_OK.toJsonElement(),
+                    serRet,
                 ))
-            } catch (serEr: Throwable) {
-                serEr.removeCurrentStack()
-                log.warn("!! Error while serializing error", serEr)
+    
+            } catch (e: Throwable) {
+    
+                // remove the current stack trace from the error stacktraces,
+                // because it's not relevant to the client or logs.
+                // TODO remove up to the endpoint as well, e.g.:
+                //			at com.blabla.DataServer$RemoteDataServerImpl.authByXId(DataServer.java:123) ~[dataserver.jar:na]
+                //			...
+                //			at org.jbali.jmsrpc.TextMessageService.handleRequest(TextMessageService.java:95) ~[bali.jar:na]
+                e.removeCurrentStack()
+    
+                logTheRequest()
+                log.warn("Error handling request", e)
+                meter.success = false
+    
                 try {
                     JsonArray(listOf(
                         STATUS_ERROR.toJsonElement(),
-                        JjsAsTms.transform(RuntimeException("$e [exception class could not be serialized: $serEr]")),
+                        JjsAsTms.transform(e),
                         jsonString(e.stackTraceString),
+                        // TODO also return toString, in case the client can't deserialize the exception class.
+                        // TODO transform exception cause chain into list and serialize each exception individually.
                     ))
-                } catch (serErEr: Throwable) {
-                    serErEr.removeCurrentStack()
-                    log.warn("!! Error while getting exception toString()", serErEr)
-                    JsonArray(listOf(
-                        STATUS_ERROR.toJsonElement(),
-                        JjsAsTms.transform(RuntimeException("Error occurred but could not be serialized (see server log for details)")),
-                        jsonString(""),
-                    ))
+                } catch (serEr: Throwable) {
+                    serEr.removeCurrentStack()
+                    log.warn("!! Error while serializing error", serEr)
+                    try {
+                        JsonArray(listOf(
+                            STATUS_ERROR.toJsonElement(),
+                            JjsAsTms.transform(RuntimeException("$e [exception class could not be serialized: $serEr]")),
+                            jsonString(e.stackTraceString),
+                        ))
+                    } catch (serErEr: Throwable) {
+                        serErEr.removeCurrentStack()
+                        log.warn("!! Error while getting exception toString()", serErEr)
+                        JsonArray(listOf(
+                            STATUS_ERROR.toJsonElement(),
+                            JjsAsTms.transform(RuntimeException("Error occurred but could not be serialized (see server log for details)")),
+                            jsonString(""),
+                        ))
+                    }
                 }
+    
             }
-
-        }
-
-        return try {
-            JSONString.stringify(response, prettyPrint = false).string
-        } catch (e: Throwable) {
-            log.warn("Error toStringing JSON response", e)
-            "[0, null]"
+    
+            return try {
+                JSONString.stringify(response, prettyPrint = false).string
+            } catch (e: Throwable) {
+                log.warn("Error toStringing JSON response", e)
+                meter.success = false
+                "[0, null]"
+            }
         }
 
     }
