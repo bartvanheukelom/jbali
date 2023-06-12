@@ -15,7 +15,10 @@ import org.jbali.kotser.unwrap
 import org.jbali.reflect.Proxies
 import org.jbali.reflect.kClassOrNull
 import org.jbali.serialize.JavaJsonSerializer
+import org.jbali.util.MicroTime
+import org.jbali.util.diffUIntClampedTo
 import org.slf4j.LoggerFactory
+import java.time.Duration
 import java.util.function.Function
 import kotlin.reflect.KClass
 import kotlin.reflect.jvm.javaMethod
@@ -80,7 +83,18 @@ class TextMessageServiceClient<S : Any>(
     private val ifaceInfo = ifaceK.asTMSInterface
     
     val blocking: S = Proxies.create(ifaceK.java) { proxy, method, args ->
-        var resultCounted = false
+        
+        var utStart: MicroTime? = MicroTime.now()
+        fun record(success: Boolean) {
+            if (utStart != null) {
+                TMSMeters.recordClientRequest(
+                    ifaceInfo.name, method.name, success,
+                    Duration.ofMillis((utStart!! diffUIntClampedTo MicroTime.now()).toLong() / 1_000_000)
+                )
+                utStart = null
+            }
+        }
+        
         TMSMeters.countRequestsActive.incrementAndGet()
         try {
             
@@ -116,8 +130,6 @@ class TextMessageServiceClient<S : Any>(
                         }
                     }
                     
-                    TMSMeters.countRequests.increment()
-                    
                     // send the request
                     val respJson = requestHandler(JSONString.stringify(reqJson, prettyPrint = false).string)
                     
@@ -129,15 +141,13 @@ class TextMessageServiceClient<S : Any>(
                     // return or throw it
                     when (respStatus) {
                         TextMessageService.STATUS_OK -> {
-                            TMSMeters.countResponsesSuccess.increment()
-                            resultCounted = true
+                            record(true)
                             tMethod.returnSerializer
                                 .detransform(respJsonEl)
                                 .right()
                         }
                         else -> {
-                            TMSMeters.countResponsesError.increment()
-                            resultCounted = true
+                            record(false)
                             // the response should be an exception
                             JjsAsTms
                                 .detransform(respJsonEl)
@@ -169,7 +179,7 @@ class TextMessageServiceClient<S : Any>(
                 }
             
         } catch (e: Throwable) {
-            if (!resultCounted) TMSMeters.countResponsesError.increment()
+            record(false)
             throw TextMessageServiceClientException("A local/meta exception occured when invoking $toStringed.${method.name}: $e", e)
         } finally {
             TMSMeters.countRequestsActive.decrementAndGet()

@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package org.jbali.jmsrpc
 
 import kotlinx.serialization.KSerializer
@@ -27,6 +29,9 @@ import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.jvm.javaMethod
 import kotlin.reflect.typeOf
+import kotlin.time.ExperimentalTime
+import kotlin.time.measureTimedValue
+import kotlin.time.toJavaDuration
 
 
 fun interface DeepMemberPointer<TContainer, TMember> {
@@ -199,7 +204,9 @@ internal class TMSInterface<I : Any>(
 
 
 internal val <I : Any> KClass<I>.asTMSInterface: TMSInterface<I>
-    get() = TMSInterface(this.loan())
+    get() = measureTimedValue { TMSInterface(this@asTMSInterface.loan()) }
+        .also { TMSMeters.recordIfaceInit(it.duration.toJavaDuration(), it.value.name) }
+        .value
 // TODO disabled because probably leaks, see comment in TMSInterface
 //        by StoredExtensionProperty {
 //            TMSInterface(this)
