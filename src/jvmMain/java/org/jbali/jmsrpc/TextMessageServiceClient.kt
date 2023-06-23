@@ -4,6 +4,7 @@ import arrow.core.getOrHandle
 import arrow.core.left
 import arrow.core.right
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.buildJsonArray
@@ -25,8 +26,20 @@ import kotlin.reflect.jvm.javaMethod
 
 class TextMessageServiceClient<S : Any>(
     private val ifaceK: KClass<out S>,
-    requestHandler: (String) -> String,
+    blockRequestHandler: ((String) -> String)? = null,
+    coroRequestHandler: (suspend (String) -> String)? = null,
 ) : AutoCloseable {
+    
+    constructor(
+        iface: Class<out S>,
+        requestHandler: (String) -> String,
+    ) : this(iface.kotlin, blockRequestHandler = requestHandler)
+    
+    init {
+        require(blockRequestHandler != null || coroRequestHandler != null) {
+            "Must provide at least one of blockRequestHandler or coroRequestHandler"
+        }
+    }
     
     companion object {
         
@@ -131,7 +144,12 @@ class TextMessageServiceClient<S : Any>(
                     }
                     
                     // send the request
-                    val respJson = requestHandler(JSONString.stringify(reqJson, prettyPrint = false).string)
+                    val reqStr = JSONString.stringify(reqJson, prettyPrint = false).string
+                    val respJson = when {
+                        blockRequestHandler != null -> blockRequestHandler(reqStr)
+                        coroRequestHandler != null -> runBlocking { coroRequestHandler(reqStr) }
+                        else -> throw IllegalStateException("Must provide at least one of blockRequestHandler or coroRequestHandler")
+                    }
                     
                     // parse the response
                     val respParsed = JSONString(respJson).parse() as JsonArray
