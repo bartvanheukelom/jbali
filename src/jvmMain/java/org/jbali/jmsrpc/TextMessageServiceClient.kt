@@ -31,9 +31,9 @@ class TextMessageServiceClient<S : Any>(
 ) : AutoCloseable {
     
     constructor(
-        iface: Class<out S>,
+        ifaceK: KClass<out S>,
         requestHandler: (String) -> String,
-    ) : this(iface.kotlin, blockRequestHandler = requestHandler)
+    ) : this(ifaceK, blockRequestHandler = requestHandler)
     
     init {
         require(blockRequestHandler != null || coroRequestHandler != null) {

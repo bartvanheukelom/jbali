@@ -10,6 +10,34 @@ import kotlin.test.assertFailsWith
 inline fun <reified T : Throwable> assertFailsWithPrinted(message: String? = null, noinline block: () -> Unit): T =
         assertFailsWith<T>(message, block).also { it.printStackTrace() }
 
+class FailingContext {
+    var thrown: Throwable? = null
+    fun throwExpected(t: Throwable = RuntimeException("Expected exception")) {
+        if (thrown == null) {
+            thrown = t
+        } else {
+            throw AssertionError("Already threw $thrown")
+        }
+        throw t
+    }
+}
+inline fun assertFailsWithThrowable(block: FailingContext.() -> Unit) {
+    val ctx = FailingContext()
+    try {
+        ctx.block()
+    } catch (e: Throwable) {
+        if (e !== ctx.thrown) {
+            throw e
+        }
+    }
+    if (ctx.thrown == null) {
+        throw AssertionError("Expected something to be thrown, but nothing was")
+    } else {
+        throw AssertionError("Expected ${ctx.thrown} to be thrown, but nothing was caught")
+    }
+}
+
+
 fun assertContains(expectedPart: String, actualFull: String) {
     if (expectedPart !in actualFull) {
         throw AssertionError("Expected part:\n\n${expectedPart}\n\nnot found in actual string:\n\n$actualFull")
