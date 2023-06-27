@@ -3,6 +3,7 @@ package org.jbali.kotser.std
 import com.google.common.net.HostAndPort
 import com.google.common.net.InetAddresses
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
 import org.jbali.kotser.StringBasedSerializer
@@ -18,6 +19,7 @@ import java.util.*
 object UUIDSerializer : StringBasedSerializer<UUID>(UUID::class) {
     override fun fromString(s: String): UUID = UUID.fromString(s)
 }
+typealias UUIDAsString = @Serializable(with=UUIDSerializer::class) UUID
 
 @Suppress("UnstableApiUsage")
 object HostAndPortSerializer : StringBasedSerializer<HostAndPort>(HostAndPort::class) {
