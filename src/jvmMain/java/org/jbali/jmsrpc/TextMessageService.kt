@@ -22,19 +22,46 @@ import kotlin.reflect.full.instanceParameter
 
 private val log = LoggerFactory.getLogger(TextMessageService::class.java)!!
 
+
+
 interface ITextMessageService<T : Any> {
     fun handleRequest(request: String): String
 }
 
-@OptIn(ExperimentalStdlibApi::class)
+
+inline fun <reified T : Any> TextMessageService(
+    discriminator: String? = null,
+    endpoint: T,
+) = TextMessageService(
+    def = TMSDefinition(discriminator),
+    endpoint = endpoint,
+)
+
+inline fun <reified T : Any> TextMessageService(
+    endpoint: T,
+) = TextMessageService(
+    def = TMSDefinition(),
+    endpoint = endpoint,
+)
+
 class TextMessageService<T : Any>(
-        iface: Class<out T>,
-        private val svcName: String = iface.name,
-        private val endpoint: T
+    val def: TMSDefinition<T>,
+    private val endpoint: T
 ) : ITextMessageService<T> {
     
-    private val ifaceK = iface.kotlin
-    private val ifaceInfo = ifaceK.asTMSInterface
+//    @Deprecated("use constructor with TMSDefinition")
+//    constructor(
+//        iface: Class<T>,
+//        endpoint: T,
+//    ) : this(
+//        def = TMSDefinition(iface.kotlin),
+//        endpoint = endpoint,
+//    )
+    
+//    private val iface get() = def.iface.java
+    private val ifaceK get() = def.iface
+    private val ifaceInfo get() = ifaceK.asTMSInterface
+    private val svcName get() = def.uniqueName
     
     override fun handleRequest(request: String): String {
 
@@ -61,7 +88,6 @@ class TextMessageService<T : Any>(
                 
                 // read arguments
                 val inArgs = if (reqJson.size > RQIDX_ARGS) reqJson[RQIDX_ARGS].jsonObject else JsonObject.empty
-                val pars = method.params
                 val args = mutableMapOf<KParameter, Any?>(
                     func.instanceParameter!! to endpoint
                 )
@@ -174,12 +200,12 @@ class TextMessageService<T : Any>(
         inline fun <reified T : Any> testWrap(endpoint: T) = testWrap(T::class.java, endpoint)
         
         fun <T : Any> testWrap(
-            iface: Class<out T>,
+            iface: Class<T>,
             endpoint: T
         ): TextMessageServiceClient<T> =
             TextMessageServiceClient(
                 iface.kotlin,
-                requestHandler = TextMessageService(iface, endpoint = endpoint)::handleRequest
+                requestHandler = TextMessageService(TMSDefinition(iface.kotlin), endpoint)::handleRequest
             )
         
     }

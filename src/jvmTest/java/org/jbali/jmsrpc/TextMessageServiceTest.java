@@ -136,7 +136,7 @@ public class TextMessageServiceTest {
 		System.out.println("==================== testRaw =====================");
 		
 		Endpoint ep = new Endpoint();
-		TextMessageService<?> svc = new TextMessageService<>(ServerEP.class, "TestSVCRaw", ep);
+		TextMessageService<?> svc = new TextMessageService<>(new TMSDefinition<>(ServerEP.class, "TestSVCRaw"), ep);
 		
 		String resp;
 
@@ -200,8 +200,8 @@ public class TextMessageServiceTest {
 		
 		Endpoint ep = new Endpoint();
 		
-		TextMessageService<?> svc  = new TextMessageService<>(ServerEP.class, "TestSVC", ep);
-		TextMessageService<?> svcK = new TextMessageService<>(TMSKotlinIface.class, "TestSVCK", TMSKotlinEndpoint.INSTANCE);
+		TextMessageService<?> svc  = new TextMessageService<>(new TMSDefinition<>(ServerEP.class, "TestSVC"), ep);
+		TextMessageService<?> svcK = new TextMessageService<>(new TMSDefinition<>(TMSKotlinIface.class, "TestSVCK"), TMSKotlinEndpoint.INSTANCE);
 		
 		LocalEP client = TextMessageServiceClient.create(LocalEP.class, r -> {
 			System.out.println("submit " + r);

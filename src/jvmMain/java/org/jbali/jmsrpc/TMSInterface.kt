@@ -41,7 +41,7 @@ fun interface DeepMemberPointer<TContainer, TMember> {
    operator fun invoke(container: TContainer): TMember
 }
 
-internal class TMSInterface<I : Any>(
+class TMSInterface<I : Any>(
     bIface: Borrowed<KClass<I>>
 ) {
     companion object {
@@ -203,14 +203,17 @@ internal class TMSInterface<I : Any>(
 }
 
 
-internal val <I : Any> KClass<I>.asTMSInterface: TMSInterface<I>
-    get() = measureTimedValue { TMSInterface(this@asTMSInterface.loan()) }
-        .also { TMSMeters.recordIfaceInit(it.duration.toJavaDuration(), it.value.name) }
-        .value
+val <I : Any> KClass<I>.asTMSInterface: TMSInterface<I>
+    get() =
 // TODO disabled because probably leaks, see comment in TMSInterface
 //        by StoredExtensionProperty {
-//            TMSInterface(this)
+            initInterface(this@asTMSInterface)
 //        }
+
+private fun <I : Any> initInterface(iface: KClass<I>): TMSInterface<I> =
+    measureTimedValue { TMSInterface(iface.loan()) }
+        .also { TMSMeters.recordIfaceInit(it.duration.toJavaDuration(), it.value.name) }
+        .value
 
 typealias TMSSerializer = Transformer<Any?, JsonElement>
 
