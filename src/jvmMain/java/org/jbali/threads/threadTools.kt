@@ -53,7 +53,7 @@ inline fun <R, P> withPropAs(p: KMutableProperty0<P>, v: P, block: (P) -> R): R 
     }
 }
 
-inline fun <T> runWithThreadName(name: String?, appendWithSeparator: String? = null, block: (String) -> T): T =
+fun <T> runWithThreadName(name: String?, appendWithSeparator: String? = null, block: (String) -> T): T =
         Thread.currentThread().let { t ->
             val pre = t.name
             try {

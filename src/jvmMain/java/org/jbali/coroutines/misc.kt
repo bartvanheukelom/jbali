@@ -1,6 +1,7 @@
 package org.jbali.coroutines
 
 import kotlinx.coroutines.*
+import org.jbali.util.Box
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -51,6 +52,21 @@ suspend fun <T> Deferred<T>.awaitOrCancel() =
         throw ce
     }
 
+/**
+ * Calls [Deferred.awaitOrCancel] within [withTimeout]. That is, if the Deferred is not completed
+ * within [timeout], the Deferred is cancelled, and a [TimeoutCancellationException] is thrown from
+ * this function.
+ */
 @ExperimentalTime
 suspend fun <T> Deferred<T>.awaitFor(timeout: Duration) =
     withTimeout(timeout) { awaitOrCancel() }
+
+/**
+ * Calls [Deferred.await] within [withTimeoutOrNull].
+ * If the Deferred is not completed within [timeout], this function will return `null`,
+ * but the Deferred will _not_ be cancelled.
+ * If the Deferred is completed within [timeout], the result is wrapped in a [Box].
+ */
+@ExperimentalTime
+suspend fun <T> Deferred<T>.awaitOrNull(timeout: Duration): Box<T>? =
+    withTimeoutOrNull(timeout) { Box(await()) }

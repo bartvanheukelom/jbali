@@ -194,10 +194,14 @@ class TMSInterface<I : Any>(
             }
     }
     
-    init {
+    fun logInfo() {
         log.info("$this methods" showing methods.values.map { m ->
             "${m.name}(${m.params.joinToString { p -> p.name }})"
         })
+    }
+    
+    init {
+//        logInfo() - disabled because TMSInterface is not cached at the moment
     }
     
 }
