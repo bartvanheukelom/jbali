@@ -80,7 +80,7 @@ class TMSInterface<I : Any>(
             this.hasAnnotation<JJS>()  -> false
             else -> {
                 if (warningLoggedFor.add(this)) {
-                    log.warn("$iface is not annoted with KoSe or JJS, and will currently default to JJS, but in the future will default to KoSe")
+                    log.warn("$iface is not annotated with KoSe or JJS, and will currently default to JJS, but in the future will default to KoSe")
                 }
                 false
             }

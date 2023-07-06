@@ -60,7 +60,7 @@ class TextMessageService<T : Any>(
     
 //    private val iface get() = def.iface.java
     private val ifaceK get() = def.iface
-    private val ifaceInfo get() = ifaceK.asTMSInterface
+    private val ifaceInfo = ifaceK.asTMSInterface
     private val svcName get() = def.uniqueName
     
     override fun handleRequest(request: String): String {
