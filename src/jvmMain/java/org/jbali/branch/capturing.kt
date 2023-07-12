@@ -1,8 +1,5 @@
-@file:Suppress("UNCHECKED_CAST")
-
 package org.jbali.branch
 
-import org.jbali.bytes.theUnsafe
 import java.lang.reflect.InvocationTargetException
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.CoroutineContext
@@ -10,81 +7,7 @@ import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
 import kotlin.coroutines.suspendCoroutine
 
-
-fun <T> runBranching(
-    tempContInitArgs: Array<Any?> = emptyArray(),
-    block: suspend Branching.() -> T,
-): Map<String, Result<T>> =
-    runBranchingUsingCapture(tempContInitArgs, block)
-
-
-
-
-object SafeCont {
-    val clazz = Class.forName("kotlin.coroutines.SafeContinuation")
-    val f_delegate = clazz.declaredFields.singleOrNull {
-        it.name == "delegate"
-    }
-        .let { it
-            ?: error("SafeContinuation must have a single delegate field")
-        }
-        .apply { isAccessible = true }
-}
-
-data class ContinuationClass(
-    val type: Class<*>,
-) {
-    
-    val fields by lazy { buildList {
-        var c = type
-        while (c != Any::class.java) {
-            c.declaredFields.forEach {
-                it.isAccessible = true
-                add(it)
-            }
-            c = c.superclass
-        }
-    } }
-    
-    val invokeSuspend by lazy {
-        type.methods.singleOrNull {
-            it.name == "invokeSuspend" && it.parameterCount == 1
-            && it.parameterTypes[0] == Object::class.java
-        }
-            .let { it
-                ?: error("Missing $type invokeSuspend(Object)")
-            }
-    }
-    
-    fun clone(cont: Continuation<*>): Continuation<*> {
-        val clone = theUnsafe.allocateInstance(type) as Continuation<Any?>
-        fields.forEach { it.set(clone, it.get(cont)) }
-        return clone
-    }
-    
-}
-
-
-
-interface Branching {
-    suspend fun <B> branch(name: String? = null, options: List<B>): B
-    
-    suspend fun <B> branch(options: List<B>): B = branch(null, options)
-    
-    // TODO causes too much overload ambiguity
-//    suspend fun <B> branch(vararg options: B): B = branch(null, options.toList())
-//    suspend fun <B> branch(name: String, vararg options: B): B = branch(name, options=options.toList())
-}
-
-
-
-
-
-
-// --------- capturing implementation --------- //
-
-
-private fun <T> runBranchingUsingCapture(
+internal fun <T> runBranchingUsingCapture(
     tempContInitArgs: Array<Any?>,
     block: suspend Branching.() -> T,
 ): Map<String, Result<T>> = buildMap {
