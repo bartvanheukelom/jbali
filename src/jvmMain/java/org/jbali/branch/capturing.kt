@@ -1,3 +1,5 @@
+@file:Suppress("UNCHECKED_CAST")
+
 package org.jbali.branch
 
 import java.lang.reflect.InvocationTargetException
@@ -7,25 +9,21 @@ import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
 import kotlin.coroutines.suspendCoroutine
 
-internal fun <T> runBranchingUsingCapture(
-    tempContInitArgs: Array<Any?>,
-    block: suspend Branching.() -> T,
-): Map<String, Result<T>> = buildMap {
+internal fun <T> runBranchingUsingCapture(block: suspend Branching.() -> T): Map<String, Result<T>> = buildMap {
     
     // guess we'll do it manually!
     val bklass = block.javaClass
     
-    val constrs = bklass.declaredConstructors
+//    val constrs = bklass.declaredConstructors
 //        val constring = constrs.map { it.toString() }
-    val constr = constrs.singleOrNull {
-//                it.parameterCount == 1 && it.parameterTypes.single() == Continuation::class.java
-        it.parameterCount == tempContInitArgs.size + 1
-                && tempContInitArgs.indices.all { i ->
-            it.parameterTypes[i].isInstance(tempContInitArgs[i])
-        }
-                && it.parameterTypes.last() == Continuation::class.java
-    }
-        ?: error("$bklass must have a constructor with ${tempContInitArgs.size + 1} parameters, the last being Continuation")
+//    val constr = constrs.singleOrNull {
+//        it.parameterCount == tempContInitArgs.size + 1
+//                && tempContInitArgs.indices.all { i ->
+//            it.parameterTypes[i].isInstance(tempContInitArgs[i])
+//        }
+//                && it.parameterTypes.last() == Continuation::class.java
+//    }
+//        ?: error("$bklass must have a constructor with ${tempContInitArgs.size + 1} parameters, the last being Continuation")
     
     val invoke = bklass.methods.singleOrNull {
         it.name == "invoke" && it.parameterCount == 2
@@ -37,7 +35,6 @@ internal fun <T> runBranchingUsingCapture(
         }
 
 //        val bcc = ContinuationClass(bklass)
-
 //        val label = fields.single { it.name == "label" }
     
     

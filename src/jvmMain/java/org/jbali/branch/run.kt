@@ -1,13 +1,8 @@
-@file:Suppress("UNCHECKED_CAST")
-
 package org.jbali.branch
 
 
-fun <T> runBranching(
-    tempContInitArgs: Array<Any?> = emptyArray(),
-    block: suspend Branching.() -> T,
-): Map<String, Result<T>> =
-    runBranchingUsingCapture(tempContInitArgs, block)
+fun <T> runBranching(block: suspend Branching.() -> T): Map<String, Result<T>> =
+    runBranchingUsingCapture(block)
 
 
 interface Branching {

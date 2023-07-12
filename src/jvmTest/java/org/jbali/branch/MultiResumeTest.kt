@@ -26,9 +26,7 @@ class MultiResumeTest {
     
     @Test
     fun testLambda() {
-        runBranching(
-            tempContInitArgs = arrayOf(this@MultiResumeTest),
-        ) {
+        runBranching {
             
             val scope = this
             println("Scope: $scope")
@@ -94,9 +92,7 @@ class MultiResumeTest {
     
     @Test
     fun testMemberFun() {
-        runBranching(
-            tempContInitArgs = arrayOf(this@MultiResumeTest),
-        ) {
+        runBranching {
             voice()
         }
             .also {

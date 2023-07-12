@@ -1,3 +1,5 @@
+@file:Suppress("UNCHECKED_CAST")
+
 package org.jbali.branch
 
 import org.jbali.bytes.theUnsafe
