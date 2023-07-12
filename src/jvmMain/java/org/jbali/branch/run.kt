@@ -3,7 +3,7 @@ package org.jbali.branch
 
 fun <T> runBranching(block: suspend Branching.() -> T): Map<String, Result<T>> =
     runBranchingUsingCapture(block)
-
+//    runBranchingUsingCallback(block)
 
 interface Branching {
     suspend fun <B> branch(name: String? = null, options: List<B>): B

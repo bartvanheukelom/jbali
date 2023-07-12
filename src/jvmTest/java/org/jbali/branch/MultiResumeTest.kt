@@ -9,6 +9,7 @@ import kotlin.concurrent.thread
 import kotlin.coroutines.suspendCoroutine
 import kotlin.random.Random
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 
 enum class Category {
@@ -23,7 +24,11 @@ enum class Plant {
 
 class MultiResumeTest {
     
+    // P = Capturing
+    // B = Callback
     
+    // P: Pass
+    // B: ?
     @Test
     fun testLambda() {
         runBranching {
@@ -75,6 +80,28 @@ class MultiResumeTest {
         }
     }
     
+    // P: Pass
+    // B: ?
+    @Test fun testResumeForward() {
+        var resumed = ""
+        runBranching {
+            val a = branch("A", listOf("a")) // NOTE: not even branching
+            assertEquals("", resumed); resumed = "A"
+            assertEquals("a", a)
+            
+            val b = branch("B", listOf("b"))
+            assertEquals("A", resumed); resumed = "B"
+            assertEquals("b", b)
+            
+            // NOTE: literally even branching
+            val zz = branch("ZZ", listOf("z", "Z"))
+            assertTrue(resumed == "B" || resumed == "ZZ"); resumed = "ZZ"
+            assertTrue(zz == "z" || zz == "Z")
+        }
+    }
+    
+    // P: Pass
+    // B: ?
     @Test fun testExample() {
         runBranching {
             when (branch("animal", Animal.values().toList())) {
@@ -90,6 +117,8 @@ class MultiResumeTest {
             .forEach { (k, v) -> println("$k: $v") }
     }
     
+    // P: FAIL
+    // B: ?
     @Test
     fun testMemberFun() {
         runBranching {
@@ -142,7 +171,7 @@ class MultiResumeTest {
     private suspend fun Branching.boolz(): Boolean {
         // printlns are to force some function state
         println("boolz...")
-        val b = branch(listOf(1, 0))
+        val b = branch(listOf(1, 0, 42))
         println("boolz: RESUME with $b")
         // Int -> Bool, just to make sure we're not skipping this step (as in, suspend at branch here, but resume at our caller directly)
         return b == 1

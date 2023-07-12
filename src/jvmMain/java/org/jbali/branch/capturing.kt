@@ -83,7 +83,7 @@ internal fun <T> runBranchingUsingCapture(block: suspend Branching.() -> T): Map
         
         for (path in branchRes.options) {
 //                    print("Resuming with $path")
-            if (stack.size >= 4) error("Too deep")
+            if (stack.size >= 1024) error("Too deep")
             stack.add(branchRes.name?.let { "$it=$path" }
                     ?: path.toString())
             try {
