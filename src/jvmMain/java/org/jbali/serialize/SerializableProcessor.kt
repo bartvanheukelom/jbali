@@ -14,7 +14,7 @@ import javax.tools.Diagnostic
 @Retention(AnnotationRetention.SOURCE)
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FIELD, AnnotationTarget.TYPE)
 annotation class SuppressNotSerializable(
-    val reason: String = ""
+    val value: String = "",
 )
 
 @SupportedSourceVersion(SourceVersion.RELEASE_17)
@@ -35,6 +35,10 @@ class SerializableProcessor : AbstractProcessor() {
             "java.util.Map",
             "java.util.Map\$Entry",
         )
+        private val collectionIfacesSimple = collectionIfaces.map { it
+            .removePrefix("java.util.")
+            .replace('$', '.') // inner classes
+        }
     }
     
     init { log.info("init") }
@@ -42,6 +46,10 @@ class SerializableProcessor : AbstractProcessor() {
     private val tSerializable: TypeMirror by lazy { // processingEnv is inited late
         log.info("Initializing Serializable type")
         processingEnv.elementUtils.getTypeElement("java.io.Serializable").asType()
+    }
+    private val tSuppressNotSerializable: TypeMirror by lazy {
+        log.info("Initializing SuppressNotSerializable type")
+        processingEnv.elementUtils.getTypeElement(SuppressNotSerializable::class.java.name).asType()
     }
     
     override fun process(annotations: Set<TypeElement>, roundEnv: RoundEnvironment): Boolean {
@@ -53,8 +61,10 @@ class SerializableProcessor : AbstractProcessor() {
         return false // we don't claim any annotations
     }
     
+    private var errorCount = 0
+    
     private fun checkSerializable(element: TypeElement) {
-        log.info("Processing Serializable element $element")
+//        log.info("Processing Serializable element $element")
         
         // check that all fields are Serializable too
         if (element.getAnnotation(SuppressNotSerializable::class.java) == null) {
@@ -66,10 +76,12 @@ class SerializableProcessor : AbstractProcessor() {
                 .forEach { member ->
                     try {
                         val fieldType = member.asType()
-                        if (!fieldType.isSerializable()) {
+                        fieldType.isSerializable()?.let { error ->
+                            val ec = ++errorCount
+                            log.warn("Error #$ec element=$element member=$member")
                             processingEnv.messager.printMessage(
                                 Diagnostic.Kind.ERROR,
-                                "field of non-Serializable type '$fieldType' in Serializable class",
+                                "[$ec] '$fieldType': ${error.reversed().joinToString(" ")}",
                                 member
                             )
                         }
@@ -94,36 +106,51 @@ class SerializableProcessor : AbstractProcessor() {
      * - (A is not checked)
      * - B and all other type args are Serializable according to these same rules
      */
-    private fun TypeMirror.isSerializable(): Boolean {
-        
-        // BaseType<A, B, ...>
+    private fun TypeMirror.isSerializable(): List<String>? =
+        when {
+            getAnnotation(SuppressNotSerializable::class.java) != null -> null
+            // the above doesn't work for type-use annotations, but this does:
+            annotationMirrors.any { it.annotationType == tSuppressNotSerializable } -> null
+            
+            this is PrimitiveType -> null
+            this is NullType -> null
+            
+            this is ArrayType -> componentType.isSerializable()?.plus("component type")
+            this is DeclaredType -> isSerializable()
+            
+            this is TypeVariable -> if (upperBound == null) listOf("unknown upper bound") else upperBound.isSerializable()?.plus("upper bound")
+            
+            this is IntersectionType -> if (bounds.none { it.isSerializable() == null }) listOf("no bounds are Serializable") else null // TODO log why they aren't
+            this is UnionType -> alternatives.firstOrNull { it.isSerializable() != null }?.let { listOf("alternative '$it' is not Serializable") }
+            
+            this is WildcardType -> listOf("is wildcard type") // unknown
+            
+            this is NoType -> listOf("is no type") // TODO what even is this?
+            this is ExecutableType -> listOf("is an executable type") // TODO what even is this?
+            
+            
+            else -> listOf("is an uncheckable type")
+        }
+    
+    
+    private fun DeclaredType.isSerializable(): List<String>? {
         
         val tu = processingEnv.typeUtils
-        val unknown = false // for the future
         
-        return when {
-            kind.isPrimitive -> true
-            this is ArrayType -> componentType.isSerializable()
-            this is DeclaredType -> run {
-                
-                if (!implementsSerializable()
-                    && !collectionIfaces.contains(tu.erasure(this).toString())
-                ) return@run false
-                
-                if (typeArguments.any {
-                    it.getAnnotation(SuppressNotSerializable::class.java) == null &&
-                        !it.isSerializable()
-                }) return@run false
-                
-                return@run true
-            }
-            this is TypeVariable -> upperBound?.isSerializable() ?: unknown
-            this is IntersectionType -> bounds.any { it.isSerializable() }
-            this is UnionType -> alternatives.all { it.isSerializable() }
-            this is WildcardType -> unknown
-            else -> error("Unsupported kind $kind of type $this")
+        if (!implementsSerializable()
+            && !collectionIfaces.contains(tu.erasure(this).toString())
+        ) {
+            return listOf("doesn't implement java.io.Serializable, nor is exactly one of ${collectionIfacesSimple.joinToString()}")
         }
         
+        typeArguments
+            .forEach { arg ->
+                arg.isSerializable()?.let {
+                    return it.plus("type argument $arg")
+                }
+            }
+        
+        return null
     }
     
     private fun TypeMirror.implementsSerializable() =
