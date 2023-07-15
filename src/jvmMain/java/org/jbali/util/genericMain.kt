@@ -47,12 +47,19 @@ enum class DaemonShutdownTrigger {
 }
 
 /**
- * @return callback that can be used to shut down the daemon, if [shutdownTrigger] is [DaemonShutdownTrigger.Callback].
- *         If it's not, the callback will throw [IllegalArgumentException] (TODO IllegalStateException)
+ * Executes a basic daemon main function.
+ *
+ * @param shutdownTrigger the trigger for shutting down the daemon (default value: DaemonShutdownTrigger.SigInt)
+ * @param requireCleanShutdown a boolean indicating if a clean shutdown is required (default value: true if the shutdown trigger is not DaemonShutdownTrigger.SigInt, false otherwise)
+ * @param onShutdown a callback function to be executed on shutdown (default value: an empty function)
+ * @param mainAppCreator a function that creates the main application (must return a [Closeable] object)
+ *
+ * @return a callback function that can be used to shut down the daemon if the shutdown trigger is [DaemonShutdownTrigger.Callback]. If the shutdown trigger is not [DaemonShutdownTrigger.Callback], the callback function will throw [IllegalArgumentException].
  */
 fun basicDaemonMain(
     shutdownTrigger: DaemonShutdownTrigger = DaemonShutdownTrigger.SigInt,
     requireCleanShutdown: Boolean = shutdownTrigger != DaemonShutdownTrigger.SigInt,
+    keepGlobalsReusable: Boolean = false,
     onShutdown: () -> Unit = {},
     mainAppCreator: () -> Closeable
 ): () -> Unit {
@@ -85,7 +92,9 @@ fun basicDaemonMain(
             
             // global pools don't _need_ to be shut down if we're about to exit,
             // but calling this can provide helpful diagnostics.
-            shutdownGlobalPools()
+            if (!keepGlobalsReusable) {
+                shutdownGlobalPools()
+            }
             
             exit(1)
         } catch (ee: Throwable) {
@@ -116,7 +125,9 @@ fun basicDaemonMain(
                 log.info("$$$$$$$$$$$$$$$$$$$$$$ [shutting down by $by] $$$$$$$$$$$$$$$$$$$$$$")
                 app.close()
                 onShutdown()
-                shutdownGlobalPools()
+                if (!keepGlobalsReusable) {
+                    shutdownGlobalPools()
+                }
                 log.info("##################### [ready for termination] #######################")
                 
                 val checkerName = "lingering thread checker"
