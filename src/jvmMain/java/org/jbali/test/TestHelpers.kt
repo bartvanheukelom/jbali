@@ -11,8 +11,8 @@ inline fun <reified T : Throwable> assertFailsWithPrinted(message: String? = nul
         assertFailsWith<T>(message, block).also { it.printStackTrace() }
 
 class FailingContext {
-    var thrown: Throwable? = null
-    fun throwExpected(t: Throwable = RuntimeException("Expected exception")) {
+    @Volatile var thrown: Throwable? = null
+    fun throwExpected(t: Throwable = RuntimeException("Expected exception")): Nothing {
         if (thrown == null) {
             thrown = t
         } else {
@@ -21,19 +21,25 @@ class FailingContext {
         throw t
     }
 }
-inline fun assertFailsWithThrowable(block: FailingContext.() -> Unit) {
+inline fun assertFailsWithThrowable(
+    block: FailingContext.() -> Unit, // TODO try changing that to Nothing and see what breaks
+) {
     val ctx = FailingContext()
     try {
         ctx.block()
     } catch (e: Throwable) {
         if (e !== ctx.thrown) {
             throw e
+        } else {
+            return
         }
     }
+    
+    // block didn't throw, which is a fail, but what did we ewpect?
     if (ctx.thrown == null) {
-        throw AssertionError("Expected something to be thrown, but nothing was")
+        throw AssertionError("Expected the expected exception to be thrown, but nothing was") // poetry
     } else {
-        throw AssertionError("Expected ${ctx.thrown} to be thrown, but nothing was caught")
+        throw AssertionError("Expected ${ctx.thrown} to be thrown, but nothing was")
     }
 }
 
