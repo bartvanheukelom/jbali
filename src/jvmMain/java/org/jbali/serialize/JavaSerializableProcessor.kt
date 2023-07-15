@@ -1,5 +1,7 @@
 package org.jbali.serialize
 
+import org.jbali.serialize.SerializableProcessors.collectionIfaces
+import org.jbali.serialize.SerializableProcessors.collectionIfacesSimple
 import org.jbali.util.logger
 import javax.annotation.processing.AbstractProcessor
 import javax.annotation.processing.RoundEnvironment
@@ -11,34 +13,17 @@ import javax.lang.model.element.TypeElement
 import javax.lang.model.type.*
 import javax.tools.Diagnostic
 
-@Retention(AnnotationRetention.SOURCE)
-@Target(AnnotationTarget.CLASS, AnnotationTarget.FIELD, AnnotationTarget.TYPE)
-annotation class SuppressNotSerializable(
-    val value: String = "",
-)
-
 @SupportedSourceVersion(SourceVersion.RELEASE_17)
 @SupportedAnnotationTypes("*")
-class SerializableProcessor : AbstractProcessor() {
+class JavaSerializableProcessor : AbstractProcessor() {
     
     // TODO
     //      - instead of serializable bool, return yes/no/unknown
     //      - configurable strictness: no-unknown, allow-unknown, warn-only
 
     companion object {
-        private val log = logger<SerializableProcessor>()
+        private val log = logger<JavaSerializableProcessor>()
         private val skipModifiers = setOf(Modifier.STATIC, Modifier.TRANSIENT)
-        private val collectionIfaces = setOf(
-            "java.util.Collection",
-            "java.util.List",
-            "java.util.Set",
-            "java.util.Map",
-            "java.util.Map\$Entry",
-        )
-        private val collectionIfacesSimple = collectionIfaces.map { it
-            .removePrefix("java.util.")
-            .replace('$', '.') // inner classes
-        }
     }
     
     init { log.info("init") }

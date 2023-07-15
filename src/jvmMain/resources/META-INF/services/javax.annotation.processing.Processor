@@ -1,2 +1,2 @@
 # org.jbali.proxy.ProxyGenerator
-org.jbali.serialize.SerializableProcessor
+org.jbali.serialize.JavaSerializableProcessor
