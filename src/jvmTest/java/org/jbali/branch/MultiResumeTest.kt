@@ -4,6 +4,7 @@ package org.jbali.branch
 
 import org.jbali.random.nextHex
 import org.jbali.test.assertEquals
+import org.jbali.test.expectFailureOfUnfinished
 import org.junit.Test
 import kotlin.concurrent.thread
 import kotlin.coroutines.suspendCoroutine
@@ -121,21 +122,23 @@ class MultiResumeTest {
     // B: ?
     @Test
     fun testMemberFun() {
-        runBranching {
-            voice()
-        }
-            .also {
-                assertEquals(mapOf(
-                    "Dog" to Result.success("Woof"),
-                    "Cat>false" to Result.success("Meow"),
-                    "Cat>true" to it["Cat>true"],
-                ), it)
-                assertEquals(
-                    "Leave me alone, I'm sleeping in a box",
-                    it["Cat>true"]?.exceptionOrNull()?.message
-                )
+        expectFailureOfUnfinished {
+            runBranching {
+                voice()
             }
-            .forEach { (k, v) -> println("$k: $v") }
+                .also {
+                    assertEquals(mapOf(
+                        "Dog" to Result.success("Woof"),
+                        "Cat>false" to Result.success("Meow"),
+                        "Cat>true" to it["Cat>true"],
+                    ), it)
+                    assertEquals(
+                        "Leave me alone, I'm sleeping in a box",
+                        it["Cat>true"]?.exceptionOrNull()?.message
+                    )
+                }
+                .forEach { (k, v) -> println("$k: $v") }
+        }
     }
     
     private suspend fun sleep(ms: Long) {

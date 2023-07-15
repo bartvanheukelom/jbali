@@ -112,4 +112,11 @@ fun <T> T.mustMatch(pattern: Regex) =
         }
     }
 
-
+inline fun <T> expectFailureOfUnfinished(block: () -> T) {
+    try {
+        block()
+        throw RuntimeException("Expected failure, but passed")
+    } catch (e: Throwable) {
+        e.printStackTrace()
+    }
+}

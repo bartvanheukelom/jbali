@@ -209,6 +209,17 @@ if (doJvm) {
                 
             }
             
+            // configure jvmTest task
+            tasks {
+                withType<Test>().configureEach {
+                    jvmArgs(
+                        "-Dorg.slf4j.simpleLogger.showDateTime=true",
+                        // for JavaSerializer.assertReadResolve etc.
+                        "--add-opens", "java.base/java.io=ALL-UNNAMED",
+                    )
+                }
+            }
+            
         }
     }
     
