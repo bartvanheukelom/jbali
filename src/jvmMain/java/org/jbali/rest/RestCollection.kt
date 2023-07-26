@@ -4,26 +4,40 @@ import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.routing.*
 import io.ktor.util.*
+import kotlinx.serialization.json.buildJsonObject
 import org.jbali.enums.EnumTool
+import org.jbali.kotser.put
 import org.jbali.ktor.getExact
+import org.jbali.oas.Operation
+import org.jbali.oas.PathItem
+import org.jbali.oas.Response
 import org.jbali.util.ReifiedType
 import org.jbali.util.cast
 import org.jbali.util.reifiedTypeOf
 import kotlin.reflect.KClass
 
-fun RestRouteContext.collection(name: String, config: RestCollection.() -> Unit): RestCollection =
+fun RestRouteContext.collection(
+    name: String,
+    config: RestCollection.() -> Unit,
+): RestCollection =
         RestCollection(
-                context = context,
-                route = ktorRouteForHacks.createRouteFromPath(name)
+            context = context,
+            route = ktorRouteForHacks.createRouteFromPath(name),
+            parent = restRoute,
+            subPath = name,
         )
             .configure(config)
 
 class RestCollection(
         context: RestApiContext,
-        route: Route
+        route: Route,
+        parent: RestRoute? = null,
+        subPath: String? = null,
 ) : RestRoute.Sub(
-        context = context,
-        route = route
+    context = context,
+    route = route,
+    parent = parent,
+    subPath = subPath,
 ) {
 
     inline fun <reified I : Any, reified T : Any> index(
@@ -74,6 +88,27 @@ class RestCollection(
                     )
                 }
         }
+        oasPath("", PathItem(
+            get = Operation(
+                responses = mapOf(
+                    HttpStatusCode.OK.value.toString() to Response(
+                        description = "$returnType",
+                        content = buildJsonObject {
+                            put(ContentType.Application.Json.contentType, buildJsonObject {
+                                put("schema", buildJsonObject {
+                                    put("type", "object")
+                                    put("properties",buildJsonObject {
+                                        put("TODO",buildJsonObject {
+                                            put("type", "string")
+                                        })
+                                    })
+                                })
+                            })
+                        }
+                    )
+                )
+            )
+        ))
     }
 
     inline fun <reified T : Any> item(

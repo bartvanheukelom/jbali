@@ -23,6 +23,7 @@ import org.jbali.kotser.jsonString
 import org.jbali.ktor.handleExact
 import org.jbali.ktor.respondNoContent
 import org.jbali.ktor.routeExact
+import org.jbali.oas.PathItem
 import org.jbali.util.ReifiedType
 import org.jbali.util.StoredExtensionProperty
 import org.jbali.util.reifiedTypeOf
@@ -40,6 +41,7 @@ interface RestRouteContext : RestApiContext {
     @Suppress("DeprecatedCallableAddReplaceWith")
     @Deprecated("")
     val ktorRouteForHacks get() = route
+    val restRoute: RestRoute
     
     fun path(name: String, config: RestRoute.() -> Unit): RestRouteContext
     fun exact(config: RestRoute.() -> Unit): Pair<RestRoute.Sub, RestRoute.Sub>
@@ -74,7 +76,12 @@ interface RestRouteContext : RestApiContext {
         status: HttpStatusCode = HttpStatusCode.OK,
         cacheSerialization: Boolean = true,
     )
+
+    fun oasPath(path: String, item: PathItem)
+    
 }
+
+
 
 inline fun <reified I : Any> RestRouteContext.post(
     path: String,
@@ -351,10 +358,20 @@ abstract class RestRoute : RestRouteContext {
     }
 
     open class Sub(
-            context: RestApiContext,
-            override val route: Route
-    ) : RestRoute(), RestApiContext by context
-
+        context: RestApiContext,
+        override val route: Route,
+        private val parent: RestRoute? = null,
+        private val subPath: String? = null,
+    ) : RestRoute(), RestApiContext by context {
+        
+        override final val restRoute get() = this
+        
+        override fun oasPath(path: String, item: PathItem) {
+            parent?.oasPath("$subPath/$path", item)
+        }
+        
+    }
+    
     override fun path(name: String, config: RestRoute.() -> Unit): Sub =
             Sub(
                     context = context,
