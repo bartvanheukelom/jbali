@@ -4,10 +4,8 @@ package org.jbali.coroutines
 
 import kotlinx.coroutines.*
 import org.jbali.util.logger
-import kotlin.test.Test
-import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import kotlin.concurrent.thread
+import kotlin.test.*
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.ExperimentalTime
 
@@ -86,6 +84,47 @@ class MiscCoroTest {
             log.info("leaving runBlocking")
         }
         log.info("left runBlocking")
+    }
+    
+    @Test fun testRunBlockingInterruptable() {
+        lateinit var ex: Throwable
+        var delaying = false
+        val th = thread {
+            log.info("started thread")
+            try {
+                runBlockingInterruptable {
+                    log.info("started runBlockingInterruptable")
+                    try {
+                        delaying = true
+                        
+                        // <race condition if this thread is interrupted at this point>
+                        
+                        delayIndefinitely<Unit>()
+                    } catch (e: Throwable) {
+                        log.info("caught exception from delayIndefinitely", e)
+                        throw e
+                    }
+                    delayIndefinitely<Unit>()
+                }
+            } catch (e: Throwable) {
+                log.info("caught exception from runBlockingInterruptable", e)
+                ex = e
+            }
+        }
+        while (!delaying) {
+            Thread.sleep(1)
+        }
+        Thread.sleep(50) // TODO use a latch
+        log.info("coroutine ready for interruption")
+        
+        log.info("interrupting thread")
+        th.interrupt()
+        log.info("joining thread")
+        th.join()
+        log.info("joined thread")
+        
+        assertTrue(ex.stackTrace.any { it.methodName == "delayIndefinitely" })
+        
     }
     
 }

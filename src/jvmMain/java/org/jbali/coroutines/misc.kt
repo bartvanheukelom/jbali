@@ -5,6 +5,8 @@ import org.jbali.util.Box
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 
@@ -70,3 +72,46 @@ suspend fun <T> Deferred<T>.awaitFor(timeout: Duration) =
 @ExperimentalTime
 suspend fun <T> Deferred<T>.awaitOrNull(timeout: Duration): Box<T>? =
     withTimeoutOrNull(timeout) { Box(await()) }
+
+
+/**
+ * Calls [runBlocking] with the given [context] and [block].
+ * If the thread is interrupted while running the block, throws an exception, like [runBlocking] does,
+ * but unlike that function, the thrown exception will specify during what operation the coroutine was cancelled,
+ * if possible. The thrown exception does not have to be [InterruptedException], but will have it as a cause.
+ */
+fun <T> runBlockingInterruptable(
+    context: CoroutineContext = EmptyCoroutineContext,
+    block: suspend CoroutineScope.() -> T
+): T {
+    var innerException: Throwable? = null
+    return try {
+        runBlocking(context) {
+            try {
+                block()
+            } catch (e: Throwable) {
+                innerException = e
+                throw e
+            }
+        }
+    } catch (e: InterruptedException) {
+        val ie = innerException
+        when {
+            
+            ie == null -> throw e
+            
+            // TODO move hasCause to jbali
+            ie.cause === e
+                    || ie.cause?.cause === e
+                    || ie.cause?.cause?.cause === e
+                    || ie.cause?.cause?.cause?.cause === e
+                    || ie.cause?.cause?.cause?.cause?.cause === e
+                -> throw ie
+            
+            else -> {
+                e.addSuppressed(ie)
+                throw e
+            }
+        }
+    }
+}

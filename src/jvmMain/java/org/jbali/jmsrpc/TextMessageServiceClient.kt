@@ -4,11 +4,11 @@ import arrow.core.getOrHandle
 import arrow.core.left
 import arrow.core.right
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.buildJsonArray
 import org.jbali.coroutines.Suspending
+import org.jbali.coroutines.runBlockingInterruptable
 import org.jbali.json2.JSONString
 import org.jbali.kotser.toJsonElement
 import org.jbali.kotser.toJsonObject
@@ -147,7 +147,7 @@ class TextMessageServiceClient<S : Any>(
                     val reqStr = JSONString.stringify(reqJson, prettyPrint = false).string
                     val respJson = when {
                         blockRequestHandler != null -> blockRequestHandler(reqStr)
-                        coroRequestHandler != null -> runBlocking { coroRequestHandler(reqStr) }
+                        coroRequestHandler != null -> runBlockingInterruptable { coroRequestHandler(reqStr) }
                         else -> throw IllegalStateException("Must provide at least one of blockRequestHandler or coroRequestHandler")
                     }
                     
