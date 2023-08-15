@@ -5,6 +5,7 @@ import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.util.*
 import java.net.InetAddress
+import java.net.UnknownHostException
 
 operator fun <T : Any> Attributes.set(key: AttributeKey<T>, value: T) {
     put(key, value)
@@ -47,6 +48,23 @@ val InetAddress.isLocalAddress: Boolean
  * and doesn't have any headers that indicate it came from a load balancer / reverse proxy.
  */
 val ApplicationCall.isFromInternalNetwork get() =
-    request.local.remoteIpOrNull?.isLocalAddress == true && request.headers.names().none { it in reverseProxyHeaders }
+    request.local.resolvedRemoteIp().second?.isLocalAddress == true && request.headers.names().none { it in reverseProxyHeaders }
 
 // TODO version that checks at origin. optionally verify that local is also internal, if reverse proxy headers are not trusted.
+
+
+fun RequestConnectionPoint.resolvedRemoteIp(): Pair<String?, InetAddress?> {
+    val ip = remoteIpOrNull
+    if (ip != null) {
+        return Pair(null, ip)
+    } else {
+        try {
+            return Pair(remoteHost, InetAddress.getByName(remoteHost))
+        } catch (e: UnknownHostException) {
+            return Pair(remoteHost, null)
+        } catch (e: Exception) {
+//            log.warn("Error resolving remote host '$remoteHost'", e) - TODO
+            return Pair(remoteHost, null)
+        }
+    }
+}
