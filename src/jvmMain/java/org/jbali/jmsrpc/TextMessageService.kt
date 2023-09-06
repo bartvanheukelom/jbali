@@ -68,7 +68,7 @@ class TextMessageService<T : Any>(
         var methName = "?"
         val logTheRequest = onceFunction { log.info("In text request $svcName.$methName:") }
         
-        TMSMeters.startServerRequest(ifaceInfo.name).use { meter ->
+        TMSMeters.startServerRequest(ifaceInfo.metricsName).use { meter ->
     
             val response: JsonArray = try {
     

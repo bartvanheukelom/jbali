@@ -101,7 +101,7 @@ class TextMessageServiceClient<S : Any>(
         fun record(success: Boolean) {
             if (utStart != null) {
                 TMSMeters.recordClientRequest(
-                    ifaceInfo.name, method.name, success,
+                    ifaceInfo.metricsName, method.name, success,
                     Duration.ofMillis((utStart!! diffUIntClampedTo MicroTime.now()).toLong() / 1_000_000)
                 )
                 utStart = null

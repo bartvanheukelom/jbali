@@ -3,6 +3,9 @@ package org.jbali.jmsrpc
 import org.jbali.util.HasBetterKotlinAlternative
 import kotlin.reflect.KClass
 
+/**
+ * Defines a [TextMessageService] by its interface and optional discriminator, to distinguish between multiple services with the same interface.
+ */
 data class TMSDefinition<T : Any>(
     val iface: KClass<T>,
     val discriminator: String? = null,
@@ -19,6 +22,7 @@ data class TMSDefinition<T : Any>(
     
     val uniqueName = iface.qualifiedName!! + (discriminator?.let { "[$it]" } ?: "")
     val path = iface.simpleName!! + (discriminator?.let { "/$it" } ?: "")
+    val metricsName get() = ifaceInfo.metricsName
     
     override fun toString() = uniqueName
 }

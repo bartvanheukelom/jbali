@@ -64,7 +64,8 @@ class TMSInterface<I : Any>(
         val serializer: TMSSerializer,
     )
     
-    val name = bIface().qualifiedName
+    val name = bIface().qualifiedName!!
+    val metricsName get() = name
     
     override fun toString() = "TMSInterface(name=$name)"
     
@@ -216,7 +217,7 @@ val <I : Any> KClass<I>.asTMSInterface: TMSInterface<I>
 
 private fun <I : Any> initInterface(iface: KClass<I>): TMSInterface<I> =
     measureTimedValue { TMSInterface(iface.loan()) }
-        .also { TMSMeters.recordIfaceInit(it.duration.toJavaDuration(), it.value.name) }
+        .also { TMSMeters.recordIfaceInit(it.duration.toJavaDuration(), it.value.metricsName) }
         .value
 
 typealias TMSSerializer = Transformer<Any?, JsonElement>
