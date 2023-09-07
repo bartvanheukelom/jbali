@@ -254,6 +254,7 @@ abstract class RestRoute : RestRouteContext {
                 Tag.of("route", route.toString()),
                 Tag.of("type", type.toString()),
             )).record(Supplier {
+                // TODO millis or nanos
                 jsonFormat.encodeToString(ser, obj)
             })!!
             

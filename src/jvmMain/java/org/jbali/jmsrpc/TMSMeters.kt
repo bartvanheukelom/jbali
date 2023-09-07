@@ -2,9 +2,11 @@ package org.jbali.jmsrpc
 
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.Metrics
+import io.micrometer.core.instrument.Timer
 import org.jbali.util.MicroTime
 import org.jbali.util.diffUIntClampedTo
 import java.time.Duration
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 internal object TMSMeters {
@@ -37,7 +39,7 @@ internal object TMSMeters {
             "iface", ifaceName ?: "null",
             "method", methodName,
             "success", success.toString(),
-        ).record(duration)
+        ).recordSneakyMillis(duration)
     }
     
     fun recordClientRequest(ifaceName: String?, methodName: String, success: Boolean, duration: Duration) {
@@ -46,14 +48,14 @@ internal object TMSMeters {
             "iface", ifaceName ?: "null",
             "method", methodName,
             "success", success.toString(),
-        ).record(duration)
+        ).recordSneakyMillis(duration)
     }
     
     fun recordIfaceInit(duration: Duration, ifaceName: String?) {
         Metrics.timer(
             "tms_client_iface_init",
             "iface", ifaceName ?: "null",
-        ).record(duration)
+        ).recordSneakyMillis(duration)
     }
     
     // TODO doesn't need to be nullable
@@ -83,3 +85,11 @@ interface RequestMeter : AutoCloseable {
     var methodName: String?
     var success: Boolean?
 }
+
+/**
+ * Record an event of the given [duration], in milliseconds.
+ * This is a workaround for quickly adding more precision to a Timer whose base unit is seconds.
+ * Prefer configuring the Timer with the desired base unit and using [Timer.record] with the [Duration] instead.
+ */
+fun Timer.recordSneakyMillis(duration: Duration) =
+    record(duration.toMillis(), TimeUnit.SECONDS)
