@@ -28,7 +28,7 @@ plugins {
 }
 
 // check gradle version, for when not running with the included wrapper (e.g. included in another project)
-val recommendedGradleVersion = "8.0.2"
+val recommendedGradleVersion = "8.3"
 val supportedGradleVersions = setOf(
     recommendedGradleVersion,
 )
