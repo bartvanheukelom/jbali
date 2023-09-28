@@ -3,23 +3,51 @@ package org.jbali.jmsrpc
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.Metrics
 import io.micrometer.core.instrument.Timer
-import org.jbali.util.MicroTime
-import org.jbali.util.diffUIntClampedTo
+import org.jbali.micrometer.CandleGauge
+import org.jbali.micrometer.record
+import org.jbali.micrometer.recordSneakyMillis
+import org.jbali.micrometer.tags
+import org.jbali.util.*
 import java.time.Duration
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 internal object TMSMeters {
     
-    val countRequestsActive = AtomicInteger(0)
-    val gaugeRequestsActive = Gauge.builder("tms_client_requests_active", countRequestsActive::get)
-        .description("Number of active TextMessageServiceClient requests")
-        .register(Metrics.globalRegistry)
+    private val log = logger<TMSMeters>()
     
-    val countServerRequestsActive = AtomicInteger(0)
-    val gaugeServerRequestsActive = Gauge.builder("tms_server_requests_active", countServerRequestsActive::get)
-        .description("Number of active TextMessageServiceServer requests")
-        .register(Metrics.globalRegistry)
+    class ActiveRequestMeter(dir: String) {
+        
+        private val countActive = AtomicInteger(0)
+        
+        // TODO look into https://micrometer.io/docs/concepts#_long_task_timers
+        private val gaugeActive = Gauge.builder("tms_${dir}_requests_active", countActive::get)
+            .description("Number of active TextMessageService $dir requests")
+            .register(Metrics.globalRegistry)
+        
+        private val candleGaugeActive = CandleGauge(
+            name = "tms_${dir}_requests_active_hires",
+        ) {
+            countActive.get().toDouble()
+        }
+        
+        fun increment() {
+            countActive.incrementAndGet()
+            candleGaugeActive.update()
+        }
+        
+        fun decrement() {
+            countActive.decrementAndGet()
+            candleGaugeActive.update()
+        }
+        
+        // TODO fun measure(body), replacement for startServerRequest, and also works for client.
+        
+    }
+    
+    // TODO should clean up if last client/server is stopped.
+    // TODO instead of reference counting that, can also use an alternative for lazy that destroys when not used for a while.
+    val activeRequestsClient by lazy { ActiveRequestMeter("client") }
+    val activeRequestsServer by lazy { ActiveRequestMeter("server") }
     
 //    val countRequests = Counter.builder("tms_client_requests")
 //        .description("Rate of TextMessageServiceClient requests")
@@ -33,13 +61,35 @@ internal object TMSMeters {
 //        .tag("success", "false")
 //        .register(Metrics.globalRegistry)
     
-    fun recordServerRequest(ifaceName: String?, methodName: String, success: Boolean, duration: Duration) {
-        Metrics.timer(
-            "tms_server_requests",
+    fun recordStartedServerRequest(ifaceName: String?, methodName: String) {
+        Metrics.counter(
+            "tms_server_requests_started",
             "iface", ifaceName ?: "null",
             "method", methodName,
-            "success", success.toString(),
-        ).recordSneakyMillis(duration)
+        ).increment()
+    }
+    
+    fun recordServerRequest(ifaceName: String?, methodName: String, success: Boolean, duration: NanoDuration) {
+        val metric = "tms_server_requests"
+        val tags = mapOf(
+            "iface" to (ifaceName ?: "null"),
+            "method" to methodName,
+            "success" to success.toString(),
+        )
+        log.info("timer($metric, $tags).record($duration)") // TODO disable or make configurable
+        Timer.builder(metric)
+            .tags(tags)
+            .publishPercentileHistogram()
+            .register(Metrics.globalRegistry) // this is idempotent, but it looks bad, and is wasteful
+            .record(duration)
+    }
+    
+    fun recordStartedClientRequest(ifaceName: String?, methodName: String) {
+        Metrics.counter(
+            "tms_client_requests_started",
+            "iface", ifaceName ?: "null",
+            "method", methodName,
+        ).increment()
     }
     
     fun recordClientRequest(ifaceName: String?, methodName: String, success: Boolean, duration: Duration) {
@@ -61,20 +111,29 @@ internal object TMSMeters {
     // TODO doesn't need to be nullable
     fun startServerRequest(ifaceName: String?): RequestMeter = object : RequestMeter {
         
-        val utStart = MicroTime.now()
-        
         override var methodName: String? = null
         override var success: Boolean? = null
         
         private var finished = false
         
-        init { countServerRequestsActive.incrementAndGet() }
+        init {
+            activeRequestsServer.increment()
+            recordStartedServerRequest(ifaceName, methodName ?: "?")
+        }
+        
+        val ntStart = NanoTime.now()
         
         override fun close() {
             if (!finished) {
+                val nd = NanoDuration.since(ntStart)
                 finished = true
-                countServerRequestsActive.decrementAndGet()
-                recordServerRequest(ifaceName, methodName ?: "?", success ?: false, Duration.ofMillis((utStart diffUIntClampedTo MicroTime.now()).toLong() / 1_000_000))
+                activeRequestsServer.decrement()
+                recordServerRequest(
+                    ifaceName = ifaceName,
+                    methodName = methodName ?: "?",
+                    success = success ?: false,
+                    duration = nd,
+                )
             }
         }
     }
@@ -85,11 +144,3 @@ interface RequestMeter : AutoCloseable {
     var methodName: String?
     var success: Boolean?
 }
-
-/**
- * Record an event of the given [duration], in milliseconds.
- * This is a workaround for quickly adding more precision to a Timer whose base unit is seconds.
- * Prefer configuring the Timer with the desired base unit and using [Timer.record] with the [Duration] instead.
- */
-fun Timer.recordSneakyMillis(duration: Duration) =
-    record(duration.toMillis(), TimeUnit.SECONDS)

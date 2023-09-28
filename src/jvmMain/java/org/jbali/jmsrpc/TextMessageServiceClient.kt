@@ -108,8 +108,10 @@ class TextMessageServiceClient<S : Any>(
             }
         }
         
-        TMSMeters.countRequestsActive.incrementAndGet()
+        TMSMeters.activeRequestsClient.increment()
         try {
+            
+            TMSMeters.recordStartedClientRequest(ifaceInfo.metricsName, method.name)
             
             Proxies.handleTEH(proxy, method, args, "${toStringed}.blocking")
                 ?.right() // toString, equals or hashCode
@@ -200,7 +202,7 @@ class TextMessageServiceClient<S : Any>(
             record(false)
             throw TextMessageServiceClientException("A local/meta exception occured when invoking $toStringed.${method.name}: $e", e)
         } finally {
-            TMSMeters.countRequestsActive.decrementAndGet()
+            TMSMeters.activeRequestsClient.decrement()
         }.getOrHandle { throw it }
         
     }
