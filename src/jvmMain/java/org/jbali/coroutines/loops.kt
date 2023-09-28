@@ -49,7 +49,9 @@ fun <T> startSingleThreadCoroutine(
 fun startSingleThreadDelayLoop(
     name: String,
     delayMs: Long,
-    errorLogger: (Throwable) -> Unit,
+    errorLogger: (Throwable) -> Unit = {
+        log.warn("runDelayLoop($name) iteration error", it)
+    },
     body: suspend () -> Unit,
 ): Job =
     startSingleThreadCoroutine(
@@ -64,7 +66,9 @@ fun startSingleThreadDelayLoop(
 
 suspend fun runDelayLoop(
     delayMs: Long,
-    errorLogger: (Throwable) -> Unit,
+    errorLogger: (Throwable) -> Unit = {
+        log.warn("runDelayLoop iteration error", it)
+    },
     body: suspend () -> Unit,
 ) {
     while (true) {
