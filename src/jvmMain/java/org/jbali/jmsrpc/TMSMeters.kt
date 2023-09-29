@@ -1,15 +1,18 @@
 package org.jbali.jmsrpc
 
-import io.micrometer.core.instrument.Gauge
-import io.micrometer.core.instrument.Metrics
-import io.micrometer.core.instrument.Timer
+import io.micrometer.core.instrument.*
 import org.jbali.micrometer.CandleGauge
 import org.jbali.micrometer.record
 import org.jbali.micrometer.recordSneakyMillis
 import org.jbali.micrometer.tags
-import org.jbali.util.*
+import org.jbali.util.NanoDuration
+import org.jbali.util.NanoTime
+import org.jbali.util.logger
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.ceil
+import kotlin.math.log2
+import kotlin.math.pow
 
 internal object TMSMeters {
     
@@ -70,7 +73,29 @@ internal object TMSMeters {
     }
     
     fun recordServerRequest(ifaceName: String?, methodName: String, success: Boolean, duration: NanoDuration) {
-        val metric = "tms_server_requests"
+        recordCompletedRequest("server", ifaceName, methodName, success, duration)
+    }
+    
+    fun recordStartedClientRequest(ifaceName: String?, methodName: String) {
+        Metrics.counter(
+            "tms_client_requests_started",
+            "iface", ifaceName ?: "null",
+            "method", methodName,
+        ).increment()
+    }
+    
+    fun recordClientRequest(ifaceName: String?, methodName: String, success: Boolean, duration: NanoDuration) {
+        recordCompletedRequest("client", ifaceName, methodName, success, duration)
+    }
+    
+    private fun recordCompletedRequest(
+        dir: String,
+        ifaceName: String?,
+        methodName: String,
+        success: Boolean,
+        duration: NanoDuration
+    ) {
+        val metric = "tms_${dir}_requests"
         val tags = mapOf(
             "iface" to (ifaceName ?: "null"),
             "method" to methodName,
@@ -82,23 +107,28 @@ internal object TMSMeters {
             .publishPercentileHistogram()
             .register(Metrics.globalRegistry) // this is idempotent, but it looks bad, and is wasteful
             .record(duration)
-    }
-    
-    fun recordStartedClientRequest(ifaceName: String?, methodName: String) {
-        Metrics.counter(
-            "tms_client_requests_started",
-            "iface", ifaceName ?: "null",
-            "method", methodName,
-        ).increment()
-    }
-    
-    fun recordClientRequest(ifaceName: String?, methodName: String, success: Boolean, duration: Duration) {
-        Metrics.timer(
-            "tms_client_requests",
-            "iface", ifaceName ?: "null",
-            "method", methodName,
-            "success", success.toString(),
-        ).recordSneakyMillis(duration)
+        
+        // custom buckets, log2 based, and non-accumulative
+        val cbMetric = "${metric}_cb"
+        val bucket = duration.ns // 123'000'555 ns
+            .div(1_000_000.0) // 123.000555 ms
+            .let(::log2) // ~6.9
+            .let(::ceil) // 7.0
+            .let { 2.0.pow(it).toInt() } // <= 128 ms
+        val cbTags = mapOf(
+            "bucket" to bucket.toString(),
+        )
+        val cbTagsFull = tags + cbTags
+        log.info("counter(${cbMetric}_count, $cbTagsFull).increment()")
+        Counter.builder(cbMetric + "_count")
+            .tags(cbTagsFull)
+            .register(Metrics.globalRegistry)
+            .increment()
+        log.info("counter(${cbMetric}_ns, $cbTagsFull).increment(${duration.ns.toDouble()})")
+        Counter.builder(cbMetric + "_ns")
+            .tags(cbTagsFull)
+            .register(Metrics.globalRegistry)
+            .increment(duration.ns.toDouble())
     }
     
     fun recordIfaceInit(duration: Duration, ifaceName: String?) {
@@ -112,13 +142,26 @@ internal object TMSMeters {
     fun startServerRequest(ifaceName: String?): RequestMeter = object : RequestMeter {
         
         override var methodName: String? = null
+            set(value) {
+                require(value != null)
+                check(field == null) { "methodName already set" }
+                recordStartedServerRequest(ifaceName, value)
+                ltt = LongTaskTimer.builder("tms_server_requests_active_ltt")
+                    .tags(
+                        "iface", ifaceName ?: "null",
+                        "method", value
+                    )
+                    .register(Metrics.globalRegistry)
+                    .start()
+                field = value
+            }
         override var success: Boolean? = null
         
+        private var ltt: LongTaskTimer.Sample? = null
         private var finished = false
         
         init {
             activeRequestsServer.increment()
-            recordStartedServerRequest(ifaceName, methodName ?: "?")
         }
         
         val ntStart = NanoTime.now()
@@ -127,6 +170,7 @@ internal object TMSMeters {
             if (!finished) {
                 val nd = NanoDuration.since(ntStart)
                 finished = true
+                ltt?.stop()
                 activeRequestsServer.decrement()
                 recordServerRequest(
                     ifaceName = ifaceName,

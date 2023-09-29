@@ -16,10 +16,9 @@ import org.jbali.kotser.unwrap
 import org.jbali.reflect.Proxies
 import org.jbali.reflect.kClassOrNull
 import org.jbali.serialize.JavaJsonSerializer
-import org.jbali.util.MicroTime
-import org.jbali.util.diffUIntClampedTo
+import org.jbali.util.NanoDuration
+import org.jbali.util.NanoTime
 import org.slf4j.LoggerFactory
-import java.time.Duration
 import java.util.function.Function
 import kotlin.reflect.KClass
 import kotlin.reflect.jvm.javaMethod
@@ -97,14 +96,14 @@ class TextMessageServiceClient<S : Any>(
     
     val blocking: S = Proxies.create(ifaceK.java) { proxy, method, args ->
         
-        var utStart: MicroTime? = MicroTime.now()
+        var ntStart: NanoTime? = NanoTime.now()
         fun record(success: Boolean) {
-            if (utStart != null) {
+            if (ntStart != null) {
                 TMSMeters.recordClientRequest(
                     ifaceInfo.metricsName, method.name, success,
-                    Duration.ofMillis((utStart!! diffUIntClampedTo MicroTime.now()).toLong() / 1_000_000)
+                    NanoDuration.since(ntStart!!)
                 )
-                utStart = null
+                ntStart = null
             }
         }
         
