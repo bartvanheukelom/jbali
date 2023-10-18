@@ -12,10 +12,15 @@ import kotlin.reflect.KProperty
 
 interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T>, ReadOnlyProperty<Any?, T> {
 
+    /**
+     * Event that is dispatched whenever the value changes, with the old and new value.
+     * If you only need the new value, use [onNewValue] instead.
+     */
     val onChange: Event<Change<T>>
 
     /**
      * Convenience event whose data is only the new value. Is dispatched exactly once for each [onChange] event.
+     * If you need the old value, use [onChange] instead.
      *
      * [Observable] implementors, see [setupNewValueDispatch].
      */
@@ -53,11 +58,10 @@ interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T>, ReadOnlyPrope
     }
 
     /**
-     * Register a handler that will be called immediately with the current value,
+     * For Java only: Register a [Consumer] handler that will be called immediately with the current value,
      * and whenever the value changes.
-     *
-     * For use by Java code only.
      */
+    @HasBetterKotlinAlternative("bind")
     fun bindj(handler: Consumer<T>): ListenerReference =
             bind { handler.accept(it) }
 
@@ -65,6 +69,8 @@ interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T>, ReadOnlyPrope
      * [Observable] that is derived from this observable, called its source.
      * When the source is changed, the [derivation] function is executed with its new value once,
      * and the result is stored and distributed further.
+     *
+     * If [derivation] is trivial, consider using [sub] instead.
      */
     fun <D> derived(derivation: (T) -> D): Observable<D> =
             DerivedObservable(this, derivation)
@@ -74,7 +80,8 @@ interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T>, ReadOnlyPrope
      * When the source is changed, the [getter] function is executed on the values in the [Change],
      * and the result is distributed further, but not stored.
      *
-     * Calls to [get] will get the current value from the source and return the result of applying [getter] to it.
+     * Each call to [get] will get the current value from the source and return the result of applying [getter] to it.
+     * If this is expensive or otherwise undesirable, consider using [derived] instead.
      */
     fun <D> sub(getter: (T) -> D): Observable<D> =
             ObservableSub(this, getter)
@@ -88,20 +95,47 @@ interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T>, ReadOnlyPrope
 
 }
 
-data class Change<T>(
-        val before: T,
-        val after: T,
 
-        /**
-         * If further events are dispatched as a direct result of this change,
-         * and this is true, those events must be dispatched in non-exception swallowing mode.
-         */
-        val throwListenerExceptions: Boolean = false
+/**
+ * Simple container for a [before] and [after] value of the same type, representing a change.
+ *
+ * [before] and [after] may be equal. [different] reflects whether they are actually different.
+ */
+data class Change<T>(
+    val before: T,
+    val after: T,
+
+    /**
+     * If further events are dispatched as a direct result of this change,
+     * and this is true, those events must be dispatched in non-exception swallowing mode.
+     */
+    val throwListenerExceptions: Boolean = false
 ) {
+    
+    /**
+     * `before != after`
+     */
     val different: Boolean = before != after
+    
+    /**
+     * Return [after] if it's [different] from [before], else `null`.
+     * Note that if [T] is nullable, `null` can also simply be the value of [after].
+     * Use [boxedAfterIfDifferent] to distinguish between these cases.
+     */
     val afterIfDifferent get() = if (different) after else null
+    
+    /**
+     * Return [after] in a [Box] if it's [different] from [before], else `null`.
+     * That is, if the value of [after] is `null`, this will return `Box(null)`.
+     * If [T] is not nullable, consider using [afterIfDifferent] instead.
+     */
+    val boxedAfterIfDifferent get() = if (different) after.boxed() else null
+    
 }
 
+/**
+ * Create a [Change] from this value to [after].
+ */
 infix fun <T> T.changedTo(after: T): Change<T> =
         Change(before = this, after = after)
 
@@ -110,8 +144,8 @@ private fun <T> Observable<T>.setupNewValueDispatch() {
     // TODO onChange.forwardTo(onNewValue), which preserves the error callback
     onChange.listen {
         onNewValue.dispatch(
-                data = it.after,
-                throwAsAssert = it.throwListenerExceptions
+            data = it.after,
+            throwAsAssert = it.throwListenerExceptions
         )
     }
 }
@@ -132,7 +166,16 @@ sealed class MutableObservableBase<T>(initialValue: T, name: String? = null): Ob
     var value: T
         get() = ref.get()
         set(n) { updateValue(n) }
-
+    
+    /**
+     * Update the value, and only if it is not equal to the current value,
+     * will dispatch the onChange event with the new value.
+     *
+     * If you don't use any other parameters than [n], you may also use the [value] setter instead.
+     *
+     * @param n The new value
+     * @param throwAsAssert If true, will throw an [AssertionError] if any listener throws an exception. Useful for tests.
+     */
     fun updateValue(n: T, throwAsAssert: Boolean = false) {
         val o = ref.getAndSet(n)
         if (n != o) {
@@ -144,15 +187,19 @@ sealed class MutableObservableBase<T>(initialValue: T, name: String? = null): Ob
         }
     }
 
-    final override val onChange: Event<Change<T>> = Event("${name ?: "MutableObservable"}.onChange")
-    final override val onNewValue: Event<T> = Event("${name ?: "MutableObservable"}.onNewValue")
+    final override val onChange:   Event<Change<T>> = Event("${name ?: "MutableObservable"}.onChange"  )
+    final override val onNewValue: Event<        T> = Event("${name ?: "MutableObservable"}.onNewValue")
 
     init {
         setupNewValueDispatch()
     }
 
     override fun get() = value
-
+    
+    /**
+     * Returns a read-only view of this [MutableObservable].
+     * That is, returns this same instance, but upcast to the read-only [Observable] interface.
+     */
     fun readOnly(): Observable<T> = this
 
     @PreDestroy
@@ -166,7 +213,7 @@ sealed class MutableObservableBase<T>(initialValue: T, name: String? = null): Ob
 
 
 class MutableObservable<T>(initialValue: T, name: String? = null) :
-        MutableObservableBase<T>(initialValue, name)
+    MutableObservableBase<T>(initialValue, name)
 
 
 
@@ -174,8 +221,8 @@ class MutableObservable<T>(initialValue: T, name: String? = null) :
  * Implementation of [Observable.sub], see doc there.
  */
 private class ObservableSub<I, O>(
-        val source: Observable<I>,
-        val getter: (I) -> O
+    val source: Observable<I>,
+    val getter: (I) -> O
 ): Observable<O> {
 
     override val onChange: Event<Change<O>> = Event(this::onChange)
@@ -188,11 +235,11 @@ private class ObservableSub<I, O>(
     override fun get() = getter(source())
 
     private val sourceListener =
-            source.onChange.listen {
-                onChange.dispatch(errCb = ListenerErrorCallbacks.create(it.throwListenerExceptions)) {
-                    Change(getter(it.before), getter(it.after), it.throwListenerExceptions)
-                }
+        source.onChange.listen {
+            onChange.dispatch(errCb = ListenerErrorCallbacks.create(it.throwListenerExceptions)) {
+                Change(getter(it.before), getter(it.after), it.throwListenerExceptions)
             }
+        }
 
     @PreDestroy fun destroy() {
         sourceListener.detach()
@@ -208,8 +255,8 @@ private class ObservableSub<I, O>(
  * Implementation of [Observable.derived], see doc there.
  */
 private class DerivedObservable<I, O>(
-        source: Observable<I>,
-        derivation: (I) -> O
+    source: Observable<I>,
+    derivation: (I) -> O
 ): MutableObservableBase<O>(derivation(source())) {
 
     private val listener = source.listen {
