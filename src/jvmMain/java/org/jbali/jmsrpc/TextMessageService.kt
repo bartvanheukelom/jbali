@@ -1,5 +1,7 @@
 package org.jbali.jmsrpc
 
+import arrow.core.left
+import arrow.core.right
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -125,7 +127,7 @@ class TextMessageService<T : Any>(
                 }
                 
                 // return response
-                meter.success = true
+                meter.result = Unit.right()
                 JsonArray(listOf(
                     STATUS_OK.toJsonElement(),
                     serRet,
@@ -143,7 +145,7 @@ class TextMessageService<T : Any>(
     
                 logTheRequest()
                 log.warn("Error handling request", e)
-                meter.success = false
+                meter.result = e.left()
     
                 try {
                     JsonArray(listOf(
@@ -179,7 +181,7 @@ class TextMessageService<T : Any>(
                 JSONString.stringify(response, prettyPrint = false).string
             } catch (e: Throwable) {
                 log.warn("Error toStringing JSON response", e)
-                meter.success = false
+                meter.result = e.left()
                 "[0, null]"
             }
         }

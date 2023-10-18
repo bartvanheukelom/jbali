@@ -1,5 +1,6 @@
 package org.jbali.jmsrpc
 
+import arrow.core.Either
 import io.micrometer.core.instrument.*
 import org.jbali.micrometer.CandleGauge
 import org.jbali.micrometer.record
@@ -76,8 +77,8 @@ internal object TMSMeters {
         ).increment()
     }
     
-    fun recordServerRequest(ifaceName: String?, methodName: String, success: Boolean, duration: NanoDuration) {
-        recordCompletedRequest("server", ifaceName, methodName, success, duration)
+    fun recordServerRequest(ifaceName: String?, methodName: String, error: Throwable?, duration: NanoDuration) {
+        recordCompletedRequest("server", ifaceName, methodName, error, duration)
     }
     
     fun recordStartedClientRequest(ifaceName: String?, methodName: String) {
@@ -88,23 +89,27 @@ internal object TMSMeters {
         ).increment()
     }
     
-    fun recordClientRequest(ifaceName: String?, methodName: String, success: Boolean, duration: NanoDuration) {
-        recordCompletedRequest("client", ifaceName, methodName, success, duration)
+    fun recordClientRequest(ifaceName: String?, methodName: String, error: Throwable?, duration: NanoDuration) {
+        recordCompletedRequest("client", ifaceName, methodName, error, duration)
     }
     
     private fun recordCompletedRequest(
         dir: String,
         ifaceName: String?,
         methodName: String,
-        success: Boolean,
+        error: Throwable?,
         duration: NanoDuration
     ) {
         val metric = "tms_${dir}_requests"
-        val tags = mapOf(
+        val tags = mutableMapOf(
             "iface" to (ifaceName ?: "null"),
             "method" to methodName,
-            "success" to success.toString(),
+            "success" to (error == null).toString(),
         )
+        error              ?.let { tags["error1"] = it.javaClass.canonicalName }
+        error?.cause       ?.let { tags["error2"] = it.javaClass.canonicalName }
+        error?.cause?.cause?.let { tags["error3"] = it.javaClass.canonicalName }
+        
         metricsLog?.info("timer($metric, $tags).record($duration)") // TODO disable or make configurable
         Timer.builder(metric)
             .tags(tags)
@@ -159,7 +164,7 @@ internal object TMSMeters {
                     .start()
                 field = value
             }
-        override var success: Boolean? = null
+        override var result: Either<Throwable, Unit>? = null
         
         private var ltt: LongTaskTimer.Sample? = null
         private var finished = false
@@ -179,7 +184,11 @@ internal object TMSMeters {
                 recordServerRequest(
                     ifaceName = ifaceName,
                     methodName = methodName ?: "?",
-                    success = success ?: false,
+                    error = when (val r = result) {
+                        is Either.Left -> r.value
+                        is Either.Right -> null
+                        null -> IllegalStateException("result not set")
+                    },
                     duration = nd,
                 )
             }
@@ -190,5 +199,5 @@ internal object TMSMeters {
 
 interface RequestMeter : AutoCloseable {
     var methodName: String?
-    var success: Boolean?
+    var result: Either<Throwable, Unit>?
 }

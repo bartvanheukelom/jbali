@@ -97,10 +97,10 @@ class TextMessageServiceClient<S : Any>(
     val blocking: S = Proxies.create(ifaceK.java) { proxy, method, args ->
         
         var ntStart: NanoTime? = NanoTime.now()
-        fun record(success: Boolean) {
+        fun record(error: Throwable?) {
             if (ntStart != null) {
                 TMSMeters.recordClientRequest(
-                    ifaceInfo.metricsName, method.name, success,
+                    ifaceInfo.metricsName, method.name, error,
                     NanoDuration.since(ntStart!!)
                 )
                 ntStart = null
@@ -160,13 +160,12 @@ class TextMessageServiceClient<S : Any>(
                     // return or throw it
                     when (respStatus) {
                         TextMessageService.STATUS_OK -> {
-                            record(true)
+                            record(null)
                             tMethod.returnSerializer
                                 .detransform(respJsonEl)
                                 .right()
                         }
                         else -> {
-                            record(false)
                             // the response should be an exception
                             JjsAsTms
                                 .detransform(respJsonEl)
@@ -191,6 +190,8 @@ class TextMessageServiceClient<S : Any>(
                                         RuntimeException("Service returned an error that is not Throwable but ${it?.javaClass}")
                                 } }
                                 
+                                .also { record(it) }
+                                
                                 .left()
                         }
                     }
@@ -198,7 +199,7 @@ class TextMessageServiceClient<S : Any>(
                 }
             
         } catch (e: Throwable) {
-            record(false)
+            record(e)
             throw TextMessageServiceClientException("A local/meta exception occured when invoking $toStringed.${method.name}: $e", e)
         } finally {
             TMSMeters.activeRequestsClient.decrement()
