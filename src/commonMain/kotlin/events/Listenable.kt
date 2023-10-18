@@ -1,4 +1,4 @@
-package org.jbali.util
+package org.jbali.events
 
 interface ListenerReference {
     fun detach()

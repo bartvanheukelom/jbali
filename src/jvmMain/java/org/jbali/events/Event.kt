@@ -1,6 +1,6 @@
-package org.jbali.util
+package org.jbali.events
 
-import org.jbali.util.OnceEvent.NotWaitingException
+import org.jbali.events.OnceEvent.NotWaitingException
 import org.jetbrains.annotations.MustBeInvokedByOverriders
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
