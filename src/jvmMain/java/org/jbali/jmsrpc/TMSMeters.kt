@@ -8,6 +8,7 @@ import org.jbali.micrometer.tags
 import org.jbali.util.NanoDuration
 import org.jbali.util.NanoTime
 import org.jbali.util.logger
+import org.slf4j.Logger
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.ceil
@@ -16,7 +17,10 @@ import kotlin.math.pow
 
 internal object TMSMeters {
     
+    private val logMetrics = System.getProperty("org.jbali.jmsrpc.TMSMeters.logMetrics")?.toBoolean() ?: false
+    
     private val log = logger<TMSMeters>()
+    private val metricsLog: Logger? = log.takeIf { logMetrics }
     
     class ActiveRequestMeter(dir: String) {
         
@@ -101,7 +105,7 @@ internal object TMSMeters {
             "method" to methodName,
             "success" to success.toString(),
         )
-        log.info("timer($metric, $tags).record($duration)") // TODO disable or make configurable
+        metricsLog?.info("timer($metric, $tags).record($duration)") // TODO disable or make configurable
         Timer.builder(metric)
             .tags(tags)
             .publishPercentileHistogram()
@@ -119,12 +123,12 @@ internal object TMSMeters {
             "bucket" to bucket.toString(),
         )
         val cbTagsFull = tags + cbTags
-        log.info("counter(${cbMetric}_count, $cbTagsFull).increment()")
+        metricsLog?.info("counter(${cbMetric}_count, $cbTagsFull).increment()")
         Counter.builder(cbMetric + "_count")
             .tags(cbTagsFull)
             .register(Metrics.globalRegistry)
             .increment()
-        log.info("counter(${cbMetric}_ns, $cbTagsFull).increment(${duration.ns.toDouble()})")
+        metricsLog?.info("counter(${cbMetric}_ns, $cbTagsFull).increment(${duration.ns.toDouble()})")
         Counter.builder(cbMetric + "_ns")
             .tags(cbTagsFull)
             .register(Metrics.globalRegistry)
