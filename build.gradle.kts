@@ -212,10 +212,13 @@ if (doJvm) {
             // configure jvmTest task
             tasks {
                 withType<Test>().configureEach {
+//                    println("config $this")
                     jvmArgs(
-                        "-Dorg.slf4j.simpleLogger.showDateTime=true",
+                        "-Dorg.slf4j.simpleLogger.showDateTime=true", // TODO doesn't work, but the println says :jvmTest is configured
                         // for JavaSerializer.assertReadResolve etc.
                         "--add-opens", "java.base/java.io=ALL-UNNAMED",
+                        // print GC info
+                        "-verbose:gc",
                     )
                 }
             }

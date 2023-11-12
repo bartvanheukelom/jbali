@@ -11,6 +11,7 @@ import io.ktor.client.features.auth.providers.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.http.content.*
+import io.micrometer.core.instrument.Metrics
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationStrategy
@@ -20,9 +21,15 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.serializer
 import org.jbali.kotser.DefaultJson
 import org.jbali.kotser.std.UUIDSerializer
+import org.jbali.memory.globalCleaner
+import org.jbali.memory.registerCloser
 import org.slf4j.LoggerFactory
 import java.util.*
 
+/**
+ * @param client The HTTP client to use. If not specified, a new one will be created.
+ * *If specified, ownership of the client is transferred to this instance, i.e. it's closed when this instance is closed.*
+ */
 class KtorJsonRPCClient(
     url: Url,
     val client: HttpClient = HttpClient(CIO) {
@@ -45,7 +52,7 @@ class KtorJsonRPCClient(
         }
     },
     val logging: Boolean = false,
-) {
+) : AutoCloseable {
     
     companion object {
         @PublishedApi
@@ -56,6 +63,22 @@ class KtorJsonRPCClient(
         user = null,
         password = null,
     )
+    
+    private val closer = run {
+        val u = url.toString()
+        val c = client
+        globalCleaner.registerCloser(this) { cleaning ->
+            if (cleaning) {
+                log.warn("GC cleaning unclosed client for $u")
+                Metrics.counter("unclosed_instance_cleaned", "class", javaClass.name).increment()
+            }
+            c.close()
+        }
+    }
+    
+    override fun close() {
+        closer.close()
+    }
     
     suspend inline fun <reified R, reified E : Any> request(
         method: String,
