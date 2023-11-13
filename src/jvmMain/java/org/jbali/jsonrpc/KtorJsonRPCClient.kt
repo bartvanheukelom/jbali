@@ -21,6 +21,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.serializer
 import org.jbali.kotser.DefaultJson
 import org.jbali.kotser.std.UUIDSerializer
+import org.jbali.ktor.client.HttpClients
 import org.jbali.memory.globalCleaner
 import org.jbali.memory.registerCloser
 import org.slf4j.LoggerFactory
@@ -32,7 +33,7 @@ import java.util.*
  */
 class KtorJsonRPCClient(
     url: Url,
-    val client: HttpClient = HttpClient(CIO) {
+    val client: HttpClient = HttpClients.create("ktorjsonrpc") {
         if (url.user != null) {
             val creds = BasicAuthCredentials(url.user!!, url.password!!)
             install(Auth) {
