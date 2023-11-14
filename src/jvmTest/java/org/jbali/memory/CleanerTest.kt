@@ -21,8 +21,6 @@ import kotlin.time.ExperimentalTime
 @OptIn(ExperimentalTime::class)
 class CleanerTest {
     
-    private val log = logger<CleanerTest>()
-    
     private var r1: Any? = null
     
     // comment out @Test when not in use, as the result of this test is meaningless and can take a long time
@@ -119,22 +117,27 @@ class CleanerTest {
     
     // ----------------------- helpers ----------------------- //
     
-    private fun gc() {
-        log.info("Triggering GC")
-        gcForced()
+    companion object {
+        
+        private val log = logger<CleanerTest>()
+        
+        fun gc() {
+            log.info("Triggering GC")
+            gcForced()
+        }
+        
+        fun dumpHeapToFile(test: String = "CleanerTest") {
+            val dumpName = File("build/heapdump_${test}_${System.currentTimeMillis()}.hprof").absolutePath
+            ManagementFactory.getPlatformMBeanServer().invoke(
+                ObjectName("com.sun.management:type=HotSpotDiagnostic"),
+                "dumpHeap",
+                arrayOf<Any?>(dumpName, true),
+                arrayOf("java.lang.String", "boolean")
+            )
+            log.warn("heap dumped to file://$dumpName")
+        }
     }
     
-    
-    private fun dumpHeapToFile() {
-        val dumpName = File("build/heapdump_CleanerTest_${System.currentTimeMillis()}.hprof").absolutePath
-        ManagementFactory.getPlatformMBeanServer().invoke(
-            ObjectName("com.sun.management:type=HotSpotDiagnostic"),
-            "dumpHeap",
-            arrayOf<Any?>(dumpName, true),
-            arrayOf("java.lang.String", "boolean")
-        )
-        log.warn("heap dumped to file://$dumpName")
-    }
     
     private fun tempSticky(onClean: () -> Unit): Cleaner.Cleanable? {
         val o = StickyObject("SO-${Random.nextHex(4u)}")

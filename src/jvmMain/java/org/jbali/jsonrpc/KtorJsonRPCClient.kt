@@ -4,7 +4,6 @@ import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
 import io.ktor.client.*
-import io.ktor.client.engine.cio.*
 import io.ktor.client.features.*
 import io.ktor.client.features.auth.*
 import io.ktor.client.features.auth.providers.*
@@ -24,6 +23,7 @@ import org.jbali.kotser.std.UUIDSerializer
 import org.jbali.ktor.client.HttpClients
 import org.jbali.memory.globalCleaner
 import org.jbali.memory.registerCloser
+import org.jetbrains.annotations.TestOnly
 import org.slf4j.LoggerFactory
 import java.util.*
 
@@ -58,6 +58,7 @@ class KtorJsonRPCClient(
     companion object {
         @PublishedApi
         internal val log = LoggerFactory.getLogger(KtorJsonRPCClient::class.qualifiedName!!)
+        @TestOnly internal var instancesCleaned = 0
     }
     
     val url = url.copy(
@@ -65,13 +66,14 @@ class KtorJsonRPCClient(
         password = null,
     )
     
-    private val closer = run {
+    private val closer = Unit.run {
         val u = url.toString()
         val c = client
         globalCleaner.registerCloser(this) { cleaning ->
             if (cleaning) {
                 log.warn("GC cleaning unclosed client for $u")
                 Metrics.counter("unclosed_instance_cleaned", "class", javaClass.name).increment()
+                instancesCleaned++
             }
             c.close()
         }
