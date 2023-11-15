@@ -30,6 +30,7 @@ object HttpClients {
      * @param onClosed A callback that's invoked after the client is closed. Primarily present for testing the implementation.
      * @param config A block that configures the client. Defaults to no special configuration.
      */
+    @Deprecated("avoid creating new clients, it seems they leak threads even when closed. under investigation.")
     fun create(
         usage: String = "default",
         onClosed: (() -> Unit)? = null,
@@ -40,6 +41,7 @@ object HttpClients {
         
         val threadsBefore: List<Thread> = Thread.getAllStackTraces().keys.toList() // TODO more efficient way to get this? don't need stack traces
         val client = HttpClient(CIO, config)
+        Thread.sleep(10) // TODO horrible! TEMP quick hack to capture more of the threads
         val threadsAfter: List<Thread> = Thread.getAllStackTraces().keys.toList()
         
         val threadIdsBefore = threadsBefore.mapTo(mutableSetOf()) { it.id }
