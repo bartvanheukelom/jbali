@@ -5,6 +5,11 @@ import java.math.BigDecimal
 import java.math.BigInteger
 import kotlin.experimental.and
 
+// to sum up all fixed-size number types:
+//   JVM native ints: byte, short, int, long
+//   Kotlin unsigned ints: ubyte, ushort, uint, ulong
+//   JBali custom: uint24 - TODO make other sizes, at least uint48, and signed versions
+//   Floating point: float, double
 
 // exact narrowing conversions
 
@@ -46,7 +51,6 @@ fun Double.toLongExact(): Long =
                 throw ArithmeticException("$this is not representable as long")
             }
         }
-
 
 
 

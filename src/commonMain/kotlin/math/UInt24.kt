@@ -7,6 +7,19 @@ import kotlin.jvm.*
 // TODO USLong, USInt, USShort, USByte. numbers that are unsigned but also fit in the related signed type,
 //      e.g. USByte range is 0 .. 127
 
+
+/**
+ * Add to a function, extension method, or any other declaration that provides essential support for working
+ * with (one of) the number types provided by this library, like [UInt24].
+ * Particularly for marking those that should be extended or copied if a new number type is added.
+ */
+annotation class MoreNumberHelper
+
+/**
+ * The UInt24 class represents a 24-bit unsigned integer value and provides the standard operations on it.
+ *
+ * The value is stored as an [Int] internally, but this is an implementation detail that is subject to change.
+ */
 @JvmInline
 value class UInt24 @PublishedApi internal constructor(@PublishedApi internal val data: Int) : Comparable<UInt24> {
     
