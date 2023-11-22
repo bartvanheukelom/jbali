@@ -5,6 +5,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 import org.jbali.bytes.*
 import org.jbali.json2.JSONString
 import org.jbali.kotser.*
@@ -34,12 +35,14 @@ value class JWTSignature(
     override fun toString() = encoded.toString()
 }
 
+@Serializable(with = JWT.Serializer::class)
 data class JWT(
     val header: Base64JSON,
     val payload: Base64JSON,
     val signature: JWTSignature,
 ) {
     override fun toString() = "$header.$payload.$signature"
+    val concat get() = toString()
 
     companion object {
         @JvmStatic
@@ -56,10 +59,16 @@ data class JWT(
             )
         }
     }
+    
+    object Serializer : KSerializer<JWT> by transformingSerializer(
+        transformer = { it.concat },
+        detransformer = { fromString(it) },
+    )
 
 }
 
-private fun Base64JSON.unbase64(): JSONString =
+// TODO move
+fun Base64JSON.unbase64(): JSONString =
         decode(encoding = Base64Encoding.Url, wrapper = { JSONString(this) })
 
 private fun JSONString.base64(): Base64JSON =
@@ -195,6 +204,11 @@ object JWTNumericDateSerializer : TransformingSerializer<Instant, Double>(Instan
     override fun detransform(tf: Double): Instant =
             Instant.ofEpochSecond(tf.toLong())
 }
+
+inline fun <reified P : Any> JWTManager(
+    json: Json = DefaultJson.plain,
+    signer: JWTSigner,
+) = JWTManager<P>(serializer(), json, signer)
 
 class JWTManager<P : Any>(
         val payloadSerializer: KSerializer<P>,
