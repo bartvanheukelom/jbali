@@ -12,6 +12,11 @@ open class PluckedField<T>(
     val expr: Expression<T>,
     val slice: FieldSet,
 ) {
+    fun selectAll() =
+        PluckingQuery(
+            expr = expr,
+            query = slice.selectAll(),
+        )
     inline fun select(where: SqlExpressionBuilder.() -> Op<Boolean>) =
         selectWhere(SqlExpressionBuilder.where())
     fun selectWhere(where: Op<Boolean>) =
