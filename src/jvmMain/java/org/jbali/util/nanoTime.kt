@@ -15,6 +15,7 @@ import java.time.Duration
     fun toMicro() = MicroTime(nt / 1_000L)
     override fun toString() = "nT$nt"
     override fun compareTo(other: NanoTime) = nt.compareTo(other.nt)
+    fun elapsed() = NanoDuration.since(this)
     companion object {
         fun now() = NanoTime(System.nanoTime())
     }
