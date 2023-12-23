@@ -5,7 +5,9 @@ import io.ktor.http.*
 import io.ktor.util.*
 import io.ktor.util.pipeline.*
 import io.micrometer.core.instrument.MeterRegistry
+import kotlinx.coroutines.sync.Semaphore
 import org.slf4j.LoggerFactory
+import java.util.concurrent.atomic.AtomicInteger
 
 class ConcurrentLimit private constructor(private val configuration: Configuration) {
     
@@ -54,12 +56,38 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
         
     }
     
+    // semaphore for active requests
+    private val activeRequestSemaphore = Semaphore(configuration.maxActiveRequests)
+    private val queuedRequests = AtomicInteger(0)
+    
+    private suspend fun PipelineContext<Unit, ApplicationCall>.proceedWithLimit() {
+        if (activeRequestSemaphore.tryAcquire()) {
+            try {
+                proceed()
+            } finally {
+                activeRequestSemaphore.release()
+            }
+        } else {
+            if (queuedRequests.incrementAndGet() > configuration.maxQueuedRequests) {
+                queuedRequests.decrementAndGet() // TODO I don't like having to undo like this
+                configuration.rejectHandler(call)
+            } else {
+                activeRequestSemaphore.acquire()
+                try {
+                    proceed()
+                } finally {
+                    activeRequestSemaphore.release()
+                }
+            }
+        }
+    }
+    
+    
     companion object Feature : ApplicationFeature<ApplicationCallPipeline, Configuration, ConcurrentLimit> {
         
         private val ConcurrentLimitPreparePhase = PipelinePhase("ConcurrentLimitPrepare")
         
         override val key = AttributeKey<ConcurrentLimit>("ConcurrentLimit")
-        private val LimitsKey = AttributeKey<List<ConcurrentLimit>>("ConcurrentLimit.Limits")
         
         override fun install(pipeline: ApplicationCallPipeline, configure: Configuration.() -> Unit): ConcurrentLimit {
             val configuration = Configuration().apply(configure)
@@ -75,9 +103,8 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
             
             pipeline.intercept(ConcurrentLimitPreparePhase) {
                 trace("Intercept @ ConcurrentLimitPreparePhase")
-                call.attributes[LimitsKey] =
-                    (call.attributes.getOrNull(LimitsKey) ?: emptyList()) + feature
-                trace("limits: ${call.attributes[LimitsKey]}")
+                call.attributes[key] = feature
+                trace("limit: ${call.attributes[key]}")
                 try {
                     proceed()
                 } finally {
@@ -86,18 +113,18 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
             }
             
             pipeline.intercept(ApplicationCallPipeline.Call) {
-                val limits = call.attributes[LimitsKey]
-                trace("Intercept @ Call, limits: $limits")
-                call.attributes.put(LimitsKey, limits.drop(1))
+                val limit = call.attributes[key]
+                trace("Intercept @ Call, limit: $limit")
                 
                 try {
-                    if (limits.singleOrNull() != feature) {
+                    if (limit != feature) {
                         trace("This limit has been overridden")
                         proceed()
                     } else {
                         trace("We are the last limit! Applying $configuration ...")
-                        // TODO actually do the limiting
-                        proceed()
+                        feature.log.info("Stack before proceed", RuntimeException())
+                        with(feature) { proceedWithLimit() }
+                        feature.log.info("Stack after proceed", RuntimeException())
                     }
                 } finally {
                     trace("End intercept @ Call")
