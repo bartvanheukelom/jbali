@@ -4,10 +4,13 @@ import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.util.*
 import io.ktor.util.pipeline.*
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import kotlinx.coroutines.sync.Semaphore
 import org.slf4j.LoggerFactory
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 class ConcurrentLimit private constructor(private val configuration: Configuration) {
     
@@ -22,6 +25,8 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
         /**
          * The maximum number of concurrent active requests.
          * Extra requests will be queued.
+         * If set to Int.MAX_VALUE, there will be no limit. This can be used to undo the limit
+         * imposed by a parent route.
          */
         var maxActiveRequests = 32
         
@@ -54,29 +59,78 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
             rejectHandler = handler
         }
         
+        fun noLimit() {
+            maxActiveRequests = Int.MAX_VALUE
+            maxQueuedRequests = Int.MAX_VALUE // not used but set anyway
+        }
+        
     }
     
-    // semaphore for active requests
-    private val activeRequestSemaphore = Semaphore(configuration.maxActiveRequests)
+    private val activeRequestSemaphore = when (configuration.maxActiveRequests) {
+        Int.MAX_VALUE -> null
+        else -> Semaphore(configuration.maxActiveRequests)
+    }
+    private val activeRequests = AtomicInteger(0)
     private val queuedRequests = AtomicInteger(0)
     
+    private val counterRequestsRejected = configuration.meterRegistry?.let { registry ->
+        Counter.builder("ktor.http.requests.rejected")
+            .tag("debugName", configuration.debugName ?: "")
+            .register(registry)
+    }
+    private val meters = configuration.meterRegistry?.let { registry ->
+        listOf(
+            Gauge.builder("ktor.http.requests.queued", queuedRequests::get)
+                .tag("debugName", configuration.debugName ?: "")
+                .register(registry),
+            Gauge.builder("ktor.http.requests.concurrent", activeRequests::get)
+                .tag("debugName", configuration.debugName ?: "")
+                .register(registry),
+        )
+    }
+    // TODO clean them up
+    
+    private val seq = AtomicLong(0)
+    
     private suspend fun PipelineContext<Unit, ApplicationCall>.proceedWithLimit() {
-        if (activeRequestSemaphore.tryAcquire()) {
-            try {
-                proceed()
-            } finally {
-                activeRequestSemaphore.release()
-            }
+        if (activeRequestSemaphore == null) {
+            proceed()
         } else {
-            if (queuedRequests.incrementAndGet() > configuration.maxQueuedRequests) {
-                queuedRequests.decrementAndGet() // TODO I don't like having to undo like this
-                configuration.rejectHandler(call)
-            } else {
-                activeRequestSemaphore.acquire()
+            val rs = seq.incrementAndGet()
+            val rid = "${call.uuid}#${rs}"
+            if (activeRequestSemaphore.tryAcquire()) {
                 try {
+                    log.info("QQQ immediate proceed $rid")
                     proceed()
                 } finally {
                     activeRequestSemaphore.release()
+                }
+            } else {
+                val qr = queuedRequests.incrementAndGet()
+                if (qr > configuration.maxQueuedRequests || qr < 0) { // < 0 by overflow
+                    queuedRequests.decrementAndGet() // TODO I don't like having to undo like this
+                    log.warn("Rejecting request $rid because too many queued requests")
+                    counterRequestsRejected?.increment()
+                    configuration.rejectHandler(call)
+                    finish()
+                } else {
+                    log.warn("Queueing request $rid because too many active requests. Queued requests: $qr")
+                    try {
+                        activeRequestSemaphore.acquire()
+                    } finally {
+                        queuedRequests.decrementAndGet()
+                    }
+                    try {
+                        log.info("Proceeding with queued request $rid")
+                        activeRequests.incrementAndGet()
+                        try {
+                            proceed()
+                        } finally {
+                            activeRequests.decrementAndGet()
+                        }
+                    } finally {
+                        activeRequestSemaphore.release()
+                    }
                 }
             }
         }
@@ -96,7 +150,7 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
             log.info("Installing")
             
             fun PipelineContext<*, ApplicationCall>.trace(msg: String) {
-                log.info("{call=${System.identityHashCode(call)}} $msg")
+//                log.info("{call=${System.identityHashCode(call)}} $msg")
             }
             
             pipeline.insertPhaseBefore(ApplicationCallPipeline.Call, ConcurrentLimitPreparePhase)
@@ -122,9 +176,9 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
                         proceed()
                     } else {
                         trace("We are the last limit! Applying $configuration ...")
-                        feature.log.info("Stack before proceed", RuntimeException())
+//                        feature.log.info("Stack before proceed", RuntimeException())
                         with(feature) { proceedWithLimit() }
-                        feature.log.info("Stack after proceed", RuntimeException())
+//                        feature.log.info("Stack after proceed", RuntimeException())
                     }
                 } finally {
                     trace("End intercept @ Call")
