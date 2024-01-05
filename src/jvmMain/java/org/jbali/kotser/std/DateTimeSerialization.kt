@@ -1,12 +1,14 @@
 package org.jbali.kotser.std
 
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import org.jbali.kotser.StringBasedSerializer
 import org.jbali.kotser.Transformer
 import org.jbali.kotser.TransformingSerializer
 import org.jbali.kotser.transformingSerializer
 import org.jbali.threeten.toDate
+import org.threeten.extra.Interval
 import org.threeten.extra.YearQuarter
 import org.threeten.extra.YearWeek
 import java.sql.Timestamp
@@ -33,6 +35,34 @@ object DateSerializer : TransformingSerializer<Date, Instant>(Date::class, Insta
     override fun transform(obj: Date): Instant = obj.toInstant()
     override fun detransform(tf: Instant): Date = tf.toDate()
 }
+
+
+/**
+ * Serialized form of [Interval].
+ */
+@Serializable
+data class SerializedInterval(
+    /**
+     * Start of the interval, inclusive.
+     * Defaults to [Instant.MIN], which [Interval] considers to be unbounded
+     * and thus is good to omit (when omitting defaults is enabled) to enhance
+     * compatibility with code that encodes an unbounded start differently.
+     */
+    val start: @Serializable(with = InstantSerializer::class) Instant = Instant.MIN,
+    /**
+     * End of the interval, exclusive.
+     * Defaults to [Instant.MAX], which [Interval] considers to be unbounded
+     * and thus is good to omit (when omitting defaults is enabled) to enhance
+     * compatibility with code that encodes an unbounded end differently.
+     */
+    val end: @Serializable(with = InstantSerializer::class) Instant = Instant.MAX,
+)
+
+object IntervalSerializer : KSerializer<Interval> by transformingSerializer(
+    transformer = { SerializedInterval(it.start, it.end) },
+    detransformer = { Interval.of(it.start, it.end) },
+)
+
 
 object LocalDateSerializer : StringBasedSerializer<LocalDate>(LocalDate::class) {
     override fun fromString(s: String): LocalDate = LocalDate.parse(s)
