@@ -9,9 +9,20 @@ import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import kotlinx.coroutines.sync.Semaphore
 import org.slf4j.LoggerFactory
+import org.slf4j.helpers.NOPLogger
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
+/**
+ * Feature for limiting the number of concurrent requests. If the limit is reached, incoming requests will be queued
+ * until they can be processed. If the queue is full they will be rejected.
+ *
+ * This feature can be installed at application level or at route level. The limits of the most specific route will
+ * be applied. For example, if you limit `/foo` to 10 requests and `/foo/bar` to 20, then the application
+ * will allow 20 concurrent requests to `/foo/bar`, as well as 10 concurrent requests to `/foo/bro` at the same time.
+ *
+ * Can export MicroMeter gauges for queued and active requests, and a counter for rejected requests.
+ */
 class ConcurrentLimit private constructor(private val configuration: Configuration) {
     
     private val log = LoggerFactory.getLogger("org.jbali.ktor.ConcurrentLimit[${configuration.debugName}]")
@@ -42,6 +53,7 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
         
         /**
          * If set, meters will be registered with this registry.
+         * The configured [debugName] will be added as tag to all metrics.
          */
         var meterRegistry: MeterRegistry? = null
         
@@ -100,7 +112,7 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
             val rid = "${call.uuid}#${rs}"
             if (activeRequestSemaphore.tryAcquire()) {
                 try {
-                    log.info("QQQ immediate proceed $rid")
+//                    log.info("QQQ immediate proceed $rid")
                     proceed()
                 } finally {
                     activeRequestSemaphore.release()
@@ -146,11 +158,11 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
         override fun install(pipeline: ApplicationCallPipeline, configure: Configuration.() -> Unit): ConcurrentLimit {
             val configuration = Configuration().apply(configure)
             val feature = ConcurrentLimit(configuration)
-            val log = feature.log
+            val log = NOPLogger.NOP_LOGGER // feature.log
             log.info("Installing")
             
             fun PipelineContext<*, ApplicationCall>.trace(msg: String) {
-//                log.info("{call=${System.identityHashCode(call)}} $msg")
+                log.info("{call=${System.identityHashCode(call)}} $msg")
             }
             
             pipeline.insertPhaseBefore(ApplicationCallPipeline.Call, ConcurrentLimitPreparePhase)
@@ -176,9 +188,9 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
                         proceed()
                     } else {
                         trace("We are the last limit! Applying $configuration ...")
-//                        feature.log.info("Stack before proceed", RuntimeException())
+                        log.info("Stack before proceed", RuntimeException())
                         with(feature) { proceedWithLimit() }
-//                        feature.log.info("Stack after proceed", RuntimeException())
+                        log.info("Stack after proceed", RuntimeException())
                     }
                 } finally {
                     trace("End intercept @ Call")
