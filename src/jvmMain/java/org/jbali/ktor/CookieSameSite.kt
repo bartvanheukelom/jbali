@@ -26,9 +26,10 @@ enum class CookieSameSite {
     Lax,
 
     /**
-     * The cookie has no restrictions on cross-site requests.
+     * Intention: the cookie has no restrictions on cross-site requests,
+     * but starting in 2024, will start to be blocked from different domains anyway,
+     * unless the cookie is Partitioned: https://developers.google.com/privacy-sandbox/3pcd/chips
      */
-    @Deprecated("Google Chrome will be phasing out support starting in 2024. Other browsers will likely do so too.")
     None;
 
     companion object {
@@ -47,5 +48,18 @@ var CookieConfiguration.sameSite: CookieSameSite?
             null -> extensions.remove(CookieSameSite.attributeName)
             else -> extensions[CookieSameSite.attributeName] = v.name
         }
-
     }
+
+
+
+fun CookieConfiguration.hasExtensionFlag(name: String): Boolean = name in extensions
+fun CookieConfiguration.setExtensionFlag(name: String, present: Boolean) {
+    when (present) {
+        true -> extensions[name] = null
+        false -> extensions.remove(name)
+    }
+}
+
+var CookieConfiguration.partitioned: Boolean
+    get() = hasExtensionFlag("Partitioned")
+    set(v) = setExtensionFlag("Partitioned", v)
