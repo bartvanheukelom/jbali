@@ -6,18 +6,18 @@ import org.jbali.collect.ListSet
  * Optimized [Map] implementation that contains a value for each entry of the [HumValue] denoted by [type].
  */
 class HumMap<K : HumValue<K>, out V> private constructor(
-        val type: HumTree<K, K>,
-        override val values: List<V>
+    val type: HumNode<K, K>,
+    override val values: List<V>
 ) : Map<K, V>, List<V> by values {
     
     companion object {
         /**
          * Create a HumMap for the given [type] with the given associated [values].
-         * The caller is responsible for ensuring these are in the same order as the [HumTree.values].
+         * The caller is responsible for ensuring these are in the same order as the [HumNode.values].
          */
-        fun <K : HumValue<K>, V> fromOrderedValues(type: HumTree<K, K>, values: List<V>) = HumMap(type, values)
+        fun <K : HumValue<K>, V> fromOrderedValues(type: HumNode<K, K>, values: List<V>) = HumMap(type, values)
     
-        fun <K : HumValue<K>, V> associate(type: HumTree<K, K>, valueGetter: (K) -> V) =
+        fun <K : HumValue<K>, V> associate(type: HumNode<K, K>, valueGetter: (K) -> V) =
             fromOrderedValues(type, type.map(valueGetter))
     }
 

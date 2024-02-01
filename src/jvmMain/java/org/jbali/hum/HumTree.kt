@@ -23,14 +23,28 @@ import kotlin.reflect.full.isSubclassOf
 // branch = subset of root or branch, has branches and/or leaves
 // value = leaf
 // ------------------------------------------------------------------- //
-// group = root or branch
-// tree = root, branch or leaf
+// group = root or branch (note that these are very similar, if not identical, and may be merged)
+// node = root, branch or leaf
 // ------------------------------------------------------------------- //
-
+// example [each line is a node]:
+// Animalia [root, group]
+//    Carnivora [branch, group]
+//        Felidae [branch, group]
+//            FCatus [leaf]
+//            PPardus
+//            PLeo
+//        Caniformia
+//            CanisLupus
+//            UrsusArctos
+//        NandiniaBinotata [leaf]
+//    Rodentia
+//        MusMusculus
+// ------------------------------------------------------------------- //
 
 /**
  * Some subtree of a hierarchical enum.
  * @param G all values in the subtree are of this type, but not all possible values of this type may be in the subtree.
+ * TODO rename to HumNodeOut or just remove, what is it for anyway?
  */
 interface HumTreeOut<out G> : ListSet<G> {
 
@@ -54,11 +68,11 @@ interface HumTreeOut<out G> : ListSet<G> {
  * Represent a single subtree of a hierarchical enum, which includes the option of representing a single value,
  * or the entire tree.
  *
- * Every _object_ in a hierarchical enum definition is a subclass of [HumTree]. That is, every value object, and every (sealed) group companion.
+ * Every _object_ in a hierarchical enum definition is a subclass of [HumNode]. That is, every value object, and every (sealed) group companion.
  *
  * @param G all values in the subtree are of this type AND all possible values of this type are in the subtree.
  */
-sealed class HumTree<R : HumValue<R>, G : R>(
+sealed class HumNode<R : HumValue<R>, G : R>(
         val rootClass: KClass<R>,
         gc: KClass<G>?
 ) :
@@ -82,8 +96,8 @@ sealed class HumTree<R : HumValue<R>, G : R>(
     }
 
     private val ser: StringBasedSerializer<G> = object : StringBasedSerializer<G>(groupClass) {
-        override fun fromString(s: String): G = this@HumTree.fromString(s)
-        override fun toString(o: G) = this@HumTree.toString(o)
+        override fun fromString(s: String): G = this@HumNode.fromString(s)
+        override fun toString(o: G) = this@HumNode.toString(o)
     }
 
     // for use by HumValue
@@ -149,12 +163,12 @@ sealed class HumTree<R : HumValue<R>, G : R>(
 
     override fun containsAll(elements: Collection<R>): Boolean =
             when (elements) {
-                is HumTree<R, *> -> contains(elements)
+                is HumNode<R, *> -> contains(elements)
                 is HumValue<R> -> containsImpl(elements)
                 else -> elements.all { it in this }
             }
 
-    operator fun contains(tree: HumTree<R, *>): Boolean =
+    operator fun contains(tree: HumNode<R, *>): Boolean =
             tree.groupClass.isSubclassOf(groupClass)
 
     // TODO find a way to init this once per hierarchy, instead of the runtime overhead of lazy
@@ -198,6 +212,7 @@ sealed class HumTree<R : HumValue<R>, G : R>(
 
 }
 
+
 /**
  * Represent a subtree of a hierarchical enum, possibly the entire tree, but not a single leaf.
  * Base class for companions of enum root or subdivision.
@@ -206,7 +221,7 @@ sealed class HumGroup<R : HumValue<R>, G : R>(
         rootClass: KClass<R>,
         groupClass: KClass<G>
 )
-    : HumTree<R, G>(rootClass, groupClass) {
+    : HumNode<R, G>(rootClass, groupClass) {
 
     init {
         require(groupClass.isSealed) {
@@ -245,7 +260,7 @@ abstract class HumValue<R : HumValue<R>>(
         /** The root class of this hierarchical enumeration, e.g. `Animalia::class`. */
         val root: HumRoot<R>
 ) :
-        HumTree<R, R>(root.rootClass), // TODO G
+        HumNode<R, R>(root.rootClass), // TODO G
         Comparable<R>
 {
 
@@ -267,7 +282,7 @@ abstract class HumValue<R : HumValue<R>>(
     companion object {
 
         @JvmStatic
-        fun getGroup(type: Class<*>): HumTree<*, *> =
+        fun getGroup(type: Class<*>): HumNode<*, *> =
                 type.kotlin.forceHumGroup
 
     }
@@ -288,15 +303,15 @@ val <R : HumValue<R>> KClass<R>.humRoot: HumRoot<R>
         return grp as HumRoot<R>
     }
 
-val KClass<*>.forceHumGroup: HumTree<*, *> get() =
-        companionObjectInstance as HumTree<*, *>
+val KClass<*>.forceHumGroup: HumNode<*, *> get() =
+        companionObjectInstance as HumNode<*, *>
 
-val <R : HumValue<R>, G : R> KClass<G>.humGroup: HumTree<R, G>
+val <R : HumValue<R>, G : R> KClass<G>.humGroup: HumNode<R, G>
     get() {
         val grp = forceHumGroup
         if (grp.groupClass != this) {
             throw AssertionError()
         }
         @Suppress("UNCHECKED_CAST")
-        return grp as HumTree<R, G>
+        return grp as HumNode<R, G>
     }
