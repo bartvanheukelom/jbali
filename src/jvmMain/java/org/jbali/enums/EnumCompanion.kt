@@ -44,7 +44,26 @@ open class EnumCompanion<E : Enum<E>>(
             EnumSet.noneOf(javaClass).apply {
                 addAll(values)
             }
+    
+    /**
+     * Map of all enum constants by their lowercased name.
+     */
+    val byLowerName: Map<String, E> = all.associateBy { it.name.lowercase() }
 
+    /**
+     * Find the enum constant with the given name, ignoring case and trimming outer whitespace.
+     * @throws IllegalArgumentException if there is no such constant.
+     */
+    fun parse(name: String): E =
+        parseOrNull(name)
+            ?: throw IllegalArgumentException("No enum constant ${javaClass.name}.${name}")
+    
+    /**
+     * Find the enum constant with the given name, ignoring case and trimming outer whitespace.
+     * @return the constant, or `null` if none found.
+     */
+    fun parseOrNull(name: String) = byLowerName[name.trim().lowercase()]
+    
 }
 
 @Suppress("FunctionName") // faux constructor

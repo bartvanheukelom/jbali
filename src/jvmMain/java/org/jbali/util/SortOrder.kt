@@ -1,5 +1,7 @@
 package org.jbali.util
 
+import kotlinx.serialization.Serializable
+
 enum class SortOrder(
         /** 1 for ASCENDING, -1 for DESCENDING */
         val multiplier: Int
@@ -59,3 +61,10 @@ fun <T, K : Comparable<K>> Iterable<T>.isSortedInOrderBy(
 fun <T : Comparable<T>> Iterable<T>.isSortedInOrderBy(
     order: SortOrder = SortOrder.ASCENDING,
 ): Boolean = isSortedInOrderBy(order) { it }
+
+
+@Serializable
+data class SortBy<P>(
+    val property: P,
+    val order: SortOrder = SortOrder.ASCENDING,
+)

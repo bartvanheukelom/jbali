@@ -3,6 +3,8 @@ package org.jbali.hum
 import org.jbali.collect.ListSet
 import org.jbali.hum.Animalia.Carnivora
 import org.jbali.hum.Animalia.Rodentia
+import org.jbali.kotser.assertSerialization
+import org.jbali.kotser.jsonSerializer
 import org.jbali.serialize.JavaSerializer
 import org.jbali.serialize.JavaSerializer.read
 import org.jbali.serialize.JavaSerializer.write
@@ -71,5 +73,59 @@ class HumTest {
             assertEquals(v.name, v.toString())
         }
     }
-
+    
+    @Test fun testNodesByLocalName() {
+        
+        // BASE: root
+        assertEquals(Animalia, Animalia.descendantByLocalName("")) // self
+        assertEquals(Carnivora, Animalia.descendantByLocalName("Carnivora")) // direct child
+        assertEquals(Carnivora.Felidae, Animalia.descendantByLocalName("Carnivora.Felidae")) // descendant group
+        assertEquals(Carnivora.Felidae.FCatus, Animalia.descendantByLocalName("Carnivora.Felidae.FCatus")) // descendant value
+        
+        assertFailsWith<NoSuchElementException> { Animalia.descendantByLocalName("Robotica") }
+        assertFailsWith<NoSuchElementException> { Animalia.descendantByLocalName("Robotica.RMega") }
+        
+        assertFailsWith<IllegalArgumentException> { Animalia.descendantByLocalName("Carnivora.Felidae.FCatus.FCatusSupercutus") }
+        
+        // BASE: group
+        assertEquals(Carnivora, Carnivora.descendantByLocalName("")) // self
+        assertEquals(Carnivora.Felidae, Carnivora.descendantByLocalName("Felidae")) // direct child
+        assertEquals<Any>(Carnivora.Felidae.FCatus, Carnivora.descendantByLocalName("Felidae.FCatus")) // descendant value
+        // BASE: value - TODO
+//        assertEquals(Carnivora.Felidae.FCatus, Carnivora.Felidae.FCatus.descendantByName("")) // self
+    }
+    
+    @Test fun testNodeLocalNames() {
+        // BASE: root
+        assertEquals("", Animalia.localNameOf(Animalia)) // self
+        assertEquals("Carnivora", Animalia.localNameOf(Carnivora)) // direct child
+        assertEquals("Carnivora.Felidae", Animalia.localNameOf(Carnivora.Felidae)) // descendant group
+        assertEquals("Carnivora.Felidae.FCatus", Animalia.localNameOf(Carnivora.Felidae.FCatus)) // descendant value
+        
+        // BASE: group
+        assertEquals("", Carnivora.localNameOf(Carnivora)) // self
+        assertEquals("Felidae", Carnivora.localNameOf(Carnivora.Felidae)) // direct child
+        assertEquals("Felidae.FCatus", Carnivora.localNameOf(Carnivora.Felidae.FCatus)) // descendant value
+        
+        assertFailsWith<IllegalArgumentException> { Carnivora.localNameOf(Rodentia.MusMusculus) }
+            .also { assertEquals("Rodentia.MusMusculus is not a descendant of Carnivora", it.message) }
+        
+        // BASE: value - TODO
+//        assertEquals("", Carnivora.Felidae.FCatus.localNameOf(Carnivora.Felidae.FCatus)) // self
+    }
+    
+    @Test fun testNodeSerializer() {
+        // BASE: root
+        val serRoot = jsonSerializer(Animalia.nodeSerializer)
+        serRoot.assertSerialization(Animalia, """""""")
+        serRoot.assertSerialization(Carnivora, """"Carnivora"""")
+        serRoot.assertSerialization(Carnivora.Felidae, """"Carnivora.Felidae"""")
+        serRoot.assertSerialization(Carnivora.Felidae.FCatus, """"Carnivora.Felidae.FCatus"""")
+        // BASE: group
+        val serGroup = jsonSerializer(Carnivora.nodeSerializer)
+        serGroup.assertSerialization(Carnivora, """""""")
+        serGroup.assertSerialization(Carnivora.Felidae, """"Felidae"""")
+//        serGroup.assertSerialization(Carnivora.Felidae.FCatus, """"Felidae.FCatus"""") - TODO why not ok?
+    }
+    
 }
