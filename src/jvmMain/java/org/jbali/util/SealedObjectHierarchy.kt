@@ -37,3 +37,20 @@ private fun <T : Any> loadSealedObjects(c: KClass<out T>, into: MutableCollectio
         throw IllegalArgumentException("Error in loadSealedObjects($c): $e", e)
     }
 }
+
+val <T : Any, B : T> KClass<B>.parentOrNull: KClass<out T>?
+    get() = supertypes.firstOrNull {
+        it.classifier is KClass<*>
+    }?.classifier as? KClass<out T>
+
+val <T : Any, B : T> KClass<B>.parent: KClass<out T>
+    get() = parentOrNull ?: error("$this has no parent class. Supertypes: $supertypes")
+
+val <T : Any, B : T> KClass<B>.outerParentOrNull: KClass<out T>?
+    get() = parentOrNull?.takeIf {
+        this.qualifiedName != null && it.qualifiedName != null &&
+                this.qualifiedName!!.startsWith(it.qualifiedName!! + ".")
+    }
+
+val <T : Any, B : T> KClass<B>.outerParent: KClass<out T>
+    get() = outerParentOrNull ?: error("$this's parent $parent is not the containing outer class")

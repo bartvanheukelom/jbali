@@ -9,7 +9,10 @@ import org.jbali.kotser.StringBasedSerializer
 import org.jbali.reflect.isObject
 import org.jbali.reflect.kClass
 import org.jbali.serialize.SerializedObject
+import org.jbali.util.cast
 import org.jbali.util.loadSealedObjects
+import org.jbali.util.outerParent
+import org.jbali.util.outerParentOrNull
 import java.io.Externalizable
 import java.io.ObjectInput
 import java.io.ObjectOutput
@@ -102,6 +105,9 @@ sealed class HumNode<R : HumValue<R>, G : R>(
 
     // for use by HumValue
     constructor(rootClass: KClass<R>) : this(rootClass, null)
+    
+    abstract val parent: HumNode<R, out G>?
+    abstract val localName: String?
 
     /**
      * The name for this [HumValue], which equals the qualified class name with the qualified [rootClass] name prefix removed,
@@ -173,18 +179,18 @@ sealed class HumNode<R : HumValue<R>, G : R>(
 
     // TODO find a way to init this once per hierarchy, instead of the runtime overhead of lazy
     // must be lazy because the leaf objects have not been constructed yet when this companion is inited
-    private val late by lazy { Late() }; inner class Late {
+    private val late by lazy(LazyThreadSafetyMode.PUBLICATION) { Late() }; inner class Late {
 
         val values: ListSet<G> =
-                try {
-                    groupClass.loadSealedObjects().toListSet()
-                } catch (e: Exception) {
-                    throw AssertionError("Could not load sealed objects of $groupClass: $e", e)
-                }
+            try {
+                groupClass.loadSealedObjects().toListSet()
+            } catch (e: Exception) {
+                throw AssertionError("Could not load sealed objects of $groupClass: $e", e)
+            }
 
         // TODO group-local name (and ordinal)
         val allByName: Map<String, G> =
-                values.associateBy { it.name }
+            values.associateBy { it.name }
 
     }
 
@@ -228,9 +234,85 @@ sealed class HumGroup<R : HumValue<R>, G : R>(
             "$groupClass is not sealed"
         }
     }
+    
+    private val late by lazy(LazyThreadSafetyMode.PUBLICATION) { Late() }; inner class Late {
 
+        val childrenByLocalName: Map<String, HumNode<R, out G>> =
+            try {
+                groupClass.sealedSubclasses.associate {
+                    it.simpleName!! to when {
+                        it.isSealed -> it.companionObjectInstance as HumGroup<R, out G>
+                        it.isObject -> it.objectInstance as HumValue<R> as HumNode<R, out G> // TODO latter cast is because HumValue doesn't have the G param
+                        else -> throw AssertionError("$it is neither sealed nor object")
+                    }
+                }
+            } catch (e: Exception) {
+                throw AssertionError("Could not load sealed objects of $groupClass: $e", e)
+            }
+        
+    }
+    
+    fun valueByLocalName(s: String): G =
+        when (val desc = descendantByLocalName(s)) {
+            is HumValue<*> -> {
+                @Suppress("UNCHECKED_CAST")
+                desc as G
+            }
+            else -> throw IllegalArgumentException("$desc is not a value but a group")
+        }
+    
+    fun descendantByLocalName(s: String): HumNode<R, out G> =
+        descendantFromSplitString(if (s == "") emptyList() else s.split('.'), 0)
+    
+    private fun descendantFromSplitString(spl: List<String>, offset: Int): HumNode<R, out G> {
+        if (spl.size == offset) {
+            return this
+        }
+        val n = spl[offset]
+//        if (n == "") {
+//            this
+//        } else {
+        return when (val child = late.childrenByLocalName[n]) {
+                null -> throw NoSuchElementException("$this has no child named '$n'")
+                is HumValue<*> -> {
+                    if (offset != spl.size - 1) {
+                        throw IllegalArgumentException("Cannot descend into leaf $child")
+                    }
+                    child
+                }
+                
+                is HumGroup<*, *> -> {
+                    child.cast<HumGroup<R, out G>>().descendantFromSplitString(
+                        spl, offset + 1
+//                        spl.subList(offset + 1, spl.size), 0
+                    )
+                }
+            }
+//        }
+    }
+    
+    // TODO use G param, once HumValue has it
+    fun localNameOf(value: HumNode<R, *>): String =
+        splitLocalNameOf(value).joinToString(".")
+    
+    private fun splitLocalNameOf(value: HumNode<R, *>): List<String> =
+        when {
+            value == this -> emptyList()
+            value.parent == null -> throw IllegalArgumentException("$value has no parent")
+            value.parent == this -> listOf(value.localName!!)
+            else -> try {
+                splitLocalNameOf(value.parent!!) + value.localName!!
+            } catch (e: IllegalArgumentException) {
+                throw IllegalArgumentException("$value is not a descendant of $this")
+            }
+        }
+    
+    val nodeSerializer: KSerializer<HumNode<R, out G>> = object : StringBasedSerializer<HumNode<R, out G>>(kClass) {
+        override fun fromString(s: String): HumNode<R, out G> = descendantByLocalName(s)
+        override fun toString(o: HumNode<R, out G>): String = localNameOf(o)
+    }
+    
 }
-
 
 
 // ==================================== base classes for implementations ================================= //
@@ -240,7 +322,10 @@ sealed class HumGroup<R : HumValue<R>, G : R>(
  * Base class for hierarchical enumeration root companions.
  */
 abstract class HumRoot<R : HumValue<R>>(rootClass: KClass<R>)
-    : HumGroup<R, R>(rootClass, rootClass)
+    : HumGroup<R, R>(rootClass, rootClass) {
+    override val parent: Nothing? = null
+    override val localName: Nothing? = null
+}
 
 
 /**
@@ -250,7 +335,11 @@ abstract class HumBranch<R : HumValue<R>, G : R>(
         rootClass: KClass<R>,
         groupClass: KClass<G>
 )
-    : HumGroup<R, G>(rootClass, groupClass)
+    : HumGroup<R, G>(rootClass, groupClass) {
+    override val parent: HumNode<R, out G> = groupClass.outerParent
+        .forceHumGroup as HumNode<R, out G>
+    override val localName: String = groupClass.simpleName!!
+}
 
 
 /**
@@ -263,6 +352,10 @@ abstract class HumValue<R : HumValue<R>>(
         HumNode<R, R>(root.rootClass), // TODO G
         Comparable<R>
 {
+    
+    override val parent: HumNode<R, out R> = kClass.outerParentOrNull!!
+        .let { it.forceHumGroup as HumNode<R, out R> }
+    override val localName: String = kClass.simpleName!!
 
     // optimization (I think) that's functionally the same
     override operator fun contains(element: R): Boolean =

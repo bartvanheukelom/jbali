@@ -72,7 +72,7 @@ sealed class KVON {
                     }
                     appendJsonQuoted(k)
                     append(':')
-                    when (v.first()) {
+                    when (v.firstOrNull()) {
                         '[', '{' -> append(v)
                         else -> appendJsonQuoted(v)
                     }
