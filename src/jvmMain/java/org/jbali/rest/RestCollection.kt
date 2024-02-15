@@ -121,6 +121,18 @@ class RestCollection(
             config = config
         )
     
+    
+    inline fun <reified T : Any, reified K : Any> item(
+        noinline keyParse: (String) -> K,
+        noinline config: Item<T, K>.(key: ApplicationCall.() -> K) -> Unit
+    ): Item<T, K> =
+        item(
+            type = reifiedTypeOf(),
+            keyType = reifiedTypeOf(),
+            keyParse = keyParse,
+            config = config
+        )
+    
     inline fun <reified E : Enum<E>, reified T : Any> enumKeyItem(
         noinline config: Item<T, E>.(key: ApplicationCall.() -> E) -> Unit
     ): Item<T, E> =
