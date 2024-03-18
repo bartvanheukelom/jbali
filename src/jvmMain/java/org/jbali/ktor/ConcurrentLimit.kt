@@ -104,16 +104,25 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
     
     private val seq = AtomicLong(0)
     
+    private suspend fun PipelineContext<Unit, ApplicationCall>.proceedCounted() {
+        activeRequests.incrementAndGet()
+        try {
+            proceed()
+        } finally {
+            activeRequests.decrementAndGet()
+        }
+    }
+    
     private suspend fun PipelineContext<Unit, ApplicationCall>.proceedWithLimit() {
         if (activeRequestSemaphore == null) {
-            proceed()
+            proceedCounted()
         } else {
             val rs = seq.incrementAndGet()
             val rid = "${call.uuid}#${rs}"
             if (activeRequestSemaphore.tryAcquire()) {
                 try {
 //                    log.info("QQQ immediate proceed $rid")
-                    proceed()
+                    proceedCounted()
                 } finally {
                     activeRequestSemaphore.release()
                 }
@@ -134,12 +143,7 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
                     }
                     try {
                         log.info("Proceeding with queued request $rid")
-                        activeRequests.incrementAndGet()
-                        try {
-                            proceed()
-                        } finally {
-                            activeRequests.decrementAndGet()
-                        }
+                        proceedCounted()
                     } finally {
                         activeRequestSemaphore.release()
                     }
