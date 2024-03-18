@@ -81,7 +81,19 @@ interface RestRouteContext : RestApiContext {
     
 }
 
-
+context(RestRouteContext)
+suspend inline fun <reified T> ApplicationCall.respondObject(
+    returnVal: T,
+    status: HttpStatusCode = HttpStatusCode.OK,
+    cacheSerialization: Boolean = true,
+) {
+    respondObject(
+        returnType = reifiedTypeOf(),
+        returnVal = returnVal,
+        status = status,
+        cacheSerialization = cacheSerialization,
+    )
+}
 
 inline fun <reified I : Any> RestRouteContext.post(
     path: String,
