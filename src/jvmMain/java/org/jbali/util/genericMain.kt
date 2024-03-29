@@ -111,9 +111,26 @@ fun basicDaemonMain(
         log = LoggerFactory.getLogger("main")
         log.info("^^^^^^^^^^^^^^^^^^^^^^ [start] ^^^^^^^^^^^^^^^^^^^^^^")
         
+        // log a tick every second during init, to quickly find startup bottlenecks
+        val tickerThread = thread(name = "initTicker") {
+            var tick = 0
+            while (true) {
+                try {
+                    Thread.sleep(1000L) // yes, this actually makes it tick slightly slower, but whatever
+                } catch (e: InterruptedException) {
+                    break
+                }
+                log.info("^^^^^^^^^^^^^^^^^^^^^^ [initing - ${++tick} s] ^^^^^^^^^^^^^^^^^^^^^^")
+            }
+        }
+        
         val app =
             try {
-                mainAppCreator()
+                try {
+                    mainAppCreator()
+                } finally {
+                    tickerThread.interrupt()
+                }
             } catch (e: Throwable) {
                 errorExit(e, "mainAppCreator()")
             }
