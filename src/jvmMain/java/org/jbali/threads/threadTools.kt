@@ -1,5 +1,8 @@
+@file:OptIn(ExperimentalContracts::class)
+
 package org.jbali.threads
 
+import java.util.concurrent.locks.Lock
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -149,3 +152,31 @@ data class ThreadInfo(
         val stack: List<StackTraceElement>
 )
 
+/**
+ * _Unlocks_ this lock, calls the [action], and then _locks_ it again.
+ * Example:
+ *
+ * ```
+ * lk.withLock {
+ *   if (mustRefresh) {
+ *     val update = lk.withoutLock { // <----
+ *       refresh()
+ *     }
+ *     if (mustRefresh) { // this may have changed!
+ *       current = update
+ *     }
+ *   }
+ * }
+ * ```
+ *
+ * @return the return value of the action.
+ */
+inline fun <T> Lock.withoutLock(action: () -> T): T {
+    contract { callsInPlace(action, InvocationKind.EXACTLY_ONCE) }
+    unlock()
+    try {
+        return action()
+    } finally {
+        lock()
+    }
+}
