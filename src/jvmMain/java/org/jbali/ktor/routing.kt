@@ -85,3 +85,16 @@ object FallbackRouteSelector :
 
     override fun toString(): String = "(fallback)"
 }
+
+/**
+ * Builds routes to match `PUT` and `DELETE` requests, using the same [handler] for both.
+ * The handler is called with the body of type [R] for `PUT` requests, and `null` for `DELETE` requests.
+ */
+inline fun <reified R : Any> Route.putOrDelete(
+    noinline handler: suspend PipelineContext<Unit, ApplicationCall>.(R?) -> Unit
+) {
+    put(handler)
+    delete {
+        handler(null)
+    }
+}
