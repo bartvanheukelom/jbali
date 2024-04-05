@@ -25,3 +25,6 @@ operator fun Number.compareTo(other: Zero) = -(other.compareTo(this))
 // the above can be hard to auto-import, so we also provide:
 val Number.isPositive get() = this > Zero
 val Number.isNegative get() = this < Zero
+
+val Number.isZero get() = this.compareTo(Zero) == 0
+

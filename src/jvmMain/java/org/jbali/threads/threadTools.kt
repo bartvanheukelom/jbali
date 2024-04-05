@@ -3,6 +3,7 @@
 package org.jbali.threads
 
 import java.util.concurrent.locks.Lock
+import kotlin.concurrent.withLock
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -151,6 +152,23 @@ data class ThreadInfo(
         val name: String,
         val stack: List<StackTraceElement>
 )
+
+/**
+ * Executes the given [action] under this lock.
+ * This is the same as (an in fact just delegates to) [withLock],
+ * but allows suspending inside it without getting a
+ * "suspension point is inside a critical section" compile error.
+ *
+ * Obviously, only use if you're sure that the suspension is safe!
+ * If the coroutine can resume in a different thread, it's probably not.
+ *
+ * @return the return value of the action.
+ */
+inline fun <T> Lock.withLockSneaky(action: () -> T): T {
+    contract { callsInPlace(action, InvocationKind.EXACTLY_ONCE) }
+    return withLock(action)
+}
+
 
 /**
  * _Unlocks_ this lock, calls the [action], and then _locks_ it again.
