@@ -1,8 +1,6 @@
 package org.jbali.ktor
 
 import io.ktor.application.*
-import io.ktor.http.*
-import io.ktor.request.*
 import io.ktor.routing.*
 import io.ktor.util.*
 import io.ktor.util.pipeline.*
@@ -42,11 +40,29 @@ fun Route.handlePath(path: String, body: PipelineInterceptor<Unit, ApplicationCa
 }
 
 /**
- * Builds a route to match the path "" and defines a handler for it.
+ * Builds 2 routes, to match the paths "" and "/" respectively, and invokes [build] on both.
+ * TODO why does "/" work? is this some kind of legacy behaviour? document this. also document what this route doesn't match.
+ */
+fun <T> Route.routeExact(build: Route.() -> T): Pair<T, T> =
+    Pair(
+        createRouteFromPath("").run(build),
+        createRouteFromPath("/").run(build)
+    )
+
+/**
+ * Calls [routeExact], installing a handler using [body].
  */
 @ContextDsl
-fun Route.handleExact(body: PipelineInterceptor<Unit, ApplicationCall>): Route {
-    return route("") { handle(body) }
+fun Route.handleExact(body: PipelineInterceptor<Unit, ApplicationCall>) {
+    routeExact { handle(body) }
+}
+
+/**
+ * Calls [routeExact], installing a handler for [get] using [body].
+ */
+@ContextDsl
+fun Route.getExact(body: PipelineInterceptor<Unit, ApplicationCall>) {
+    routeExact { get(body) }
 }
 
 /**
