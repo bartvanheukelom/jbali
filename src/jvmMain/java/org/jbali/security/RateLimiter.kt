@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalUnsignedTypes::class)
+
 package org.jbali.security
 
 import kotlinx.coroutines.delay
@@ -63,7 +65,7 @@ class RateUnlimiter : RateLimiter {
 
 @Serializable
 data class TokenBucketRateLimiterConfig(
-    val bufferSize: UInt,
+    val bufferSize: Int,
     val refillRate: Double,
     val cleanupInterval: @Serializable(with = DurationSerializer::class) Duration = Duration.ofMinutes(1),
 )
@@ -83,7 +85,7 @@ data class TokenBucketRateLimiterState(
     @Serializable
     data class KeyState(
         val lastRefill: @Serializable(with = InstantSerializer::class) Instant,
-        val permitsConsumed: UInt,
+        val permitsConsumed: Int,
     )
 }
 
@@ -107,20 +109,20 @@ class TokenBucketRateLimiter(
     
     override fun getAvailablePermits(key: String): UInt =
         freezeFrame {
-            val consumedBefore = cleanUpAndGetState(key)?.permitsConsumed ?: 0u
+            val consumedBefore = cleanUpAndGetState(key)?.permitsConsumed ?: 0
             val available = config.bufferSize - consumedBefore
-            return@freezeFrame available
+            return@freezeFrame available.toUInt()
         }
 
     override fun requestPermits(key: String, permits: UInt, partial: Boolean): UInt =
         freezeFrame {
             val stateBefore = cleanUpAndGetState(key)
-            val consumedBefore = stateBefore?.permitsConsumed ?: 0u
+            val consumedBefore = stateBefore?.permitsConsumed ?: 0
             val available = config.bufferSize - consumedBefore
             val consumedNow = when {
-                permits <= available -> permits
+                permits.toInt() <= available -> permits.toInt()
                 partial -> available
-                else -> 0u
+                else -> 0
             }
 //            if (consumedNow > 0u) {
 //                log.info("Consuming $consumedNow permits for key '$key'")
@@ -129,11 +131,10 @@ class TokenBucketRateLimiter(
                 lastRefill = stateBefore?.lastRefill ?: now,
                 permitsConsumed = consumedBefore + consumedNow,
             ))
-            return@freezeFrame consumedNow
+            return@freezeFrame consumedNow.toUInt()
         }
     
-    context(FreezeFrame)
-    private fun cleanUpAndGetState(key: String): TokenBucketRateLimiterState.KeyState? {
+    private fun FreezeFrame.cleanUpAndGetState(key: String): TokenBucketRateLimiterState.KeyState? {
         if (!cleanUpIfNeeded()) {
             state.perKey[key]?.let { keyState ->
                 updateState(key, refill(key, keyState))
@@ -142,21 +143,20 @@ class TokenBucketRateLimiter(
         return state.perKey[key]
     }
     
-    context(FreezeFrame)
-    private fun refill(key: String, keyState: TokenBucketRateLimiterState.KeyState): TokenBucketRateLimiterState.KeyState? {
+    private fun FreezeFrame.refill(key: String, keyState: TokenBucketRateLimiterState.KeyState): TokenBucketRateLimiterState.KeyState? {
         val timeElapsed = Duration.between(keyState.lastRefill, now).secondsDouble
         val permitsToRefill = (config.refillRate * timeElapsed).toUInt()
         val ns = when {
             permitsToRefill == 0u -> {
                 keyState
             }
-            permitsToRefill >= keyState.permitsConsumed -> {
+            permitsToRefill.toInt() >= keyState.permitsConsumed -> {
                 null
             }
             else -> {
 //                log.info("Refilling $permitsToRefill permits for key '$key'. permitsConsumed:=${keyState.permitsConsumed}-${permitsToRefill}")
                 keyState.copy(
-                    permitsConsumed = keyState.permitsConsumed - permitsToRefill,
+                    permitsConsumed = keyState.permitsConsumed - permitsToRefill.toInt(),
                     lastRefill = now,
                 )
             }
@@ -205,8 +205,7 @@ class TokenBucketRateLimiter(
         }
     }
     
-    context(FreezeFrame)
-    private fun updateState(key: String, newState: TokenBucketRateLimiterState.KeyState?) {
+    private fun FreezeFrame.updateState(key: String, newState: TokenBucketRateLimiterState.KeyState?) {
         val perKey = state.perKey.toMutableMap().apply {
             if (newState == null) {
                 remove(key)
@@ -220,8 +219,7 @@ class TokenBucketRateLimiter(
         ))
     }
     
-    context(FreezeFrame)
-    private fun cleanUpIfNeeded(force: Boolean = false): Boolean {
+    private fun FreezeFrame.cleanUpIfNeeded(force: Boolean = false): Boolean {
         if (state.perKey.isNotEmpty() && (force || Duration.between(state.lastCleanup, now) >= config.cleanupInterval)) {
             
             // refill all keys
@@ -250,7 +248,7 @@ class TokenBucketRateLimiter(
     fun cleanUpNow(force: Boolean = false) =
         freezeFrame { cleanUpIfNeeded(force) }
     
-    private inline fun <T> freezeFrame(body: context(FreezeFrame) () -> T) =
+    private inline fun <T> freezeFrame(body: FreezeFrame.() -> T): T =
         stateMutex.withLock {
             with(FreezeFrame(clock())) {
                 body(this)
