@@ -35,23 +35,37 @@ class TokenBucketRateLimiterTest {
         assertEquals(10u, rateLimiter.getAvailablePermits())
         
         // consume 3 permits
-        assertEquals(3u, rateLimiter.requestPermits(permits = 3u))
+        rateLimiter.requestPermits(permits = 3u).also {
+            assertEquals(3u, it.requested)
+            assertEquals(3u, it.available)
+            assertEquals(3u, it.granted)
+            assertEquals(0u, it.returned)
+            assertEquals(3u, it.unused)
+        }
         assertEquals(7u, rateLimiter.getAvailablePermits())
         
         // request more than available
-        assertEquals(0u, rateLimiter.requestPermits(permits = 8u, partial = false))
+        rateLimiter.requestPermits(permits = 8u, partial = false).also {
+            assertEquals(8u, it.requested)
+            assertEquals(7u, it.available)
+            assertEquals(0u, it.granted)
+        }
         assertFailsWith<RateLimitExceededException> {
             rateLimiter.requirePermits(permits = 8u)
         }
         assertEquals(7u, rateLimiter.getAvailablePermits())
         
         // request more than available, but allow partial fulfillment
-        assertEquals(7u, rateLimiter.requestPermits(permits = 8u, partial = true))
+        rateLimiter.requestPermits(permits = 8u, partial = true).also {
+            assertEquals(8u, it.requested)
+            assertEquals(7u, it.available)
+            assertEquals(7u, it.granted)
+        }
         assertEquals(0u, rateLimiter.getAvailablePermits())
         
         // request for another key
         assertEquals(10u, rateLimiter.getAvailablePermits("boesboes"))
-        assertEquals(4u, rateLimiter.requestPermits("boesboes", permits = 4u))
+        assertEquals(4u, rateLimiter.requestPermits("boesboes", permits = 4u).granted)
         assertEquals(6u, rateLimiter.getAvailablePermits("boesboes"))
         
         // refill 1 permit
