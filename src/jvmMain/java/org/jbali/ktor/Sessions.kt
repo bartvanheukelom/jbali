@@ -16,6 +16,17 @@ inline fun <reified T : Any> CurrentSession.createOrUpdate(
                 setter = { set(it) }
         )
 
+
+inline fun <reified T : Any> CurrentSession.createOrUpdate(
+        name: String,
+        gup: GeneratorUpdater<T>
+): T =
+        createOrUpdate(
+                getter = { get(name) as T? },
+                gup = gup,
+                setter = { set(name, it) }
+        )
+
 /**
  * KTOR [SessionSerializer] implementation using kotlinx.serialization.
  *
