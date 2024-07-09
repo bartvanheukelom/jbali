@@ -78,3 +78,20 @@ fun <T> result(r: T) =
 
 fun errorMessage(msg: String) =
         Left(ErrorMessage(msg))
+
+/**
+ * If this is a right, returns it.
+ * Otherwise runs [attempt]. If the result of that is a right, returns it, discarding the error message on this left.
+ * If attempt also gives a left, returns a left with `${thisMessage}; ${attemptMessage}`.
+ */
+fun <T> Uncertain<T>.orPerhaps(attempt: () -> Uncertain<T>): Uncertain<T> {
+    val first = this
+    return first.fold(
+        ifLeft = { firstMessage ->
+            attempt().or { secondMessage ->
+                errorMessage("${firstMessage.msg}; ${secondMessage.msg}")
+            }
+        },
+        ifRight = { first },
+    )
+}
