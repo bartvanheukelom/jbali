@@ -38,7 +38,7 @@ open class EnumCompanion<E : Enum<E>>(
     /**
      * Map of all enum constants by their lowercased name.
      */
-    val byLowerName: Map<String, E> = all.associateBy { it.name.lowercase() }
+    val byLowerName: Map<String, E> = all.associateBy { it.name.toLowerCase() }
 
     /**
      * Find the enum constant with the given name, ignoring case and trimming outer whitespace.
@@ -52,7 +52,7 @@ open class EnumCompanion<E : Enum<E>>(
      * Find the enum constant with the given name, ignoring case and trimming outer whitespace.
      * @return the constant, or `null` if none found.
      */
-    fun parseOrNull(name: String) = byLowerName[name.trim().lowercase()]
+    fun parseOrNull(name: String) = byLowerName[name.trim().toLowerCase()]
     
 }
 
