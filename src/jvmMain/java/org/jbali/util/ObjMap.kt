@@ -11,82 +11,91 @@ import kotlin.reflect.full.memberProperties
  * so it inherits mutability and thread-safety from that object.
  */
 class ObjMap<T : Any> private constructor(
-        private val clazz: ClassMapInfo<T>,
-        val obj: T
+    private val clazz: ClassMapInfo<T>,
+    val obj: T
 ) : Map<String, Any?> { // TODO MutableMap
 
-    @Suppress("UNCHECKED_CAST")
     constructor(obj: T): this(
-            obj.javaClass.kotlin.classMapInfo,
-            obj)
+        obj.javaClass.kotlin.classMapInfo,
+        obj
+    )
 
-    override val keys = clazz.keys
-    override val size = clazz.keys.size
+    override val keys get() = clazz.keys
+    override val size get() = clazz.keys.size
 
     // TODO only on get, return implementation that already has templates in ClassMapInfo
-    override val entries: Set<Map.Entry<String, Any?>> =
-            clazz.props.map {
-                object : Map.Entry<String, Any?> {
-                    override val key = it.key
-                    override val value = it.value.get(obj)
+    override val entries: Set<Map.Entry<String, Any?>> get() =
+        clazz.props.map {
+            object : Map.Entry<String, Any?> {
+                override val key get() = it.key
+                override val value get() = it.value.get(obj)
 
-                    // TODO the following is the same for all implementations of Map.Entry, should be centralized somewhere (probably already in a lib)
+                // TODO the following is the same for all implementations of Map.Entry, should be centralized somewhere (probably already in a lib)
 
-                    override fun equals(other: Any?) =
-                            other is Map.Entry<*, *> &&
-                                    key == other.key &&
-                                    value == other.value
+                override fun equals(other: Any?) =
+                    other is Map.Entry<*, *> &&
+                        key == other.key &&
+                        value == other.value
 
-                    override fun hashCode(): Int =
-                            key.hashCode() xor value.hashCode()
+                override fun hashCode(): Int =
+                    try {
+                        key.hashCode() xor value.hashCode()
+                    } catch (so: StackOverflowError) {
+                        throw IllegalStateException("Stack overflow in ObjMap.hashCode(). This may be due to the mapped object having a getter that returns ObjMap(this). Make that a function instead.")
+                    }
 
-                    override fun toString(): String =
-                            "$key=$value"
-                }
-            }.toSet()
-
-    override val values =
-            clazz.props.map {
-                it.value.get(obj)
+                override fun toString(): String =
+                    try {
+                        "$key=$value"
+                    } catch (so: StackOverflowError) {
+                        throw IllegalStateException("Stack overflow in ObjMap.toString(). This may be due to the mapped object having a getter that returns ObjMap(this). Make that a function instead.")
+                    }
+                    
             }
+        }.toSet()
+
+    override val values get() =
+        clazz.props.map {
+            it.value.get(obj)
+        }
 
     override fun containsKey(key: String) = clazz.props.containsKey(key)
 
     override fun containsValue(value: Any?) =
-            clazz.props.values.any {
-                it.get(obj) == value
-            }
+        clazz.props.values.any {
+            it.get(obj) == value
+        }
 
     override fun get(key: String) = clazz.props[key]?.get(obj)
     override fun isEmpty() = clazz.props.isEmpty()
 
     override fun toString() =
-            StringBuilder(size * 128).apply {
-                append('{')
-                var first = true
-                entries.forEach { e ->
-                    if (first) {
-                        first = false
-                    } else {
-                        append(", ")
-                    }
-                    append(e.key)
-                    append('=')
-                    append(e.value)
+        StringBuilder(size * 128).apply {
+            append('{')
+            var first = true
+            entries.forEach { e ->
+                if (first) {
+                    first = false
+                } else {
+                    append(", ")
                 }
-                append('}')
-            }.toString()
+                append(e.key)
+                append('=')
+                append(e.value)
+            }
+            append('}')
+        }.toString()
 
     override fun equals(other: Any?) =
-            when {
-                other === this ->        true
-                other is ObjMap<*> ->    other.obj == obj
-                other is Map<*, *> ->    other.size == size && toMap() == other // TODO optimize?
-                else ->                  false
-            }
+        when {
+            other === this ->        true
+            other is ObjMap<*> ->    other.obj == obj
+            other is Map<*, *> ->    other.size == size && toMap() == other // TODO optimize?
+            else ->                  false
+        }
 
     override fun hashCode() =
-            entries.sumOf { it.hashCode() }
+        entries.sumOf { it.hashCode() }
 
 }
 
