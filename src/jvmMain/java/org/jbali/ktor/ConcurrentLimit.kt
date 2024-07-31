@@ -48,7 +48,7 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
     ) {
         /** Time when the request was first seen */
         val receivedAt
-            get() = queuedAt ?: startedAt ?: NanoTime(0) // 0 should never happen
+            get() = queuedAt ?: startedAt ?: NanoTime(Long.MIN_VALUE) // min should never happen
         
         /**
          * Time the request has or had been waiting in the queue, or null if it was executed immediately.
@@ -66,7 +66,8 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
     private val activeRequests = mutableMapOf<UUID, RequestInfo>()
     private val queuedRequests = mutableMapOf<UUID, RequestInfo>()
     private var flowState = FlowState.Smooth
-    private var lastStateChangeTime: NanoTime = NanoTime.now()
+    private var lastStateChangeTime: NanoTime = NanoTime(Long.MIN_VALUE)
+    private var lastRequestLogTime: NanoTime = NanoTime(Long.MIN_VALUE)
     
     private val activeRequestSemaphore = when (configuration.maxActiveRequests) {
         Int.MAX_VALUE -> null
@@ -81,7 +82,7 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
     private val meters = configuration.meterRegistry?.let { registry ->
         listOf(
             Gauge.builder("ktor.http.requests.queued") {
-                 synchronized(stateLock) { queuedRequests.size }
+                synchronized(stateLock) { queuedRequests.size }
             }
                 .tag("debugName", configuration.debugName ?: "")
                 .register(registry),
@@ -95,6 +96,7 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
     
     private fun updateFlowState() {
         assert(Thread.holdsLock(stateLock))
+        val now = NanoTime.now()
         
         val newState = when {
             queuedRequests.size >= configuration.maxQueuedRequests -> FlowState.Blocked
@@ -124,7 +126,6 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
         val oldState = flowState
         if (oldState != newState) {
             flowState = newState
-            val now = NanoTime.now()
             val timeSinceLastChange = NanoDuration.between(lastStateChangeTime, now)
             
             if (timeSinceLastChange.ns > (configuration.stateChangeCooldown?.inWholeNanoseconds ?: -1L)) {
@@ -136,12 +137,14 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
                                 log.warn("Flow worsened from $oldState to $newState")
                                 logActiveRequests()
 //                                logAllRequests()
+                                lastRequestLogTime = now
                             }
                             FlowState.Blocked -> {
                                 log.error("Flow worsened from $oldState to $newState")
 //                                logActiveRequests()
 //                                logQueuedRequests()
                                 logAllRequests()
+                                lastRequestLogTime = now
                             }
                             else -> {
                                 // unreachable
@@ -151,6 +154,15 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
                     }
                     else -> log.info("Flow improved from $oldState to $newState")
                 }
+            }
+        }
+        
+        // sort-of periodic request logging during trouble
+        configuration.periodicLoggingInterval?.let { interval ->
+            val timeSinceLastPeriodicLog = NanoDuration.between(lastRequestLogTime, now)
+            if (timeSinceLastPeriodicLog.ns > interval.inWholeNanoseconds && flowState != FlowState.Smooth) {
+                logAllRequests()
+                lastRequestLogTime = now
             }
         }
     }
@@ -288,6 +300,12 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
         }
         
         var stateChangeCooldown: Duration? = null
+        
+        /**
+         * Interval for periodic logging of all requests when the state is not Smooth.
+         * If null (default), no periodic logging will occur.
+         */
+        var periodicLoggingInterval: Duration? = null
     }
     
     companion object Feature : ApplicationFeature<ApplicationCallPipeline, Configuration, ConcurrentLimit> {
