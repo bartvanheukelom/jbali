@@ -1,17 +1,24 @@
 package org.jbali.ktor
 
 import io.ktor.application.*
+import io.ktor.features.*
 import io.ktor.http.*
+import io.ktor.request.*
 import io.ktor.util.*
 import io.ktor.util.pipeline.*
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import kotlinx.coroutines.sync.Semaphore
+import org.jbali.text.textable
+import org.jbali.text.textableWithCols
+import org.jbali.util.NanoDuration
+import org.jbali.util.NanoTime
 import org.slf4j.LoggerFactory
 import org.slf4j.helpers.NOPLogger
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicLong
+import java.net.InetAddress
+import java.util.*
+import kotlin.time.Duration
 
 /**
  * Feature for limiting the number of concurrent requests. If the limit is reached, incoming requests will be queued
@@ -29,61 +36,42 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
     
     override fun toString() = "ConcurrentLimit[${configuration.debugName}]{${configuration}}"
     
-    class Configuration {
-        
-        var debugName: String? = null
-        
-        /**
-         * The maximum number of concurrent active requests.
-         * Extra requests will be queued.
-         * If set to Int.MAX_VALUE, there will be no limit. This can be used to undo the limit
-         * imposed by a parent route.
-         */
-        var maxActiveRequests = 32
-        
-        /**
-         * The maximum number of queued requests.
-         * Extra requests will be rejected by [rejectHandler].
-         */
-        var maxQueuedRequests = 256
-        
-        override fun toString(): String {
-            return "maxActiveRequests=$maxActiveRequests, maxQueuedRequests=$maxQueuedRequests"
-        }
+    private data class RequestInfo(
+        val uuid: UUID,
+        val ip: InetAddress?,
+        val method: HttpMethod,
+        val path: String,
+        /** Time when the request was queued, or null if it was executed immediately */
+        val queuedAt: NanoTime? = null,
+        /** Time when the request started running, or null if it is still in the queue */
+        @Volatile var startedAt: NanoTime? = null,
+    ) {
+        /** Time when the request was first seen */
+        val receivedAt
+            get() = queuedAt ?: startedAt ?: NanoTime(0) // 0 should never happen
         
         /**
-         * If set, meters will be registered with this registry.
-         * The configured [debugName] will be added as tag to all metrics.
+         * Time the request has or had been waiting in the queue, or null if it was executed immediately.
          */
-        var meterRegistry: MeterRegistry? = null
-        
+        val waitTime
+            get() = queuedAt?.let { NanoDuration.between(it, startedAt ?: NanoTime.now()) }?.toMicro()
         /**
-         * Handler for rejected requests. By default, returns a simple error page with HTTP [503 Service Unavailable](HttpStatusCode.ServiceUnavailable).
+         * Time the request has been running, or null if it is still in the queue.
          */
-        var rejectHandler: suspend (ApplicationCall) -> Unit = {
-            it.respondBasicError(HttpStatusCode.ServiceUnavailable, "Too many active requests")
-        }
-        
-        /**
-         * Syntactic sugar for setting [rejectHandler].
-         */
-        fun onReject(handler: suspend (ApplicationCall) -> Unit) {
-            rejectHandler = handler
-        }
-        
-        fun noLimit() {
-            maxActiveRequests = Int.MAX_VALUE
-            maxQueuedRequests = Int.MAX_VALUE // not used but set anyway
-        }
-        
+        val runTime
+            get() = startedAt?.let { NanoDuration.between(it, NanoTime.now()) }?.toMicro()
     }
+    
+    private val stateLock = Any()
+    private val activeRequests = mutableMapOf<UUID, RequestInfo>()
+    private val queuedRequests = mutableMapOf<UUID, RequestInfo>()
+    private var flowState = FlowState.Smooth
+    private var lastStateChangeTime: NanoTime = NanoTime.now()
     
     private val activeRequestSemaphore = when (configuration.maxActiveRequests) {
         Int.MAX_VALUE -> null
         else -> Semaphore(configuration.maxActiveRequests)
     }
-    private val activeRequests = AtomicInteger(0)
-    private val queuedRequests = AtomicInteger(0)
     
     private val counterRequestsRejected = configuration.meterRegistry?.let { registry ->
         Counter.builder("ktor.http.requests.rejected")
@@ -92,66 +80,215 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
     }
     private val meters = configuration.meterRegistry?.let { registry ->
         listOf(
-            Gauge.builder("ktor.http.requests.queued", queuedRequests::get)
+            Gauge.builder("ktor.http.requests.queued") {
+                 synchronized(stateLock) { queuedRequests.size }
+            }
                 .tag("debugName", configuration.debugName ?: "")
                 .register(registry),
-            Gauge.builder("ktor.http.requests.concurrent", activeRequests::get)
+            Gauge.builder("ktor.http.requests.concurrent") {
+                synchronized(stateLock) { activeRequests.size }
+            }
                 .tag("debugName", configuration.debugName ?: "")
                 .register(registry),
         )
     }
-    // TODO clean them up
     
-    private val seq = AtomicLong(0)
-    
-    private suspend fun PipelineContext<Unit, ApplicationCall>.proceedCounted() {
-        activeRequests.incrementAndGet()
-        try {
-            proceed()
-        } finally {
-            activeRequests.decrementAndGet()
+    private fun updateFlowState() {
+        assert(Thread.holdsLock(stateLock))
+        
+        val newState = when {
+            queuedRequests.size >= configuration.maxQueuedRequests -> FlowState.Blocked
+            activeRequests.size >= configuration.maxActiveRequests -> FlowState.Restricted
+            else -> FlowState.Smooth
         }
-    }
-    
-    private suspend fun PipelineContext<Unit, ApplicationCall>.proceedWithLimit() {
-        if (activeRequestSemaphore == null) {
-            proceedCounted()
-        } else {
-            val rs = seq.incrementAndGet()
-            val rid = "${call.uuid}#${rs}"
-            if (activeRequestSemaphore.tryAcquire()) {
-                try {
-//                    log.info("QQQ immediate proceed $rid")
-                    proceedCounted()
-                } finally {
-                    activeRequestSemaphore.release()
-                }
-            } else {
-                val qr = queuedRequests.incrementAndGet()
-                if (qr > configuration.maxQueuedRequests || qr < 0) { // < 0 by overflow
-                    queuedRequests.decrementAndGet() // TODO I don't like having to undo like this
-                    log.warn("Rejecting request $rid because too many queued requests")
-                    counterRequestsRejected?.increment()
-                    configuration.rejectHandler(call)
-                    finish()
-                } else {
-                    log.warn("Queueing request $rid because too many active requests. Queued requests: $qr")
-                    try {
-                        activeRequestSemaphore.acquire()
-                    } finally {
-                        queuedRequests.decrementAndGet()
+        
+        if (configuration.alwaysLogState) {
+            data class StateInfo(
+                val oldState: FlowState,
+                val active: Int,
+                val maxActive: Int,
+                val queued: Int,
+                val maxQueued: Int,
+                val newState: FlowState,
+            )
+            log.info(textable(listOf(StateInfo(
+                oldState = flowState,
+                active = activeRequests.size,
+                maxActive = configuration.maxActiveRequests,
+                queued = queuedRequests.size,
+                maxQueued = configuration.maxQueuedRequests,
+                newState = newState,
+            ))).joinToString("\n"))
+        }
+        
+        val oldState = flowState
+        if (oldState != newState) {
+            flowState = newState
+            val now = NanoTime.now()
+            val timeSinceLastChange = NanoDuration.between(lastStateChangeTime, now)
+            
+            if (timeSinceLastChange.ns > (configuration.stateChangeCooldown?.inWholeNanoseconds ?: -1L)) {
+                lastStateChangeTime = now
+                when {
+                    newState.ordinal > oldState.ordinal -> {
+                        when (newState) {
+                            FlowState.Restricted -> {
+                                log.warn("Flow worsened from $oldState to $newState")
+                                logActiveRequests()
+//                                logAllRequests()
+                            }
+                            FlowState.Blocked -> {
+                                log.error("Flow worsened from $oldState to $newState")
+//                                logActiveRequests()
+//                                logQueuedRequests()
+                                logAllRequests()
+                            }
+                            else -> {
+                                // unreachable
+                                log.info("Flow worsened from $oldState to $newState")
+                            }
+                        }
                     }
-                    try {
-                        log.info("Proceeding with queued request $rid")
-                        proceedCounted()
-                    } finally {
-                        activeRequestSemaphore.release()
-                    }
+                    else -> log.info("Flow improved from $oldState to $newState")
                 }
             }
         }
     }
     
+    private fun logActiveRequests() {
+        log.info("Active requests (${activeRequests.size}):\n${textableWithCols(
+            listOf(
+                "UUID" to { it.uuid },
+                "IP" to { it.ip?.hostAddress ?: "?" }, // '?' because it's unexpected
+                "Method" to { it.method.value },
+                "Path" to { it.path },
+                "Waited" to { it.waitTime ?: "" },
+                "Running" to { it.runTime ?: "" },
+            ),
+            activeRequests.values.sortedBy { it.receivedAt }
+        ).joinToString("\n")}")
+    }
+    private fun logQueuedRequests() {
+        log.info("Queued requests (${queuedRequests.size}):\n${textableWithCols(
+            listOf(
+                "UUID" to { it.uuid },
+                "IP" to { it.ip?.hostAddress ?: "?" }, // '?' because it's unexpected
+                "Method" to { it.method.value },
+                "Path" to { it.path },
+                "Waited" to { it.waitTime ?: "" },
+            ),
+            queuedRequests.values.sortedBy { it.receivedAt }
+        ).joinToString("\n")}")
+    }
+    private fun logAllRequests() {
+        log.info("Requests active (${activeRequests.size}), queued (${queuedRequests.size}):\n${textableWithCols(
+            listOf(
+                "S" to { if (it.startedAt != null) "R" else "Q" },
+                "UUID" to { it.uuid },
+                "IP" to { it.ip?.hostAddress ?: "?" }, // '?' because it's unexpected
+                "Method" to { it.method.value },
+                "Path" to { it.path },
+                "Waited" to { it.waitTime ?: "" },
+                "Running" to { it.runTime ?: "" },
+            ),
+            (activeRequests.values + queuedRequests.values).sortedBy { it.receivedAt }
+        ).joinToString("\n")}")
+    }
+    
+    private suspend fun PipelineContext<Unit, ApplicationCall>.proceedWithLimit() {
+        val uuid = call.uuid
+        val requestInfo = RequestInfo(
+            uuid = uuid,
+            ip = call.request.origin.remoteIpOrNull,
+            method = call.request.httpMethod,
+            path = call.request.path(),
+        )
+        if (activeRequestSemaphore == null || activeRequestSemaphore.tryAcquire()) {
+            synchronized(stateLock) {
+                activeRequests[uuid] = requestInfo.copy(startedAt = NanoTime.now())
+                updateFlowState()
+            }
+            try {
+                proceed()
+            } finally {
+                synchronized(stateLock) {
+                    activeRequests.remove(uuid)
+                    updateFlowState()
+                }
+                activeRequestSemaphore?.release()
+            }
+        } else {
+            val next: suspend () -> Unit
+            synchronized(stateLock) {
+                if (queuedRequests.size >= configuration.maxQueuedRequests) {
+                    log.warn("Rejecting request $uuid because too many queued requests")
+                    counterRequestsRejected?.increment()
+                    next = {
+                        configuration.rejectHandler(call)
+                        finish()
+                    }
+                } else {
+                    queuedRequests[uuid] = requestInfo.copy(queuedAt = NanoTime.now())
+                    updateFlowState()
+                    next = {
+                        try {
+                            activeRequestSemaphore.acquire()
+                        } finally {
+                            synchronized(stateLock) {
+                                queuedRequests.remove(uuid)
+                                updateFlowState()
+                            }
+                        }
+                        synchronized(stateLock) {
+                            activeRequests[uuid] = requestInfo
+                            requestInfo.startedAt = NanoTime.now()
+                            updateFlowState()
+                        }
+                        try {
+                            proceed()
+                        } finally {
+                            synchronized(stateLock) {
+                                activeRequests.remove(uuid)
+                                updateFlowState()
+                            }
+                            activeRequestSemaphore.release()
+                        }
+                    }
+                }
+            }
+            next()
+        }
+    }
+    
+    class Configuration {
+        var debugName: String? = null
+        var alwaysLogState = false
+        
+        var maxActiveRequests = 32
+        
+        var maxQueuedRequests = 256
+        
+        override fun toString(): String {
+            return "maxActiveRequests=$maxActiveRequests, maxQueuedRequests=$maxQueuedRequests"
+        }
+        
+        var meterRegistry: MeterRegistry? = null
+        
+        var rejectHandler: suspend (ApplicationCall) -> Unit = {
+            it.respondBasicError(HttpStatusCode.ServiceUnavailable, "Too many active requests")
+        }
+        
+        fun onReject(handler: suspend (ApplicationCall) -> Unit) {
+            rejectHandler = handler
+        }
+        
+        fun noLimit() {
+            maxActiveRequests = Int.MAX_VALUE
+            maxQueuedRequests = Int.MAX_VALUE
+        }
+        
+        var stateChangeCooldown: Duration? = null
+    }
     
     companion object Feature : ApplicationFeature<ApplicationCallPipeline, Configuration, ConcurrentLimit> {
         
@@ -162,7 +299,7 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
         override fun install(pipeline: ApplicationCallPipeline, configure: Configuration.() -> Unit): ConcurrentLimit {
             val configuration = Configuration().apply(configure)
             val feature = ConcurrentLimit(configuration)
-            val log = NOPLogger.NOP_LOGGER // feature.log
+            val log = NOPLogger.NOP_LOGGER
             log.info("Installing")
             
             fun PipelineContext<*, ApplicationCall>.trace(msg: String) {
@@ -204,4 +341,8 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
             return feature
         }
     }
+}
+
+enum class FlowState {
+    Smooth, Restricted, Blocked
 }
