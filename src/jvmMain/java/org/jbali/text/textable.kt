@@ -1,14 +1,15 @@
 package org.jbali.text
 
+import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.reflect.KVisibility
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.primaryConstructor
 
-@OptIn(ExperimentalStdlibApi::class)
-inline fun <reified T : Any> textable(data: Iterable<T>): Sequence<String> {
-    
-    val clazz = T::class
+inline fun <reified T : Any> textable(data: Iterable<T>): Sequence<String> =
+    textable(T::class, data)
+
+fun <T : Any> textable(clazz: KClass<T>, data: Iterable<T>): Sequence<String> {
     
     // TODO dedup with ObjMap (and cache)
     val props: List<KProperty1<T, *>> =
@@ -24,6 +25,12 @@ inline fun <reified T : Any> textable(data: Iterable<T>): Sequence<String> {
             }
         }
     
+    return textableWithProps(props, data)
+    
+}
+
+fun <T : Any> textableWithProps(props: List<KProperty1<T, *>>, data: Iterable<T>): Sequence<String> {
+    
     // TODO make Column class which encapsulates header name and value getter
     
     val numCols = props.size
@@ -34,16 +41,22 @@ inline fun <reified T : Any> textable(data: Iterable<T>): Sequence<String> {
         cols.map { c -> props[c].get(r)?.toString() ?: "" }
     }
     
-    return textable(colHeaders, rows)
+    return textableWithHeaders(colHeaders, rows)
     
 }
 
+@Deprecated(message = "use unambiguous textableWithCols", replaceWith = ReplaceWith("textableWithCols(cols, rows)"))
 fun <R> textable(
+    cols: List<Pair<String, (R) -> Any?>>,
+    rows: Iterable<R>,
+) = textableWithCols(cols, rows)
+
+fun <R> textableWithCols(
     cols: List<Pair<String, (R) -> Any?>>,
     rows: Iterable<R>,
 ) =
     // TODO make this function accept sequence and use that
-    textable(
+    textableWithHeaders(
         colHeaders = cols.map { it.first },
         rows = rows.map { r ->
             cols.map { c -> c.second(r)?.toString() ?: "<null>" }
@@ -51,7 +64,14 @@ fun <R> textable(
     )
 
 // TODO look into existing dataframe libraries
+@Deprecated(message = "use unambiguous textableWithHeaders", replaceWith = ReplaceWith("textableWithHeaders(colHeaders, rows)"))
 fun textable(
+    colHeaders: List<String>,
+    rows: List<List<String>>,
+): Sequence<String> =
+    textableWithHeaders(colHeaders, rows)
+
+fun textableWithHeaders(
     colHeaders: List<String>,
     rows: List<List<String>>,
 ): Sequence<String> {
