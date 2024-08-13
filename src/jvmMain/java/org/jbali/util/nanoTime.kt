@@ -1,5 +1,8 @@
+@file:Suppress("UnstableApiUsage")
+
 package org.jbali.util
 
+import com.google.common.math.LongMath
 import org.jbali.math.toUIntClamped
 import java.time.Duration
 import kotlin.time.Duration.Companion.microseconds
@@ -60,8 +63,18 @@ import kotlin.time.Duration.Companion.nanoseconds
     
     companion object {
         val MAX = NanoDuration(Long.MAX_VALUE)
+        val MAX_NEGATIVE = NanoDuration(Long.MIN_VALUE)
+        
+        /**
+         * @return The duration [between] the given time and [NanoTime.now], clamped to [MAX] and [MAX_NEGATIVE] if necessary.
+         */
         fun since(from: NanoTime) = between(from, NanoTime.now())
-        fun between(from: NanoTime, to: NanoTime) = NanoDuration(to.nt - from.nt)
+        
+        /**
+         * @return The [NanoDuration] between the given times, clamped to [MAX] and [MAX_NEGATIVE] if necessary.
+         */
+        fun between(from: NanoTime, to: NanoTime) =
+            NanoDuration(LongMath.saturatedSubtract(to.nt, from.nt))
     }
 }
 

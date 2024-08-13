@@ -98,6 +98,7 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
         assert(Thread.holdsLock(stateLock))
         val now = NanoTime.now()
         
+        val oldState = flowState
         val newState = when {
             queuedRequests.size >= configuration.maxQueuedRequests -> FlowState.Blocked
             activeRequests.size >= configuration.maxActiveRequests -> FlowState.Restricted
@@ -114,7 +115,7 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
                 val newState: FlowState,
             )
             log.info(textable(listOf(StateInfo(
-                oldState = flowState,
+                oldState = oldState,
                 active = activeRequests.size,
                 maxActive = configuration.maxActiveRequests,
                 queued = queuedRequests.size,
@@ -123,12 +124,14 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
             ))).joinToString("\n"))
         }
         
-        val oldState = flowState
         if (oldState != newState) {
             flowState = newState
-            val timeSinceLastChange = NanoDuration.between(lastStateChangeTime, now)
             
-            if (timeSinceLastChange.ns > (configuration.stateChangeCooldown?.inWholeNanoseconds ?: -1L)) {
+            val cooldown = configuration.stateChangeCooldown
+            if (configuration.alwaysLogState) {
+                log.info("cooldown=$cooldown (= ${cooldown?.inWholeNanoseconds} ns), lastStateChangeTime=$lastStateChangeTime, now=$now, timeSinceLastChange=${NanoDuration.between(lastStateChangeTime, now)}")
+            }
+            if (cooldown == null || NanoDuration.between(lastStateChangeTime, now).ns > cooldown.inWholeNanoseconds) {
                 lastStateChangeTime = now
                 when {
                     newState.ordinal > oldState.ordinal -> {
