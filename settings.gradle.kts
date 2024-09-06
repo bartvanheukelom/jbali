@@ -30,6 +30,9 @@ pluginManagement {
     repositories {
         mavenCentral()
         gradlePluginPortal()
+        
+        // as of 2024-09-06, it appears dokka 1.4.20 has disappeared from the gradle plugin portal
+        maven { url = uri("https://maven.pkg.jetbrains.space/kotlin/p/dokka/dev/") }
 
         if (kotlinEAP) {
             maven("https://dl.bintray.com/kotlin/kotlin-eap")
