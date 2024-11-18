@@ -1,16 +1,16 @@
 @file:OptIn(ExperimentalSerializationApi::class)
 package org.jbali.kotser.jsonSchema
 
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.descriptors.SerialKind
-import kotlinx.serialization.descriptors.elementDescriptors
-import kotlinx.serialization.serializer
-import org.jbali.kotser.jsonString
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import org.jbali.json2.jsonQuote
+import org.jbali.kotser.*
 import org.jbali.reflect.isObject
 import org.jbali.reflect.kClass
+import org.slf4j.LoggerFactory
 import java.io.PrintWriter
 import kotlin.reflect.KClass
 import kotlin.reflect.KTypeProjection
@@ -25,6 +25,8 @@ import kotlin.reflect.typeOf
 class JsonSchemaGenerator(
     private val pw: PrintWriter,
 ) : AutoCloseable {
+    
+    private val log = LoggerFactory.getLogger(javaClass)
 
     @Serializable
     object PH0
@@ -86,6 +88,8 @@ class JsonSchemaGenerator(
         }
         inNamespace = ""
     }
+    
+    private fun String.dequalify() = removePrefix(inNamespace + ".")
 
     private fun PrintWriter.processQueue() {
         while (todo.isNotEmpty()) {
@@ -126,6 +130,8 @@ class JsonSchemaGenerator(
             when {
                 clazz.isValue -> {
                     val typeDef = desc.typeName()
+//                    log.info("value class $clazz, desc $desc, typeDef $typeDef")
+//                    log.info(desc.dump())
                     println("\n  export type $rn = $typeDef;")
                 }
                 clazz.isSubclassOf(Enum::class) -> {
@@ -133,6 +139,20 @@ class JsonSchemaGenerator(
                         jsonString((it as Enum<*>).name).toString() // TODO SerialName
                     }
                     println("\n  export type $rn = $typeDef;")
+                }
+                desc.kind == PolymorphicKind.SEALED -> {
+                    println("\n  export type $rn =");
+                    val els = desc.elements
+                    val valueDesc = els.single { it.name == "value" }.descriptor
+                    for (e in valueDesc.elements) {
+                        print("    | [${e.name.jsonQuote()}")
+//                        log.info("${e.name} desc ${e.descriptor.dump()}")
+                        if (e.descriptor.kind != StructureKind.OBJECT) {
+                            print(", ${e.descriptor.typeName().dequalify()}")
+                        }
+                        println("]")
+                    }
+                    println("  ;")
                 }
                 else -> {
     
@@ -169,11 +189,7 @@ class JsonSchemaGenerator(
                             println("    // $eAnnot")
                         }
         
-                        var tn = eDesc.typeName()
-                        if (tn.startsWith(inNamespace + ".")) {
-                            tn = tn.removePrefix(inNamespace + ".")
-                        }
-        
+                        val tn = eDesc.typeName().dequalify()
                         println("    $eName${if (eOpt) "?" else ""}: $tn;")
                     }
     
@@ -218,11 +234,11 @@ class JsonSchemaGenerator(
 
                 "kotlin.collections.LinkedHashSet",
                 "kotlin.collections.ArrayList" -> {
-                    "${getElementDescriptor(0).typeName()}[]"
+                    "${getElementDescriptor(0).typeName().dequalify()}[]"
                 }
 
                 "kotlin.collections.LinkedHashMap" -> {
-                    "{ [key: ${getElementDescriptor(0).typeName()}]: ${getElementDescriptor(1).typeName()} }"
+                    "{ [key: ${getElementDescriptor(0).typeName().dequalify()}]: ${getElementDescriptor(1).typeName().dequalify()} }"
                 }
 
                 else -> {
@@ -231,6 +247,10 @@ class JsonSchemaGenerator(
 
                         serialName in phNames -> {
                             phReplaceNames!![phNames.indexOf(serialName)]
+                        }
+                        
+                        isInline -> {
+                            elementDescriptors.single().typeName()
                         }
 
                         isNullable -> {
@@ -336,4 +356,52 @@ class JsonSchemaGenerator(
                 null
             }
 
+}
+
+data class SerialElement(
+    val name: String,
+    val annotations: List<Annotation>,
+    val descriptor: SerialDescriptor,
+    val optional: Boolean,
+)
+val SerialDescriptor.elements: List<SerialElement> get() =
+    (0 until elementsCount).map {
+        SerialElement(
+            getElementName(it),
+            getElementAnnotations(it),
+            getElementDescriptor(it),
+            isElementOptional(it),
+        )
+    }
+
+
+fun SerialDescriptor.dump() = DefaultJson.indented.encodeToString(toJson())
+
+
+fun SerialDescriptor.toJson(refs: MutableSet<String> = mutableSetOf()): JsonElement {
+//    println("SerialDescriptor $serialName toJson, in refs ${serialName in refs}, refs $refs")
+    return when {
+        serialName in refs -> "ref: $serialName".toJsonElement()
+        else -> {
+            refs += serialName
+            buildJsonObject {
+                put("serialName", serialName)
+                put("kind", kind.toString())
+                put("nullable", isNullable)
+                put("inline", isInline)
+                put("annotations", annotations.mapToJsonArray { it.toString().toJsonElement() })
+                put("elements", elements.mapToJsonArray { it.toJson(refs) })
+            }
+        }
+    }
+}
+
+fun SerialElement.toJson(refs: MutableSet<String> = mutableSetOf()): JsonObject {
+//    println("SerialElement $name toJson")
+    return buildJsonObject {
+        put("name", name)
+        put("optional", optional)
+        put("annotations", annotations.mapToJsonArray { it.toString().toJsonElement() })
+        put("descriptor", descriptor.toJson(refs))
+    }
 }
