@@ -7,7 +7,10 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import org.jbali.json2.jsonQuote
-import org.jbali.kotser.*
+import org.jbali.kotser.DefaultJson
+import org.jbali.kotser.mapToJsonArray
+import org.jbali.kotser.put
+import org.jbali.kotser.toJsonElement
 import org.jbali.reflect.isObject
 import org.jbali.reflect.kClass
 import org.slf4j.LoggerFactory
@@ -135,10 +138,15 @@ class JsonSchemaGenerator(
                     println("\n  export type $rn = $typeDef;")
                 }
                 clazz.isSubclassOf(Enum::class) -> {
-                    val typeDef = clazz.java.enumConstants!!.joinToString(" | ") {
-                        jsonString((it as Enum<*>).name).toString() // TODO SerialName
-                    }
-                    println("\n  export type $rn = $typeDef;")
+                    val names = clazz.java.enumConstants!!.map { (it as Enum<*>).name }
+//                    val typeDef = clazz.java.enumConstants!!.joinToString(" | ") {
+//                        jsonString((it as Enum<*>).name).toString() // TODO SerialName
+//                    }
+                    println("")
+                    println("  export namespace $rn {")
+                    println("    export const names = [${names.joinToString { it.jsonQuote() }}] as const;")
+                    println("  }")
+                    println("  export type $rn = typeof $rn.names[number];")
                 }
                 desc.kind == PolymorphicKind.SEALED -> {
                     println("\n  export type $rn =");
@@ -234,11 +242,17 @@ class JsonSchemaGenerator(
 
                 "kotlin.collections.LinkedHashSet",
                 "kotlin.collections.ArrayList" -> {
-                    "${getElementDescriptor(0).typeName().dequalify()}[]"
+                    val elementType = getElementDescriptor(0)
+                    elementType.attemptQueueFromDesc()
+                    "${elementType.typeName().dequalify()}[]"
                 }
 
                 "kotlin.collections.LinkedHashMap" -> {
-                    "{ [key: ${getElementDescriptor(0).typeName().dequalify()}]: ${getElementDescriptor(1).typeName().dequalify()} }"
+                    val keyType = getElementDescriptor(0)
+                    keyType.attemptQueueFromDesc()
+                    val valueType = getElementDescriptor(1)
+                    valueType.attemptQueueFromDesc()
+                    "{ [key in ${keyType.typeName().dequalify()}]: ${valueType.typeName().dequalify()} }"
                 }
 
                 else -> {
