@@ -79,3 +79,36 @@ fun <T : Iterable<*>> T.checkUnique(): T {
         return this
     }
 }
+
+/**
+ * @return the single element in this iterable, or `null` if it's empty.
+ * @throws IllegalArgumentException if there is more than one element.
+ */
+fun <T> List<T>.singleIfAny(): T? =
+    when (size) {
+        0 -> null
+        1 -> this[0]
+        else -> throw IllegalArgumentException("List has more than one element.")
+    }
+
+/**
+ * @return the single element in this iterable, or `null` if it's empty.
+ * @throws IllegalArgumentException if there is more than one element.
+ */
+fun <T> Iterable<T>.singleIfAny(): T? =
+    when (this) {
+        is List -> singleIfAny()
+        else -> {
+            val iterator = iterator()
+            if (!iterator.hasNext()) {
+                null
+            } else {
+                val single = iterator.next()
+                if (iterator.hasNext()) {
+                    throw IllegalArgumentException("Collection has more than one element.")
+                } else {
+                    single
+                }
+            }
+        }
+    }
