@@ -67,6 +67,9 @@ object IntervalSerializer : KSerializer<Interval> by transformingSerializer(
 object LocalDateSerializer : StringBasedSerializer<LocalDate>(LocalDate::class) {
     override fun fromString(s: String): LocalDate = LocalDate.parse(s)
 }
+object LocalTimeSerializer : StringBasedSerializer<LocalTime>(LocalTime::class) {
+    override fun fromString(s: String): LocalTime = LocalTime.parse(s)
+}
 
 object YearWeekSerializer : StringBasedSerializer<YearWeek>(YearWeek::class) {
     override fun fromString(s: String): YearWeek = YearWeek.parse(s)
