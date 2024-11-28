@@ -55,7 +55,7 @@ data class ReifiedType<T>(
                         // previous match was a success, keep returning this until a terminator is called
                         this
 
-                    thisType extends m ->
+                    thisType supers m ->
                         // unchecked cast because compiler doesn't know that T extends O, but we do
                         @Suppress("UNCHECKED_CAST")
                         this.copy(result = Box(block(input)) as Box<T>)
