@@ -21,6 +21,17 @@ object UUIDSerializer : StringBasedSerializer<UUID>(UUID::class) {
 }
 typealias UUIDAsString = @Serializable(with=UUIDSerializer::class) UUID
 
+/**
+ * Serializible wrapper around [UUID], for cases where directly using [UUIDSerializer] is not possible.
+ * For example, `serializer(typeOf<Map<String, @Serializable(with=UUIDAsString::class) UUID>>())`
+ * doesn't work, as the `@Serializable` annotation is lost.
+ * TODO check if fixed in newer versions of kotlinx.serialization, or report a bug
+ */
+@Serializable @JvmInline
+value class UUIDWrapper(val v: UUIDAsString) {
+    override fun toString(): String = "{$v}"
+}
+
 @Suppress("UnstableApiUsage")
 object HostAndPortSerializer : StringBasedSerializer<HostAndPort>(HostAndPort::class) {
     override fun fromString(s: String): HostAndPort = HostAndPort.fromString(s)
