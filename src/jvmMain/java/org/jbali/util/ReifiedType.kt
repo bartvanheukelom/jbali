@@ -44,10 +44,16 @@ data class ReifiedType<T>(
             /** Is public for inlining, but do not use directly. */
             val result: Box<T>? = null
     ) {
-
+        
+        /**
+         * Matches if [thisType] supers [O].
+         */
         inline fun <reified O> to(block: (I) -> O): Matcher<T, I> =
                 to(reifiedTypeOf<O>(), block)
 
+        /**
+         * Matches if [thisType] supers [m].
+         */
         inline fun <O> to(m: ReifiedType<O>, block: (I) -> O): Matcher<T, I> =
                 when {
 
@@ -63,6 +69,33 @@ data class ReifiedType<T>(
                     else ->
                         this
                 }
+        
+        /**
+         * Matches if [thisType] extends [O].
+         */
+        inline fun <reified O> extends(block: (I) -> O): Matcher<T, I> =
+                extends(reifiedTypeOf<O>(), block)
+        
+        /**
+         * Matches if [thisType] extends [m].
+         */
+        inline fun <O> extends(m: ReifiedType<O>, block: (I) -> O): Matcher<T, I> =
+                when {
+
+                    result != null ->
+                        // previous match was a success, keep returning this until a terminator is called
+                        this
+
+                    thisType extends m ->
+                        // unchecked cast because compiler doesn't know that T extends O, but we do NO WE DON'T BUT HOW TO SOLVE THIS AAARGH
+                        @Suppress("UNCHECKED_CAST")
+                        this.copy(result = Box(block(input)) as Box<T>)
+
+                    else ->
+                        this
+                }
+        
+        
 
         /**
          * Terminates the matcher by returning the result of the matched block, or throwing [IllegalArgumentException].
