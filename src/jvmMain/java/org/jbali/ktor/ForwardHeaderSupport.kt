@@ -4,6 +4,18 @@ import io.ktor.features.*
 import io.ktor.http.*
 
 /**
+ * Remove all default headers from the config, so it accepts nothing.
+ * EXCEPT X-Forwarded-Port, which we can't remove because portHeaders is internal...
+ */
+fun XForwardedHeaderSupport.Config.clear() {
+    hostHeaders.clear()
+    protoHeaders.clear()
+    forHeaders.clear()
+    httpsFlagHeaders.clear()
+//    portHeaders.clear()
+}
+
+/**
  * Config [XForwardedHeaderSupport] to be used specifically behind a Traefik front-end,
  * dealing with its implementation-defined behaviours, which are:
  *
