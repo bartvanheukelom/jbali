@@ -9,7 +9,13 @@ import kotlin.reflect.full.primaryConstructor
 inline fun <reified T : Any> textable(data: Iterable<T>): Sequence<String> =
     textable(T::class, data)
 
-fun <T : Any> textable(clazz: KClass<T>, data: Iterable<T>): Sequence<String> {
+inline fun <reified T : Any> textable(data: Sequence<T>): Sequence<String> =
+    textable(T::class, data)
+
+fun <T : Any> textable(clazz: KClass<T>, data: Iterable<T>): Sequence<String> =
+    textable(clazz, data.asSequence())
+
+fun <T : Any> textable(clazz: KClass<T>, data: Sequence<T>): Sequence<String> {
     
     // TODO dedup with ObjMap (and cache)
     val props: List<KProperty1<T, *>> =
@@ -29,7 +35,10 @@ fun <T : Any> textable(clazz: KClass<T>, data: Iterable<T>): Sequence<String> {
     
 }
 
-fun <T : Any> textableWithProps(props: List<KProperty1<T, *>>, data: Iterable<T>): Sequence<String> {
+fun <T : Any> textableWithProps(props: List<KProperty1<T, *>>, data: Iterable<T>): Sequence<String> =
+    textableWithProps(props, data.asSequence())
+
+fun <T : Any> textableWithProps(props: List<KProperty1<T, *>>, data: Sequence<T>): Sequence<String> {
     
     // TODO make Column class which encapsulates header name and value getter
     
@@ -74,6 +83,12 @@ fun textable(
 fun textableWithHeaders(
     colHeaders: List<String>,
     rows: List<List<String>>,
+): Sequence<String> =
+    textableWithHeaders(colHeaders, rows.asSequence())
+
+fun textableWithHeaders(
+    colHeaders: List<String>,
+    rows: Sequence<List<String>>,
 ): Sequence<String> {
     
     val numCols = colHeaders.size
@@ -107,6 +122,10 @@ fun textableWithHeaders(
 }
 
 inline fun <reified T : Any> Iterable<T>.toTableString() =
+    // TODO optimized builder with fixed length
+    textable(this).joinToString("\n") + "\n"
+
+inline fun <reified T : Any> Sequence<T>.toTableString() =
     // TODO optimized builder with fixed length
     textable(this).joinToString("\n") + "\n"
 
