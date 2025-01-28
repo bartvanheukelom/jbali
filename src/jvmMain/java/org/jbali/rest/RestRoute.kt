@@ -20,7 +20,7 @@ import org.jbali.bytes.Hex
 import org.jbali.bytes.encodedAs
 import org.jbali.crypto.sha256
 import org.jbali.kotser.jsonString
-import org.jbali.ktor.handleExact
+import org.jbali.ktor.isCatch
 import org.jbali.ktor.respondNoContent
 import org.jbali.ktor.routeExact
 import org.jbali.oas.PathItem
@@ -50,22 +50,13 @@ interface RestRouteContext : RestApiContext {
         path: String,
         impl: suspend (ApplicationCall) -> T
     ) {
-        ktorRouteForHacks.createRouteFromPath(path).routeExact {
-    
-            post {
-                impl(call)
-            }
-            
-            handle {
-                call.response.header(HttpHeaders.Allow, HttpMethod.Post.value)
-                call.respondObject(
-                    returnType = reifiedTypeOf(),
-                    status = HttpStatusCode.MethodNotAllowed,
-                    returnVal = buildJsonObject {
-                        put("message", jsonString("Method Not Allowed: ${call.request.httpMethod.value}"))
-                        errorResponseAugmenter(call)
-                    }
-                )
+        path(path) {
+            // TODO dedup with RestObject.patch, delete, etc. but figure out the exact/"" mess
+            allowedMethods += HttpMethod.Post
+            route.routeExact {
+                post {
+                    impl(call)
+                }
             }
         }
     }
@@ -125,7 +116,7 @@ abstract class RestRoute : RestRouteContext {
 
     private val log = LoggerFactory.getLogger(RestRoute::class.java)
 
-    protected val allowedMethods = mutableSetOf<HttpMethod>()
+    val allowedMethods = mutableSetOf<HttpMethod>()
 
     /**
      * For the given object, returns a function C that, when called with a [KSerializer],
@@ -406,15 +397,20 @@ abstract class RestRoute : RestRouteContext {
         setupMethodNotAllowed()
     }
 
+    
+    
     private fun setupMethodNotAllowed() {
-
+        route.routeExact {
+            isCatch = true
+            handleAsMethodNotAllowed(allowedMethods)
+        }
+    }
+    
+    fun Route.handleAsMethodNotAllowed(allowedMethods: Set<HttpMethod>) {
         val allowedHeader =
             allowedMethods.joinToString { it.value }
-
-        route.handleExact {
-
+        handle {
             call.response.header(HttpHeaders.Allow, allowedHeader)
-
             respondObject(
                 status = HttpStatusCode.MethodNotAllowed,
                 returnVal = buildJsonObject {
@@ -424,6 +420,7 @@ abstract class RestRoute : RestRouteContext {
             )
         }
     }
+    
 
 }
 
