@@ -23,14 +23,6 @@ fun Route.pathParameter(
     }
 }
 
-fun Route.toStringWithChildren(): String =
-    buildString {
-        appendLine(this@toStringWithChildren)
-        children.forEach {
-            append(it.toStringWithChildren().prependIndent("  "))
-        }
-    }
-
 /**
  * Builds a route to match specified [path] and defines a handler for it.
  */
@@ -43,11 +35,32 @@ fun Route.handlePath(path: String, body: PipelineInterceptor<Unit, ApplicationCa
  * Builds 2 routes, to match the paths "" and "/" respectively, and invokes [build] on both.
  * TODO why does "/" work? is this some kind of legacy behaviour? document this. also document what this route doesn't match.
  */
-fun <T> Route.routeExact(build: Route.() -> T): Pair<T, T> =
-    Pair(
-        createRouteFromPath("").run(build),
-        createRouteFromPath("/").run(build)
+fun <T> Route.routeExact(build: Route.() -> T): Pair<T, T> {
+    val tw = TwinRoutes(
+        createRouteFromPath(""),
+        createRouteFromPath("/"),
     )
+    val buildResults = Pair(
+        tw.noSlash.run(build),
+        tw.trailingSlash.run(build),
+    )
+    tw.noSlash.attributes.put(akRouteTwins, tw)
+    tw.trailingSlash.attributes.put(akRouteTwins, tw)
+    return buildResults
+}
+
+data class TwinRoutes(
+    val noSlash: Route,
+    val trailingSlash: Route,
+)
+
+// ak twin
+private val akRouteTwins = AttributeKey<TwinRoutes>("twins")
+
+val Route.twins: TwinRoutes?
+    get() = attributes.getOrNull(akRouteTwins)
+val Route.isTrailingSlashTwin: Boolean
+    get() = twins?.trailingSlash == this || parent?.isTrailingSlashTwin == true
 
 /**
  * Calls [routeExact], installing a handler using [body].
