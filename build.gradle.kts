@@ -168,7 +168,7 @@ if (doJvm) {
                         compileOnly("io.opentelemetry:opentelemetry-sdk", vOTel)
                         compileOnly("io.opentelemetry:opentelemetry-sdk-trace", vOTel)
                         compileOnly("io.opentelemetry:opentelemetry-context", vOTel)
-                        compileOnly("io.opentelemetry:opentelemetry-extension-kotlin", vOTel)
+//                        compileOnly("io.opentelemetry:opentelemetry-extension-kotlin", vOTel) -- disabled, not used anyway and pulls in kotlin 2.x - TODO instead of weird compile errors, make gradle fail the resolution
                         
                         api("commons-codec:commons-codec", "1.15")
                         api("org.apache.commons:commons-lang3", "3.12.0")
