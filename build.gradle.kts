@@ -148,6 +148,7 @@ if (doJvm) {
             sourceSets {
 
                 val vKtor = "1.6.5"
+                val vOTel = "1.46.0"
                 val vSlf4j = "1.7.32"
                 val vExposed = "0.35.3"
                 
@@ -163,6 +164,10 @@ if (doJvm) {
                         api("com.google.guava:guava", "31.1-jre")
                         api("org.slf4j:slf4j-api", vSlf4j)
                         api("io.micrometer:micrometer-core:1.11.0")
+                        
+                        compileOnly("io.opentelemetry:opentelemetry-sdk", vOTel)
+                        compileOnly("io.opentelemetry:opentelemetry-sdk-trace", vOTel)
+                        compileOnly("io.opentelemetry:opentelemetry-context", vOTel)
                         
                         api("commons-codec:commons-codec", "1.15")
                         api("org.apache.commons:commons-lang3", "3.12.0")

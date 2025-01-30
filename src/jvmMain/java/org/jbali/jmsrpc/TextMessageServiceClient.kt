@@ -3,16 +3,21 @@ package org.jbali.jmsrpc
 import arrow.core.getOrHandle
 import arrow.core.left
 import arrow.core.right
+import io.opentelemetry.api.GlobalOpenTelemetry
+import io.opentelemetry.api.OpenTelemetry
+import io.opentelemetry.api.trace.Span
+import io.opentelemetry.api.trace.SpanKind
+import io.opentelemetry.api.trace.StatusCode
+import io.opentelemetry.context.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
 import org.jbali.coroutines.Suspending
 import org.jbali.coroutines.runBlockingInterruptable
 import org.jbali.json2.JSONString
-import org.jbali.kotser.toJsonElement
-import org.jbali.kotser.toJsonObject
-import org.jbali.kotser.unwrap
+import org.jbali.kotser.*
 import org.jbali.reflect.Proxies
 import org.jbali.reflect.kClassOrNull
 import org.jbali.serialize.JavaJsonSerializer
@@ -27,6 +32,7 @@ class TextMessageServiceClient<S : Any>(
     private val ifaceK: KClass<out S>,
     blockRequestHandler: ((String) -> String)? = null,
     coroRequestHandler: (suspend (String) -> String)? = null,
+    private val otel: OpenTelemetry = GlobalOpenTelemetry.get()
 ) : AutoCloseable {
     
     constructor(
@@ -90,6 +96,7 @@ class TextMessageServiceClient<S : Any>(
     
     }
     
+    private val tracer = otel.getTracer(TextMessageServiceClient::class.qualifiedName!!)
     
     private val toStringed = "TextMessageServiceClient[" + ifaceK.simpleName + "]"
     private val ifaceInfo = ifaceK.asTMSInterface
@@ -107,103 +114,140 @@ class TextMessageServiceClient<S : Any>(
             }
         }
         
-        TMSMeters.activeRequestsClient.increment()
-        try {
+        val otSpan = tracer.spanBuilder("${ifaceInfo.metricsName}.${method.name}")
+            .setSpanKind(SpanKind.CLIENT)
+            .startSpan()
+        try { otSpan.makeCurrent().use { otScope ->
             
-            TMSMeters.recordStartedClientRequest(ifaceInfo.metricsName, method.name)
+            check(Span.current() === otSpan)
             
-            Proxies.handleTEH(proxy, method, args, "${toStringed}.blocking")
-                ?.right() // toString, equals or hashCode
-                ?: run {
-                    
-                    // --- ok, it's a real method --- //
-                    
-                    val tMethod = ifaceInfo.methods.getValue(method.name.lowercase())
-                    val func = tMethod.method(ifaceK)
-                    if (func.javaMethod != method) {
-                        // TODO does this happen?
-                        log.warn("Called '$method' is not equal to found '${func.javaMethod}'. Argument serialization may fail.")
-                    }
-                    
-                    // serialize the invocation to JSON
-                    val reqJson = buildJsonArray {
-                        add(method.name.toJsonElement())
-                        if (args != null) {
-                            add(args.asSequence()
-                                .mapIndexed { p, arg ->
-                                    val par = tMethod.params[p]
-                                    val kpar = par.param(func)
-                                    try {
-                                        par.name to par.serializer.transform(arg)
-                                    } catch (e: Exception) {
-                                        throw RuntimeException("Error serializing arg of type ${arg.kClassOrNull} for $kpar.name: $e", e)
-                                    }
+            TMSMeters.activeRequestsClient.increment()
+            try {
+                
+                TMSMeters.recordStartedClientRequest(ifaceInfo.metricsName, method.name)
+                
+                Proxies.handleTEH(proxy, method, args, "${toStringed}.blocking")
+                    ?.right() // toString, equals or hashCode
+                    ?: run {
+                        
+                        // --- ok, it's a real method --- //
+                        
+                        val tMethod = ifaceInfo.methods.getValue(method.name.lowercase())
+                        val func = tMethod.method(ifaceK)
+                        if (func.javaMethod != method) {
+                            // TODO does this happen?
+                            log.warn("Called '$method' is not equal to found '${func.javaMethod}'. Argument serialization may fail.")
+                        }
+                        
+                        with(otSpan) {
+                            setAttribute("iface", ifaceInfo.metricsName)
+                            setAttribute("method", tMethod.name)
+                        }
+                        
+                        log.info("QQQ building otArgs,context=${Context.current()}")
+                        val otArgs = buildJsonObject {
+//                            if (ifaceInfo.name == "com.redwinx.plaza.data.rmi.net.RemoteDataServer") { // TODO not required?
+                                otel.propagators.textMapPropagator.inject(Context.current(), this) { carrier, key, value ->
+                                    log.info("QQQ propagate $key=$value")
+                                    carrier?.put("otel:$key", value)
                                 }
-                                .toJsonObject()
-                            )
+//                            }
                         }
-                    }
-                    
-                    // send the request
-                    val reqStr = JSONString.stringify(reqJson, prettyPrint = false).string
-                    val respJson = when {
-                        blockRequestHandler != null -> blockRequestHandler(reqStr)
-                        coroRequestHandler != null -> runBlockingInterruptable { coroRequestHandler(reqStr) }
-                        else -> throw IllegalStateException("Must provide at least one of blockRequestHandler or coroRequestHandler")
-                    }
-                    
-                    // parse the response
-                    val respParsed = JSONString(respJson).parse() as JsonArray
-                    val respStatus = (respParsed[TextMessageService.RSIDX_STATUS].unwrap() as Double).toInt()
-                    val respJsonEl = respParsed[TextMessageService.RSIDX_RESPONSE]
-                    
-                    // return or throw it
-                    when (respStatus) {
-                        TextMessageService.STATUS_OK -> {
-                            record(null)
-                            tMethod.returnSerializer
-                                .detransform(respJsonEl)
-                                .right()
+                        log.info("QQQ built otArgs=$otArgs")
+                        
+                        // serialize the invocation to JSON
+                        val reqJson = buildJsonArray {
+                            add(method.name.toJsonElement())
+                            if (args != null) {
+                                add(args.asSequence()
+                                    .mapIndexed { p, arg ->
+                                        val par = tMethod.params[p]
+                                        val kpar = par.param(func)
+                                        try {
+                                            par.name to par.serializer.transform(arg)
+                                        } catch (e: Exception) {
+                                            throw RuntimeException("Error serializing arg of type ${arg.kClassOrNull} for $kpar.name: $e", e)
+                                        }
+                                    }
+                                    .toJsonObject().plusExclusive(otArgs)
+                                )
+                            } else {
+                                add(otArgs)
+                            }
                         }
-                        else -> {
-                            // the response should be an exception
-                            JjsAsTms
-                                .detransform(respJsonEl)
-                                
-                                // add the local stack trace to the remote exception,
-                                // otherwise that info is lost - unless we wrap the exception in a new local one,
-                                // which we don't want because it breaks the remote API.
-                                .also { if (it is Throwable) augmentStackTrace(
-                                    err = it,
-                                    // discard traces like:
-                                    //     at org.jbali.jmsrpc.TextMessageServiceClient.create$lambda-6(TextMessageServiceClient.kt:106)
-                                    //     at com.sun.proxy.$Proxy8.${ifaceMethodThatWasInvoked}(Unknown Source)
-                                    discard = 2
-                                ) }
-                                
-                                .let { when (it) {
-                                    is TextMessageServiceClientException ->
-                                        RuntimeException("Service returned the following exception, i.e. it wasn't generated locally: $it", it)
-                                    is Throwable ->
-                                        it
-                                    else ->
-                                        RuntimeException("Service returned an error that is not Throwable but ${it?.javaClass}")
-                                } }
-                                
-                                .also { record(it) }
-                                
-                                .left()
+                        
+                        otSpan.setAttribute("request", BasicJson.stringify(reqJson, true)) // TODO ok to send big blobs?
+                        
+                        // send the request
+                        val reqStr = JSONString.stringify(reqJson, prettyPrint = false).string
+                        val respJson = when {
+                            blockRequestHandler != null -> blockRequestHandler(reqStr)
+                            coroRequestHandler != null -> runBlockingInterruptable { coroRequestHandler(reqStr) }
+                            else -> throw IllegalStateException("Must provide at least one of blockRequestHandler or coroRequestHandler")
                         }
+                        
+                        // parse the response
+                        val respParsed = JSONString(respJson).parse() as JsonArray
+                        val respStatus = (respParsed[TextMessageService.RSIDX_STATUS].unwrap() as Double).toInt()
+                        val respJsonEl = respParsed[TextMessageService.RSIDX_RESPONSE]
+                        
+                        // return or throw it
+                        when (respStatus) {
+                            TextMessageService.STATUS_OK -> {
+                                record(null)
+                                tMethod.returnSerializer
+                                    .detransform(respJsonEl)
+                                    .right()
+                            }
+                            else -> {
+                                // the response should be an exception
+                                JjsAsTms
+                                    .detransform(respJsonEl)
+                                    
+                                    // add the local stack trace to the remote exception,
+                                    // otherwise that info is lost - unless we wrap the exception in a new local one,
+                                    // which we don't want because it breaks the remote API.
+                                    .also { if (it is Throwable) augmentStackTrace(
+                                        err = it,
+                                        // discard traces like:
+                                        //     at org.jbali.jmsrpc.TextMessageServiceClient.create$lambda-6(TextMessageServiceClient.kt:106)
+                                        //     at com.sun.proxy.$Proxy8.${ifaceMethodThatWasInvoked}(Unknown Source)
+                                        discard = 2
+                                    ) }
+                                    
+                                    .let { when (it) {
+                                        is TextMessageServiceClientException ->
+                                            RuntimeException("Service returned the following exception, i.e. it wasn't generated locally: $it", it)
+                                        is Throwable ->
+                                            it
+                                        else ->
+                                            RuntimeException("Service returned an error that is not Throwable but ${it?.javaClass}")
+                                    } }
+                                    
+                                    .also { record(it) }
+                                    
+                                    .left()
+                            }
+                        }
+                        
                     }
-                    
-                }
+                
+            } catch (e: Throwable) {
+                record(e)
+                throw TextMessageServiceClientException("A local/meta exception occured when invoking $toStringed.${method.name}: $e", e)
+            } finally {
+                TMSMeters.activeRequestsClient.decrement()
+            }.getOrHandle { throw it }
             
-        } catch (e: Throwable) {
-            record(e)
-            throw TextMessageServiceClientException("A local/meta exception occured when invoking $toStringed.${method.name}: $e", e)
-        } finally {
-            TMSMeters.activeRequestsClient.decrement()
-        }.getOrHandle { throw it }
+        }
+            .also { otSpan.setStatus(StatusCode.OK) }
+        }
+        catch (e: Throwable) {
+            otSpan.setStatus(StatusCode.ERROR)
+            otSpan.recordException(e)
+            throw e
+        }
+        finally { otSpan.end() }
         
     }
     

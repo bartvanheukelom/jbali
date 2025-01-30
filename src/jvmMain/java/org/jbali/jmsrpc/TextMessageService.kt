@@ -2,6 +2,12 @@ package org.jbali.jmsrpc
 
 import arrow.core.left
 import arrow.core.right
+import io.opentelemetry.api.GlobalOpenTelemetry
+import io.opentelemetry.api.OpenTelemetry
+import io.opentelemetry.api.trace.SpanKind
+import io.opentelemetry.api.trace.StatusCode
+import io.opentelemetry.context.Context
+import io.opentelemetry.context.propagation.TextMapGetter
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -46,9 +52,10 @@ inline fun <reified T : Any> TextMessageService(
     endpoint = endpoint,
 )
 
-class TextMessageService<T : Any>(
+class TextMessageService<T : Any> @JvmOverloads constructor(
     val def: TMSDefinition<T>,
-    private val endpoint: T
+    private val endpoint: T,
+    private val otel: OpenTelemetry = GlobalOpenTelemetry.get(),
 ) : ITextMessageService<T> {
     
 //    @Deprecated("use constructor with TMSDefinition")
@@ -59,6 +66,8 @@ class TextMessageService<T : Any>(
 //        def = TMSDefinition(iface.kotlin),
 //        endpoint = endpoint,
 //    )
+    
+    private val tracer = otel.getTracer(TextMessageService::class.qualifiedName!!)
     
 //    private val iface get() = def.iface.java
     private val ifaceK get() = def.iface
@@ -86,53 +95,89 @@ class TextMessageService<T : Any>(
                 meter.methodName = methName
                 val method = ifaceInfo.methods[methName.lowercase()]
                     ?: throw NoSuchElementException("Unknown method '$methName'")
+                
                 val func = method.method(ifaceK)
                 
                 // read arguments
                 val inArgs = if (reqJson.size > RQIDX_ARGS) reqJson[RQIDX_ARGS].jsonObject else JsonObject.empty
-                val args = mutableMapOf<KParameter, Any?>(
-                    func.instanceParameter!! to endpoint
-                )
-                inArgs.forEach { (name, serVal) ->
-                    method.paramsByName[name]?.let { par ->
-                        val kPar = par.param(func)
-                        args[kPar] = par.serializer.detransform(serVal)
+                val otelContext = mutableMapOf<String, String>()
+                inArgs.forEach { k, v ->
+                    if (k.startsWith("otel:")) {
+                        otelContext[k.substring(5)] = v.string
                     }
-                    // TODO log a warning once, for each redundant arg
-                }
-    
-                // execute
-                val ret = try {
-                    func.callByWithBetterExceptions(args)
-                } catch (e: InvocationTargetException) {
-                    // InvocationTargetException: actual exception inside method.
-                    throw e.cause!!
-                } catch (e: ExceptionInInitializerError) {
-                    // ExceptionInInitializerError: always unchecked (initializers can't throw checked).
-                    throw e.cause!!
-                } catch (e: IllegalAccessException) {
-                    // IllegalAccessException: method is public, should not happen.
-                    throw RuntimeException("TextMessageService internal error", e)
-                } catch (e: NullPointerException) {
-                    // NullPointerException: endpoint is not null, should not happen.
-                    throw RuntimeException("TextMessageService internal error", e)
-                }
-    
-                // serialize response
-                val serRet = try {
-                    method.returnSerializer.transform(ret)
-                } catch (e: Throwable) {
-                    log.warn("${e.javaClass.name} while serializing return value $ret")
-                    throw RuntimeException("Exception serializing return value of type ${ret?.javaClass?.name} (see log for contents): $e", e)
                 }
                 
-                // return response
-                meter.result = Unit.right()
-                JsonArray(listOf(
-                    STATUS_OK.toJsonElement(),
-                    serRet,
-                ))
-    
+                val otelPc = otel.propagators.textMapPropagator.extract(Context.current(), otelContext, object : TextMapGetter<Map<String, String>> {
+                    override fun keys(carrier: Map<String, String>) = carrier.keys
+                    override fun get(carrier: Map<String, String>?, key: String): String? = carrier?.get(key)
+                })
+                
+                val otSpan = tracer.spanBuilder("${ifaceInfo.metricsName}.${method.name}")
+                    .setParent(otelPc)
+                    .setSpanKind(SpanKind.SERVER)
+                    .startSpan()
+                try {
+                    otSpan.makeCurrent().use { otScope ->
+                    
+                        // TODO?
+//                        with(otSpan) {
+//                            setAttribute("service", svcName)
+//                            setAttribute("method", method.name)
+//                        }
+                        
+                        val args = mutableMapOf<KParameter, Any?>(
+                            func.instanceParameter!! to endpoint
+                        )
+                        inArgs
+                            .filterNot { (k, _) -> k.startsWith("otel:") }
+                            .forEach { (name, serVal) ->
+                            method.paramsByName[name]?.let { par ->
+                                val kPar = par.param(func)
+                                args[kPar] = par.serializer.detransform(serVal)
+                            }
+                            // TODO log a warning once, for each redundant arg
+                        }
+            
+                        // execute
+                        val ret = try {
+                            func.callByWithBetterExceptions(args)
+                        } catch (e: InvocationTargetException) {
+                            // InvocationTargetException: actual exception inside method.
+                            throw e.cause!!
+                        } catch (e: ExceptionInInitializerError) {
+                            // ExceptionInInitializerError: always unchecked (initializers can't throw checked).
+                            throw e.cause!!
+                        } catch (e: IllegalAccessException) {
+                            // IllegalAccessException: method is public, should not happen.
+                            throw RuntimeException("TextMessageService internal error", e)
+                        } catch (e: NullPointerException) {
+                            // NullPointerException: endpoint is not null, should not happen.
+                            throw RuntimeException("TextMessageService internal error", e)
+                        }
+            
+                        // serialize response
+                        val serRet = try {
+                            method.returnSerializer.transform(ret)
+                        } catch (e: Throwable) {
+                            log.warn("${e.javaClass.name} while serializing return value $ret")
+                            throw RuntimeException("Exception serializing return value of type ${ret?.javaClass?.name} (see log for contents): $e", e)
+                        }
+                        
+                        // return response
+                        meter.result = Unit.right()
+                        JsonArray(listOf(
+                            STATUS_OK.toJsonElement(),
+                            serRet,
+                        ))
+                            .also { otSpan.setStatus(StatusCode.OK) }
+                
+                    } // end otScope
+                } catch (e: Throwable) {
+                    otSpan.setStatus(StatusCode.ERROR)
+                    otSpan.recordException(e)
+                    throw e
+                } finally { otSpan.end() }
+                
             } catch (e: Throwable) {
     
                 // remove the current stack trace from the error stacktraces,
@@ -207,7 +252,10 @@ class TextMessageService<T : Any>(
         ): TextMessageServiceClient<T> =
             TextMessageServiceClient(
                 iface.kotlin,
-                requestHandler = TextMessageService(TMSDefinition(iface.kotlin), endpoint)::handleRequest
+                requestHandler = TextMessageService(
+                    def = TMSDefinition(iface.kotlin),
+                    endpoint = endpoint,
+                )::handleRequest
             )
         
     }
