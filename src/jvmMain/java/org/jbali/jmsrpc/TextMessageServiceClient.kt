@@ -5,10 +5,6 @@ import arrow.core.left
 import arrow.core.right
 import io.opentelemetry.api.GlobalOpenTelemetry
 import io.opentelemetry.api.OpenTelemetry
-import io.opentelemetry.api.trace.Span
-import io.opentelemetry.api.trace.SpanKind
-import io.opentelemetry.api.trace.StatusCode
-import io.opentelemetry.context.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
@@ -17,7 +13,12 @@ import kotlinx.serialization.json.buildJsonObject
 import org.jbali.coroutines.Suspending
 import org.jbali.coroutines.runBlockingInterruptable
 import org.jbali.json2.JSONString
-import org.jbali.kotser.*
+import org.jbali.kotser.BasicJson
+import org.jbali.kotser.put
+import org.jbali.kotser.toJsonElement
+import org.jbali.kotser.unwrap
+import org.jbali.otel.clientSpan
+import org.jbali.otel.propagate
 import org.jbali.reflect.Proxies
 import org.jbali.reflect.kClassOrNull
 import org.jbali.serialize.JavaJsonSerializer
@@ -114,12 +115,7 @@ class TextMessageServiceClient<S : Any>(
             }
         }
         
-        val otSpan = tracer.spanBuilder("${ifaceInfo.metricsName}.${method.name}")
-            .setSpanKind(SpanKind.CLIENT)
-            .startSpan()
-        try { otSpan.makeCurrent().use { otScope ->
-            
-            check(Span.current() === otSpan)
+        tracer.clientSpan("${ifaceInfo.metricsName}.${method.name}") { otSpan ->
             
             TMSMeters.activeRequestsClient.increment()
             try {
@@ -144,39 +140,32 @@ class TextMessageServiceClient<S : Any>(
                             setAttribute("method", tMethod.name)
                         }
                         
-                        log.info("QQQ building otArgs,context=${Context.current()}")
-                        val otArgs = buildJsonObject {
-//                            if (ifaceInfo.name == "com.redwinx.plaza.data.rmi.net.RemoteDataServer") { // TODO not required?
-                                otel.propagators.textMapPropagator.inject(Context.current(), this) { carrier, key, value ->
-                                    log.info("QQQ propagate $key=$value")
-                                    carrier?.put("otel:$key", value)
+                        val argsObj = buildJsonObject {
+                            
+                            args?.forEachIndexed { p, arg ->
+                                val par = tMethod.params[p]
+                                val kpar = par.param(func)
+                                val argEl = try {
+                                    par.serializer.transform(arg)
+                                } catch (e: Exception) {
+                                    throw RuntimeException("Error serializing arg of type ${arg.kClassOrNull} for $kpar.name: $e", e)
                                 }
-//                            }
+                                put(par.name, argEl)
+                                // TODO configurable
+                                // TODO something smart with secrets. or, secrets should just be transfered out of band to prevent logging anywhere
+                                otSpan.setAttribute("tms.args.${par.name}", BasicJson.stringify(argEl, false))
+                            }
+                            
+                            otel.propagate { k, v -> put("otel:$k", v) }
                         }
-                        log.info("QQQ built otArgs=$otArgs")
                         
                         // serialize the invocation to JSON
                         val reqJson = buildJsonArray {
                             add(method.name.toJsonElement())
-                            if (args != null) {
-                                add(args.asSequence()
-                                    .mapIndexed { p, arg ->
-                                        val par = tMethod.params[p]
-                                        val kpar = par.param(func)
-                                        try {
-                                            par.name to par.serializer.transform(arg)
-                                        } catch (e: Exception) {
-                                            throw RuntimeException("Error serializing arg of type ${arg.kClassOrNull} for $kpar.name: $e", e)
-                                        }
-                                    }
-                                    .toJsonObject().plusExclusive(otArgs)
-                                )
-                            } else {
-                                add(otArgs)
+                            if (argsObj.isNotEmpty()) {
+                                add(argsObj)
                             }
                         }
-                        
-                        otSpan.setAttribute("request", BasicJson.stringify(reqJson, true)) // TODO ok to send big blobs?
                         
                         // send the request
                         val reqStr = JSONString.stringify(reqJson, prettyPrint = false).string
@@ -240,14 +229,6 @@ class TextMessageServiceClient<S : Any>(
             }.getOrHandle { throw it }
             
         }
-            .also { otSpan.setStatus(StatusCode.OK) }
-        }
-        catch (e: Throwable) {
-            otSpan.setStatus(StatusCode.ERROR)
-            otSpan.recordException(e)
-            throw e
-        }
-        finally { otSpan.end() }
         
     }
     

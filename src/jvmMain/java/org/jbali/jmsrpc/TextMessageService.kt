@@ -1,15 +1,13 @@
 package org.jbali.jmsrpc
 
+import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
 import io.opentelemetry.api.GlobalOpenTelemetry
 import io.opentelemetry.api.OpenTelemetry
-import io.opentelemetry.api.trace.SpanKind
-import io.opentelemetry.api.trace.StatusCode
-import io.opentelemetry.context.Context
-import io.opentelemetry.context.propagation.TextMapGetter
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import org.jbali.errors.removeCurrentStack
@@ -19,8 +17,11 @@ import org.jbali.kotser.empty
 import org.jbali.kotser.jsonString
 import org.jbali.kotser.string
 import org.jbali.kotser.toJsonElement
+import org.jbali.otel.parentContextFrom
+import org.jbali.otel.serverSpan
 import org.jbali.reflect.callByWithBetterExceptions
 import org.jbali.serialize.JavaJsonSerializer
+import org.jbali.text.pairSplit
 import org.jbali.util.onceFunction
 import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
@@ -100,83 +101,76 @@ class TextMessageService<T : Any> @JvmOverloads constructor(
                 
                 // read arguments
                 val inArgs = if (reqJson.size > RQIDX_ARGS) reqJson[RQIDX_ARGS].jsonObject else JsonObject.empty
+                
+                // split into normal and otel context
+                val methodArgs = mutableListOf<Map.Entry<String, JsonElement>>()
                 val otelContext = mutableMapOf<String, String>()
-                inArgs.forEach { k, v ->
-                    if (k.startsWith("otel:")) {
-                        otelContext[k.substring(5)] = v.string
+                inArgs.entries.forEach { e ->
+                    when (val ks = e.key.pairSplit(":")) {
+                        is Either.Left -> methodArgs.add(e)
+                        is Either.Right -> when (ks.value.first) {
+                            "otel" -> otelContext[ks.value.second] = e.value.string
+                            else -> log.warn("Received argument in unknown namespace: '${e.key}'")
+                        }
                     }
                 }
                 
-                val otelPc = otel.propagators.textMapPropagator.extract(Context.current(), otelContext, object : TextMapGetter<Map<String, String>> {
-                    override fun keys(carrier: Map<String, String>) = carrier.keys
-                    override fun get(carrier: Map<String, String>?, key: String): String? = carrier?.get(key)
-                })
-                
-                val otSpan = tracer.spanBuilder("${ifaceInfo.metricsName}.${method.name}")
-                    .setParent(otelPc)
-                    .setSpanKind(SpanKind.SERVER)
-                    .startSpan()
-                try {
-                    otSpan.makeCurrent().use { otScope ->
+                tracer.serverSpan(
+                    name = "${ifaceInfo.metricsName}.${method.name}",
+                    parent = otel.parentContextFrom(otelContext),
+                ) { otSpan ->
                     
-                        // TODO?
-//                        with(otSpan) {
-//                            setAttribute("service", svcName)
-//                            setAttribute("method", method.name)
-//                        }
-                        
-                        val args = mutableMapOf<KParameter, Any?>(
-                            func.instanceParameter!! to endpoint
-                        )
-                        inArgs
-                            .filterNot { (k, _) -> k.startsWith("otel:") }
-                            .forEach { (name, serVal) ->
-                            method.paramsByName[name]?.let { par ->
-                                val kPar = par.param(func)
-                                args[kPar] = par.serializer.detransform(serVal)
-                            }
-                            // TODO log a warning once, for each redundant arg
+                    with(otSpan) {
+                        setAttribute("iface", ifaceInfo.metricsName)
+                        setAttribute("method", method.name)
+                    }
+                    
+                    val args = mutableMapOf<KParameter, Any?>(
+                        func.instanceParameter!! to endpoint
+                    )
+                    inArgs
+                        .filterNot { (k, _) -> k.startsWith("otel:") }
+                        .forEach { (name, serVal) ->
+                        method.paramsByName[name]?.let { par ->
+                            val kPar = par.param(func)
+                            args[kPar] = par.serializer.detransform(serVal)
                         }
+                        // TODO log a warning once, for each redundant arg
+                    }
+        
+                    // execute
+                    val ret = try {
+                        func.callByWithBetterExceptions(args)
+                    } catch (e: InvocationTargetException) {
+                        // InvocationTargetException: actual exception inside method.
+                        throw e.cause!!
+                    } catch (e: ExceptionInInitializerError) {
+                        // ExceptionInInitializerError: always unchecked (initializers can't throw checked).
+                        throw e.cause!!
+                    } catch (e: IllegalAccessException) {
+                        // IllegalAccessException: method is public, should not happen.
+                        throw RuntimeException("TextMessageService internal error", e)
+                    } catch (e: NullPointerException) {
+                        // NullPointerException: endpoint is not null, should not happen.
+                        throw RuntimeException("TextMessageService internal error", e)
+                    }
+        
+                    // serialize response
+                    val serRet = try {
+                        method.returnSerializer.transform(ret)
+                    } catch (e: Throwable) {
+                        log.warn("${e.javaClass.name} while serializing return value $ret")
+                        throw RuntimeException("Exception serializing return value of type ${ret?.javaClass?.name} (see log for contents): $e", e)
+                    }
+                    
+                    // return response
+                    meter.result = Unit.right()
+                    JsonArray(listOf(
+                        STATUS_OK.toJsonElement(),
+                        serRet,
+                    ))
             
-                        // execute
-                        val ret = try {
-                            func.callByWithBetterExceptions(args)
-                        } catch (e: InvocationTargetException) {
-                            // InvocationTargetException: actual exception inside method.
-                            throw e.cause!!
-                        } catch (e: ExceptionInInitializerError) {
-                            // ExceptionInInitializerError: always unchecked (initializers can't throw checked).
-                            throw e.cause!!
-                        } catch (e: IllegalAccessException) {
-                            // IllegalAccessException: method is public, should not happen.
-                            throw RuntimeException("TextMessageService internal error", e)
-                        } catch (e: NullPointerException) {
-                            // NullPointerException: endpoint is not null, should not happen.
-                            throw RuntimeException("TextMessageService internal error", e)
-                        }
-            
-                        // serialize response
-                        val serRet = try {
-                            method.returnSerializer.transform(ret)
-                        } catch (e: Throwable) {
-                            log.warn("${e.javaClass.name} while serializing return value $ret")
-                            throw RuntimeException("Exception serializing return value of type ${ret?.javaClass?.name} (see log for contents): $e", e)
-                        }
-                        
-                        // return response
-                        meter.result = Unit.right()
-                        JsonArray(listOf(
-                            STATUS_OK.toJsonElement(),
-                            serRet,
-                        ))
-                            .also { otSpan.setStatus(StatusCode.OK) }
-                
-                    } // end otScope
-                } catch (e: Throwable) {
-                    otSpan.setStatus(StatusCode.ERROR)
-                    otSpan.recordException(e)
-                    throw e
-                } finally { otSpan.end() }
+                }
                 
             } catch (e: Throwable) {
     
