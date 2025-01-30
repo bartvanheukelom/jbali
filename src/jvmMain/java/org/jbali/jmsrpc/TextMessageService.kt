@@ -13,10 +13,7 @@ import kotlinx.serialization.json.jsonObject
 import org.jbali.errors.removeCurrentStack
 import org.jbali.errors.stackTraceString
 import org.jbali.json2.JSONString
-import org.jbali.kotser.empty
-import org.jbali.kotser.jsonString
-import org.jbali.kotser.string
-import org.jbali.kotser.toJsonElement
+import org.jbali.kotser.*
 import org.jbali.otel.parentContextFrom
 import org.jbali.otel.serverSpan
 import org.jbali.reflect.callByWithBetterExceptions
@@ -128,15 +125,16 @@ class TextMessageService<T : Any> @JvmOverloads constructor(
                     val args = mutableMapOf<KParameter, Any?>(
                         func.instanceParameter!! to endpoint
                     )
-                    inArgs
-                        .filterNot { (k, _) -> k.startsWith("otel:") }
+                    methodArgs
                         .forEach { (name, serVal) ->
-                        method.paramsByName[name]?.let { par ->
-                            val kPar = par.param(func)
-                            args[kPar] = par.serializer.detransform(serVal)
+                            // TODO see notes in TextMessageServiceClient
+                            otSpan.setAttribute(TMSOTelAttributes.arg(name), BasicJson.stringify(serVal, false))
+                            method.paramsByName[name]?.let { par ->
+                                val kPar = par.param(func)
+                                args[kPar] = par.serializer.detransform(serVal)
+                            }
+                            // TODO log a warning once, for each redundant arg
                         }
-                        // TODO log a warning once, for each redundant arg
-                    }
         
                     // execute
                     val ret = try {
