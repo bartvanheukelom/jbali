@@ -121,8 +121,8 @@ class TextMessageService<T : Any> @JvmOverloads constructor(
                 ) { otSpan ->
                     
                     with(otSpan) {
-                        setAttribute("iface", ifaceInfo.metricsName)
-                        setAttribute("method", method.name)
+                        setAttribute(TMSOTelAttributes.iface, ifaceInfo.metricsName)
+                        setAttribute(TMSOTelAttributes.method, method.name)
                     }
                     
                     val args = mutableMapOf<KParameter, Any?>(

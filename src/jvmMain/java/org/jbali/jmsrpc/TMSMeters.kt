@@ -2,6 +2,7 @@ package org.jbali.jmsrpc
 
 import arrow.core.Either
 import io.micrometer.core.instrument.*
+import io.opentelemetry.api.common.AttributeKey
 import org.jbali.micrometer.CandleGauge
 import org.jbali.micrometer.record
 import org.jbali.micrometer.recordSneakyMillis
@@ -11,6 +12,7 @@ import org.jbali.util.NanoTime
 import org.jbali.util.logger
 import org.slf4j.Logger
 import java.time.Duration
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.ceil
 import kotlin.math.log2
@@ -200,4 +202,14 @@ internal object TMSMeters {
 interface RequestMeter : AutoCloseable {
     var methodName: String?
     var result: Either<Throwable, Unit>?
+}
+
+internal object TMSOTelAttributes {
+    val iface = AttributeKey.stringKey("tms.iface")
+    val method = AttributeKey.stringKey("tms.method")
+    
+    fun arg(name: String) = argKeys.computeIfAbsent(name) {
+        AttributeKey.stringKey("tms.arg.$name")
+    }
+    private val argKeys = ConcurrentHashMap<String, AttributeKey<String>>()
 }

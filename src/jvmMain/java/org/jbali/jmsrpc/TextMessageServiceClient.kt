@@ -136,8 +136,8 @@ class TextMessageServiceClient<S : Any>(
                         }
                         
                         with(otSpan) {
-                            setAttribute("iface", ifaceInfo.metricsName)
-                            setAttribute("method", tMethod.name)
+                            setAttribute(TMSOTelAttributes.iface, ifaceInfo.metricsName)
+                            setAttribute(TMSOTelAttributes.method, method.name)
                         }
                         
                         val argsObj = buildJsonObject {
@@ -153,7 +153,7 @@ class TextMessageServiceClient<S : Any>(
                                 put(par.name, argEl)
                                 // TODO configurable
                                 // TODO something smart with secrets. or, secrets should just be transfered out of band to prevent logging anywhere
-                                otSpan.setAttribute("tms.args.${par.name}", BasicJson.stringify(argEl, false))
+                                otSpan.setAttribute(TMSOTelAttributes.arg(par.name), BasicJson.stringify(argEl, false))
                             }
                             
                             otel.propagate { k, v -> put("otel:$k", v) }
