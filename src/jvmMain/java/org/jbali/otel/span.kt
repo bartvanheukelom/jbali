@@ -4,6 +4,8 @@ import io.opentelemetry.api.OpenTelemetry
 import io.opentelemetry.api.trace.*
 import io.opentelemetry.context.Context
 import io.opentelemetry.context.propagation.TextMapGetter
+import io.opentelemetry.extension.kotlin.asContextElement
+import kotlinx.coroutines.withContext
 
 
 // span execution, blocking
@@ -56,7 +58,47 @@ fun <T> SpanBuilder.startAndRun(block: (Span) -> T): T {
 
 // span execution, coroutines
 
-// TODO
+suspend fun <T> Tracer.serverSpanSuspending(
+    name: String,
+    parent: Context? = null,
+    block: suspend (span: Span) -> T,
+): T =
+    spanBuilder(name)
+        .setParentOpt(parent)
+        .setSpanKind(SpanKind.SERVER)
+        .startAndRunSuspending(block)
+
+suspend fun <T> Tracer.clientSpanSuspending(
+    name: String,
+    block: suspend (span: Span) -> T,
+): T =
+    spanBuilder(name)
+        .setSpanKind(SpanKind.CLIENT)
+        .startAndRunSuspending(block)
+
+suspend fun <T> Tracer.internalSpanSuspending(
+    name: String,
+    block: suspend (span: Span) -> T,
+): T =
+    spanBuilder(name)
+        .setSpanKind(SpanKind.INTERNAL)
+        .startAndRunSuspending(block)
+
+suspend fun <T> SpanBuilder.startAndRunSuspending(block: suspend (Span) -> T): T {
+    val otSpan = startSpan()
+    try {
+        return withContext(otSpan.asContextElement()) {
+            block(otSpan)
+        }
+            .also { otSpan.setStatus(StatusCode.OK) }
+    } catch (e: Throwable) {
+        otSpan.setStatus(StatusCode.ERROR)
+        otSpan.recordException(e)
+        throw e
+    } finally {
+        otSpan.end()
+    }
+}
 
 
 // span build helpers
