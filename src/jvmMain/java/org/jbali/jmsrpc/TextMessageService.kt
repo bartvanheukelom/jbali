@@ -113,7 +113,7 @@ class TextMessageService<T : Any> @JvmOverloads constructor(
                 }
                 
                 tracer.serverSpan(
-                    name = "${ifaceInfo.metricsName}.${method.name}",
+                    name = "${ifaceInfo.shortName}.${method.name}",
                     parent = otel.parentContextFrom(otelContext),
                 ) { otSpan ->
                     

@@ -115,7 +115,7 @@ class TextMessageServiceClient<S : Any>(
             }
         }
         
-        tracer.clientSpan("${ifaceInfo.metricsName}.${method.name}") { otSpan ->
+        tracer.clientSpan("${ifaceInfo.shortName}.${method.name}") { otSpan ->
             
             TMSMeters.activeRequestsClient.increment()
             try {

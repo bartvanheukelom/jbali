@@ -66,6 +66,7 @@ class TMSInterface<I : Any>(
     
     val name = bIface().qualifiedName!!
     val metricsName get() = name
+    val shortName = bIface().simpleName!!
     
     override fun toString() = "TMSInterface(name=$name)"
     

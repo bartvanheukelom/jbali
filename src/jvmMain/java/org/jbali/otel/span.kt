@@ -36,6 +36,21 @@ fun <T> Tracer.internalSpan(
         .setSpanKind(SpanKind.INTERNAL)
         .startAndRun(block)
 
+fun <T> Tracer.producerSpan(
+    name: String,
+    block: (span: Span) -> T,
+): T =
+    spanBuilder(name)
+        .setSpanKind(SpanKind.PRODUCER)
+        .startAndRun(block)
+
+fun <T> Tracer.consumerSpan(
+    name: String,
+    block: (span: Span) -> T,
+): T =
+    spanBuilder(name)
+        .setSpanKind(SpanKind.CONSUMER)
+        .startAndRun(block)
 
 fun <T> SpanBuilder.startAndRun(block: (Span) -> T): T {
     val otSpan = startSpan()
@@ -83,6 +98,23 @@ suspend fun <T> Tracer.internalSpanSuspending(
     spanBuilder(name)
         .setSpanKind(SpanKind.INTERNAL)
         .startAndRunSuspending(block)
+
+suspend fun <T> Tracer.producerSpanSuspending(
+    name: String,
+    block: suspend (span: Span) -> T,
+): T =
+    spanBuilder(name)
+        .setSpanKind(SpanKind.PRODUCER)
+        .startAndRunSuspending(block)
+
+suspend fun <T> Tracer.consumerSpanSuspending(
+    name: String,
+    block: suspend (span: Span) -> T,
+): T =
+    spanBuilder(name)
+        .setSpanKind(SpanKind.CONSUMER)
+        .startAndRunSuspending(block)
+
 
 suspend fun <T> SpanBuilder.startAndRunSuspending(block: suspend (Span) -> T): T {
     val otSpan = startSpan()
