@@ -4,11 +4,14 @@ import arrow.core.*
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
-import kotlin.jvm.JvmInline
 
 @JvmInline
 value class ErrorMessage(val msg: String) {
     override fun toString(): String = "Error: $msg"
+    
+    // a + b = "a, b"
+    operator fun plus(other: ErrorMessage): ErrorMessage =
+        ErrorMessage("$msg, ${other.msg}")
 }
 
 /**
@@ -53,6 +56,18 @@ fun <T> Uncertain<T>.getOrThrow(): T =
         getOrHandle {
             throw IllegalStateException(it.msg)
         }
+
+/**
+ * - If this is certain, returns it as-is.
+ * - If this is an error, runs [block] and:
+ *   - If that returns a certain value, returns that.
+ *   - If that returns an error, returns the concatenation of the two error messages.
+ */
+fun <T> Uncertain<T>.orTry(block: () -> Uncertain<T>): Uncertain<T> =
+        fold(
+            ifLeft = { e1 -> block().mapLeft { e2 -> e1 + e2 } },
+            ifRight = { this }
+        )
 
 
 /**
