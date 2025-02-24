@@ -64,6 +64,20 @@ open class EnumCompanion<E : Enum<E>>(
      */
     fun parseOrNull(name: String) = byLowerName[name.trim().lowercase()]
     
+    
+    /**
+     * Associates each enum constant (optionally filtered by [predicate]) with a value
+     * provided by [valueSelector], in an efficient [EnumMap].
+     */
+    fun <T> associate(
+        predicate: (E) -> Boolean = { true },
+        valueSelector: (E) -> T
+    ): Map<E, T> =
+        all.filter(predicate).associateWithTo(
+            EnumMap<E, T>(javaClass) as MutableMap<E, T>,
+            valueSelector
+        )
+    
 }
 
 @Suppress("FunctionName") // faux constructor
