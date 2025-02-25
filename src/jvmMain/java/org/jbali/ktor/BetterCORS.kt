@@ -97,6 +97,8 @@ class BetterCORS(configuration: Configuration) {
                 }
         )
     
+    private val detailedErrors: Boolean = configuration.detailedErrors
+
     /**
      * Feature's call interceptor that does all the job. Usually there is no need to install it as it is done during
      * feature installation
@@ -115,7 +117,7 @@ class BetterCORS(configuration: Configuration) {
             }
             OriginCheckResult.SkipCORS -> return
             OriginCheckResult.Failed -> {
-                context.respondCorsFailed()
+                context.respondCorsFailed("Origin '$origin' not allowed")
                 return
             }
         }
@@ -123,8 +125,9 @@ class BetterCORS(configuration: Configuration) {
         if (!allowNonSimpleContentTypes) {
             val contentType = call.request.header(HttpHeaders.ContentType)?.let { ContentType.parse(it) }
             if (contentType != null) {
-                if (contentType.withoutParameters() !in Configuration.CorsSimpleContentTypes) {
-                    context.respondCorsFailed()
+                val contentTypeWithoutParams = contentType.withoutParameters()
+                if (contentTypeWithoutParams !in Configuration.CorsSimpleContentTypes) {
+                    context.respondCorsFailed("Content-Type '$contentTypeWithoutParams' not allowed")
                     return
                 }
             }
@@ -139,7 +142,7 @@ class BetterCORS(configuration: Configuration) {
         }
         
         if (!call.corsCheckCurrentMethod()) {
-            context.respondCorsFailed()
+            context.respondCorsFailed("Method '${call.request.httpMethod.value}' not allowed")
             return
         }
         
@@ -164,8 +167,19 @@ class BetterCORS(configuration: Configuration) {
                 it.trim().lowercase()
             } ?: emptyList()
         
-        if (!corsCheckRequestMethod() || (!corsCheckRequestHeaders(requestHeaders))) {
-            respond(HttpStatusCode.Forbidden)
+        val requestMethod = request.header(HttpHeaders.AccessControlRequestMethod)
+        if (!corsCheckRequestMethod()) {
+            if (requestMethod != null) {
+                respond(HttpStatusCode.Forbidden, if (detailedErrors) "Request denied by CORS: Method '$requestMethod' not allowed" else "")
+            } else {
+                respond(HttpStatusCode.Forbidden, if (detailedErrors) "Request denied by CORS: Missing 'Access-Control-Request-Method' header" else "")
+            }
+            return
+        }
+        
+        val invalidHeaders = requestHeaders.filterNot { header -> header in allHeadersSet || headerMatchesAPredicate(header) }
+        if (invalidHeaders.isNotEmpty()) {
+            respond(HttpStatusCode.Forbidden, if (detailedErrors) "Request denied by CORS: Headers not allowed: '${invalidHeaders.joinToString()}'" else "")
             return
         }
         
@@ -245,8 +259,12 @@ class BetterCORS(configuration: Configuration) {
         return requestMethod != null && requestMethod in methods
     }
     
-    private suspend fun PipelineContext<Unit, ApplicationCall>.respondCorsFailed() {
-        call.respond(HttpStatusCode.Forbidden)
+    private suspend fun PipelineContext<Unit, ApplicationCall>.respondCorsFailed(reason: String = "") {
+        if (detailedErrors) {
+            call.respond(HttpStatusCode.Forbidden, "Request denied by CORS: $reason")
+        } else {
+            call.respond(HttpStatusCode.Forbidden)
+        }
         finish()
     }
     
@@ -435,6 +453,11 @@ class BetterCORS(configuration: Configuration) {
          */
         var allowNonSimpleContentTypes: Boolean = false
         
+        /**
+         * If true, respond with detailed error messages when CORS checks fail
+         */
+        var detailedErrors: Boolean = false
+
         /**
          * Allow requests from any host
          */
