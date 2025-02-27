@@ -2,18 +2,19 @@
 
 package org.jbali.security
 
+import java.time.Instant
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
 
-interface RateLimiter {
+interface OpRateLimiter<O> {
     
     /**
      * Return the number of permits available for the given key,
      * without consuming any of them.
      */
-    fun getAvailablePermits(key: String = ""): UInt
+    fun getAvailablePermits(op: O): UInt
     
     /**
      * Request the given number of permits for the given key.
@@ -25,15 +26,15 @@ interface RateLimiter {
      *         of accidentally using this function instead of the intended [requirePermits], and to force the caller to
      *         consider whether they should do anything at all with 0 permits. TODO but not. fix doc.
      */
-    fun requestPermits(key: String = "", permits: UInt = 1u, partial: Boolean = true): Permits
+    fun requestPermits(op: O, permits: UInt = 1u, partial: Boolean = true): Permits
     
     /**
      * Get the given number of permits for the given key.
      *
      * @throws RateLimitExceededException if there are not enough permits available.
      */
-    fun requirePermits(key: String = "", permits: UInt = 1u): Permits =
-        requestPermits(key, permits, partial = false).also { res ->
+    fun requirePermits(op: O, permits: UInt = 1u): Permits =
+        requestPermits(op, permits, partial = false).also { res ->
             assert(res.requested == permits)
             if (res.granted < permits) {
                 throw RateLimitExceededException("Rate limited, ${res.available} of requested ${res.requested} permits available")
@@ -44,8 +45,16 @@ interface RateLimiter {
      * Wait until the given number of permits are available for the given key, then consume them.
      * @param onWait Called once if and when the coroutine is about to be suspended waiting for permits. Not called if no waiting is needed.
      */
-    suspend fun waitForPermits(key: String = "", permits: UInt = 1u, onWait: () -> Unit = {}): Permits
+    suspend fun waitForPermits(op: O, permits: UInt = 1u, onWait: () -> Unit = {}): Permits
     
+}
+
+
+interface RateLimiter : OpRateLimiter<String> {
+    fun getAvailablePermits(): UInt = getAvailablePermits("")
+    fun requestPermits(permits: UInt = 1u, partial: Boolean = true): Permits = requestPermits("", permits, partial)
+    fun requirePermits(permits: UInt = 1u): Permits = requirePermits("", permits)
+    suspend fun waitForPermits(permits: UInt = 1u, onWait: () -> Unit = {}): Permits = waitForPermits("", permits, onWait)
 }
 
 
@@ -72,6 +81,14 @@ interface Permits {
      * The total number of permits granted. Can be fewer than requested if [RateLimiter.requestPermits] was used.
      */
     val granted: UInt
+    
+    /**
+     * If not enough permits are available and none were granted, this may predict when they will become available.
+     */
+    val availableAt: Instant?
+    
+    
+    // --- giving back --- //
     
     /**
      * The number of permits given back with [giveBack].
@@ -132,21 +149,24 @@ class RateLimitExceededException(message: String) : RuntimeException(message)
  * A rate "limiter" that doesn't actually limit anything. Useful for unit tests.
  */
 class RateUnlimiter : RateLimiter {
-    override fun getAvailablePermits(key: String): UInt = UInt.MAX_VALUE
-    override fun requestPermits(key: String, permits: UInt, partial: Boolean): Permits =
+    override fun getAvailablePermits(op: String): UInt = UInt.MAX_VALUE
+    override fun requestPermits(op: String, permits: UInt, partial: Boolean): Permits =
         PermitsImpl(permits, permits, permits) {
             // thanks yo
         }
-    override suspend fun waitForPermits(key: String, permits: UInt, onWait: () -> Unit) = requestPermits(key, permits)
+    override suspend fun waitForPermits(op: String, permits: UInt, onWait: () -> Unit) = requestPermits(op, permits)
 }
 
 internal class PermitsImpl(
     override val requested: UInt,
     override val available: UInt,
     override val granted: UInt,
+    override val availableAt: Instant? = null,
     private val giveBackImpl: (UInt) -> Unit,
 ) : Permits {
+    
     override fun toString() = "Permits(requested=$requested, available=$available, granted=$granted, returned=$returned)"
+    
     override var returned: UInt = 0u
         private set
     override fun giveBack(p: UInt) {
