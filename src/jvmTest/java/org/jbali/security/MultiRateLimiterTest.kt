@@ -64,9 +64,11 @@ class MultiRateLimiterTest {
             clock = { now },
         )
         
+        // TODO ip1, ip2
         val ip3 = InetAddress.getByName("10.1.2.3")
         
         val user1337 = 1337L
+        // TODO more users
         
         repeat(3) {
             rl.requirePermits(Oppy("GET", "/api", ip3, user1337))
