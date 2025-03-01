@@ -217,8 +217,3 @@ data class TokenBucketRateLimiterState(
         val permitsConsumed: UInt,
     )
 }
-
-
-private data class FreezeFrame(
-    val now: Instant,
-)

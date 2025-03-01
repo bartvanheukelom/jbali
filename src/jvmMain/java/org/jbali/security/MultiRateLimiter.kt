@@ -1,14 +1,19 @@
 package org.jbali.security
 
+import kotlinx.serialization.Serializable
+import org.jbali.collect.removeLast
+import org.jbali.collect.removeWhile
+import org.jbali.kotser.std.InstantSerializer
 import java.time.Duration
 import java.time.Instant
+import java.util.*
 
 
 /**
  * A rate limiter that can apply multiple rate limits to operations in a single permit check.
  * For example, an operation `HTTP GET /api/foobars` could be subject to:
  *
- * - `HTTP GET /api*`, globally, 3/second
+ * - `HTTP GET /api`, globally, 3/second
  * - `HTTP GET /api`, globally, 60/minute
  * - `HTTP GET /api`, per IP, 10/second
  * - `HTTP GET /api/foobars`, globally, 1/second
@@ -56,14 +61,14 @@ import java.time.Instant
  * ```
  */
 class MultiRateLimiter<O>(
-    private val rules: List<Rule<O, *>>,
+    private val rules: List<Rule<O>>,
     private val clock: () -> Instant = { Instant.now() },
 ) : OpRateLimiter<O> {
     
-    data class Rule<O, G>(
+    data class Rule<O>(
         val name: String,
         val scope: (O) -> Boolean,
-        val groupings: List<Grouping<O, G>>,
+        val groupings: List<Grouping<O, *>>,
     )
     data class Grouping<O, G>(
         val name: String,
@@ -71,13 +76,8 @@ class MultiRateLimiter<O>(
         val rates: List<BurstRate>,
     )
     
-    // state container for a rule
-    private data class RuleState<O>(
-        val grants: List<Pair<Instant, O>> = emptyList(),
-    )
-    
     private inner class RuleHandler(
-        val rule: Rule<O, *>,
+        val rule: Rule<O>,
     ) {
         // The longest time window for any rate in this rule (used for culling old grants)
         val longestWindow: Duration = rule.groupings
@@ -85,7 +85,7 @@ class MultiRateLimiter<O>(
             .maxOfOrNull { it.window } ?: Duration.ZERO
         
         // This state is mutated inside synchronized blocks.
-        var state = RuleState<O>()
+        val grants: LinkedList<MultiRateLimiterGrant<O>> = LinkedList()
         
         /**
          * For each grouping in the rule, count how many grants (i.e. previously granted permits)
@@ -95,22 +95,17 @@ class MultiRateLimiter<O>(
          *
          * The rule’s available permits is the minimum over its groupings.
          */
-        fun getAvailablePermits(op: O): UInt {
-            val now = clock()
+        fun getAvailablePermits(ff: FreezeFrame, op: O): UInt {
             
-            // Cull any expired grants. Since longestWindow is the maximum of all group windows,
-            // any grant older than now - longestWindow is irrelevant.
-            state = state.copy(
-                grants = state.grants.filter { it.first >= now.minus(longestWindow) }
-            )
+            ff.cullGrants()
             
             // Compute available permits for each grouping.
             val groupingAvailabilities: List<UInt> = rule.groupings.map { grouping ->
                 val key = grouping.opGroup(op)
                 // For each rate, count the grants in this grouping
                 val rateAvailabilities: List<UInt> = grouping.rates.map { rate ->
-                    val count = state.grants.count { grant ->
-                        grouping.opGroup(grant.second) == key && grant.first >= now.minus(rate.window)
+                    val count = grants.count { grant ->
+                        grouping.opGroup(grant.op) == key && grant.ts >= ff.now.minus(rate.window)
                     }
                     if (count >= rate.permits.toInt()) 0u else (rate.permits - count.toUInt())
                 }
@@ -120,24 +115,76 @@ class MultiRateLimiter<O>(
             // The rule is as restrictive as its most constrained grouping.
             return groupingAvailabilities.minOrNull() ?: UInt.MAX_VALUE
         }
+        
+        private fun FreezeFrame.cullGrants() {
+            // Cull any expired grants. Since longestWindow is the maximum of all group windows,
+            // any grant older than now - longestWindow is irrelevant.
+            val forgetBefore = now.minus(longestWindow)
+            grants.removeWhile { it.ts < forgetBefore }
+        }
+        
+        fun sort() {
+            grants.sortBy { it.ts }
+        }
+        
     }
     
     // Prepare a RuleHandler for each rule.
     private val ruleHandlers = rules.map { RuleHandler(it) }
     
+    
+    /**
+     * Add the given grant records to the state.
+     * Meant for restoring from persistence or unit tests.
+     */
+    fun addGrantHistory(grants: List<MultiRateLimiterGrant<O>>) {
+        mutate {
+            var added = false
+            for (grant in grants) {
+                for (rule in ruleHandlers) {
+                    if (rule.rule.scope(grant.op)) {
+                        rule.grants.add(grant)
+                        added = true
+                    }
+                }
+            }
+            if (added) {
+                // Cull old grants to keep the state size manageable.
+                ruleHandlers.forEach { it.sort() }
+            }
+        }
+    }
+    
+    /**
+     * Returns a list of all grant records in the state.
+     * Meant for persistence or debugging.
+     */
+    fun grantHistory(): List<MultiRateLimiterGrant<O>> =
+        mutate { // not actually mutating, just locking
+            ruleHandlers
+                .flatMap { it.grants }
+                .sortedBy { it.ts }
+                // deduplicate by identity
+                .distinctBy { it }
+        }
+    
+    private inline fun <T> mutate(block: FreezeFrame.() -> T): T =
+        synchronized(this) {
+            with(FreezeFrame(clock())) {
+                block()
+            }
+        }
+    
+    
     /**
      * Returns the number of permits available for an operation.
      * If no rules apply, returns UInt.MAX_VALUE (i.e. effectively unlimited).
      */
-    override fun getAvailablePermits(op: O): UInt {
-        synchronized(this) {
-            val matchingHandlers = ruleHandlers.filter { it.rule.scope(op) }
-            if (matchingHandlers.isEmpty()) {
-                return UInt.MAX_VALUE
-            }
-            return matchingHandlers.map { it.getAvailablePermits(op) }.minOrNull() ?: 0u
+    override fun getAvailablePermits(op: O): UInt =
+        mutate {
+            ruleHandlers.filter { it.rule.scope(op) }
+                .minOfOrNull { it.getAvailablePermits(this, op) } ?: UInt.MAX_VALUE
         }
-    }
     
     /**
      * Attempts to request [permits] for the given operation.
@@ -147,88 +194,56 @@ class MultiRateLimiter<O>(
      * The state is updated in all matching rules only if some permits are granted.
      */
     override fun requestPermits(op: O, permits: UInt, partial: Boolean): Permits {
-        synchronized(this) {
-            val now = clock()
+        mutate {
             
             // Determine which rules apply.
             val matchingHandlers = ruleHandlers.filter { it.rule.scope(op) }
             
             // If no rule applies, consider the operation unlimited.
-            val overallAvailable: UInt = if (matchingHandlers.isEmpty()) {
-                UInt.MAX_VALUE
-            } else {
-                matchingHandlers.map { it.getAvailablePermits(op) }.minOrNull() ?: 0u
-            }
+            val overallAvailable: UInt = matchingHandlers
+                .minOfOrNull { it.getAvailablePermits(this, op) } ?: UInt.MAX_VALUE
             
             // Decide how many permits to grant.
             val granted: UInt = when {
-                !partial && overallAvailable < permits -> 0u
-                partial -> if (overallAvailable > 0u) minOf(permits, overallAvailable) else 0u
-                else -> permits
+                overallAvailable >= permits -> permits
+                partial -> overallAvailable
+                else -> 0u
             }
             
             // If we are granting any permits, update each matching rule’s state.
             if (granted > 0u) {
+                val grant = MultiRateLimiterGrant(
+                    ts = now,
+                    op = op,
+                    requested = permits,
+                    available = overallAvailable,
+                    granted = granted,
+                )
                 matchingHandlers.forEach { handler ->
-                    val newGrants = List(granted.toInt()) { Pair(now, op) }
-                    handler.state = handler.state.copy(grants = handler.state.grants + newGrants)
+                    handler.grants.add(grant)
                 }
-            }
-            
-            // If no permits were granted, try to predict when one might become available.
-            val availableAt: Instant? = if (granted == 0u && matchingHandlers.isNotEmpty()) {
-                // For each matching handler, check each grouping and rate.
-                var predicted = now
-                matchingHandlers.forEach { handler ->
-                    handler.rule.groupings.forEach { grouping ->
-                        val key = grouping.opGroup(op)
-                        grouping.rates.forEach { rate ->
-                            // Only consider grants in this grouping and within this rate's window.
-                            val relevantGrants = handler.state.grants.filter { grant ->
-                                grouping.opGroup(grant.second) == key &&
-                                        grant.first >= now.minus(rate.window)
-                            }
-                            if (relevantGrants.size >= rate.permits.toInt()) {
-                                // Next permit becomes available when the oldest grant expires.
-                                val oldest = relevantGrants.minByOrNull { it.first }!!.first
-                                val candidate = oldest.plus(rate.window)
-                                if (candidate > predicted) {
-                                    predicted = candidate
-                                }
+                
+                return PermitsImpl(
+                    permits, overallAvailable,
+                    granted, null,
+                    giveBackImpl = { p ->
+                        require(p <= granted) { "Can't give back $p permits, only $granted granted" }
+                        // we can only undo grants completely. partial returns are ignored.
+                        if (p == granted) {
+                            matchingHandlers.forEach { handler ->
+                                // assume returns are done quickly so searching from the tail is faster
+                                handler.grants.removeLast { it === grant }
                             }
                         }
-                    }
-                }
-                if (predicted == now) null else predicted
+                    },
+                )
             } else {
-                null
+                return PermitsImpl(
+                    permits, overallAvailable,
+                    0u, null,
+                    giveBackImpl = { p -> require(p == 0u) { "Can't give back $p permits, none were granted" } },
+                )
             }
-            
-            // Define the "give back" behavior: when a consumer returns unused permits,
-            // remove them from each matching rule’s state.
-            val giveBackImpl: (UInt) -> Unit = { p ->
-                matchingHandlers.forEach { handler ->
-                    var pToRemove = p.toInt()
-                    // Rebuild the grant list excluding up to p matching grants.
-                    val newList = mutableListOf<Pair<Instant, O>>()
-                    for (grant in handler.state.grants) {
-                        if (pToRemove > 0 && grant.second == op) {
-                            pToRemove--
-                        } else {
-                            newList.add(grant)
-                        }
-                    }
-                    handler.state = handler.state.copy(grants = newList)
-                }
-            }
-            
-            return PermitsImpl(
-                requested = permits,
-                available = overallAvailable,
-                granted = granted,
-                availableAt = availableAt,
-                giveBackImpl = giveBackImpl
-            )
         }
     }
     
@@ -236,3 +251,13 @@ class MultiRateLimiter<O>(
         TODO("Not yet implemented")
     }
 }
+
+
+@Serializable
+data class MultiRateLimiterGrant<O>(
+    val ts: @Serializable(with = InstantSerializer::class) Instant,
+    val op: O,
+    val requested: UInt,
+    val available: UInt,
+    val granted: UInt,
+)
