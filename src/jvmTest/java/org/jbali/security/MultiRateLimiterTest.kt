@@ -138,12 +138,20 @@ class MultiRateLimiterTest {
         
         // === Give Back Test ===
         now = now.plusSeconds(10)
-        val permits = rl.requestPermits(globalApiOp, 1u, partial = false)
-        assertEquals(1u, permits.granted)
-        val historyBefore = rl.grantHistory().size
-        permits.giveBack(1u)
-        val historyAfter = rl.grantHistory().size
-        assertEquals(historyBefore - 1, historyAfter)
+        val permits = rl.requestPermits(globalApiOp, 3u, partial = false)
+        assertEquals(3u, permits.granted)
+        
+        // Before giving back, a new request should fail.
+        assertFailsWith<RateLimitExceededException> {
+            rl.requirePermits(globalApiOp, 1u)
+        }
+        
+        val historyBefore = rl.grantHistory()
+        permits.giveBack(3u)
+        val historyAfter = rl.grantHistory()
+        assertEquals(historyBefore.size - 1, historyAfter.size)
+        assertEquals(historyBefore.sumOf { it.granted } - 3u, historyAfter.sumOf { it.granted })
+        
         // After giving back, a new request should succeed.
         rl.requirePermits(globalApiOp, 1u)
 
