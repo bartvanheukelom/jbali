@@ -13,11 +13,11 @@ import java.util.*
  * A rate limiter that can apply multiple rate limits to operations in a single permit check.
  * For example, an operation `HTTP GET /api/foobars` could be subject to:
  *
- * - `HTTP GET /api`, globally, 3/second
+ * - `HTTP GET /api`, globally, 6/second
  * - `HTTP GET /api`, globally, 60/minute
- * - `HTTP GET /api`, per IP, 10/second
- * - `HTTP GET /api/foobars`, globally, 1/second
- * - `HTTP GET /api/foobars`, per user, 5/second
+ * - `HTTP GET /api`, per IP, 3/second
+ * - `HTTP GET /api/foobars`, globally, 5/second
+ * - `HTTP GET /api/foobars`, per user, 1/second
  *
  * A permit will be granted if all of these limits allow it.
  * If one of them does not, the permit is denied, and the operation is not counted against any limit that were already evaluated.
@@ -34,12 +34,12 @@ import java.util.*
  *             groupings = listOf(
  *                 // globally
  *                 MultiRateLimiter.Grouping(name = "global", opGroup = { "global" }, rates = listOf(
- *                     BurstRate( 3u, Duration.ofSeconds( 1)), // 3/second
- *                     BurstRate(60u, Duration.ofSeconds(60)), // 60/minute
+ *                     BurstRate( 6u, Duration.ofSeconds( 1)),
+ *                     BurstRate(60u, Duration.ofSeconds(60)),
  *                 ),
  *                 // per IP
  *                 MultiRateLimiter.Grouping(name = "ip", opGroup = { op: HTTPOp -> op.ip }, rates = listOf(
- *                     BurstRate(10u, Duration.ofSeconds(1)),
+ *                     BurstRate( 3u, Duration.ofSeconds(1)),
  *                 ),
  *             ),
  *         ),
@@ -49,10 +49,10 @@ import java.util.*
  *             scope = { it.method == HTTPMeth.GET && it.path == "/api/foobars" },
  *             groupings = listOf(
  *                 MultiRateLimiter.Grouping(name = "global", opGroup = { "global" }, rates = listOf(
- *                     BurstRate(1u, Duration.ofSeconds(1)),
+ *                     BurstRate(5u, Duration.ofSeconds(1)),
  *                 ),
  *                 MultiRateLimiter.Grouping(name = "user", opGroup = { it.user }, rates = listOf(
- *                     BurstRate(5u, Duration.ofSeconds(1)),
+ *                     BurstRate(1u, Duration.ofSeconds(1)),
  *                 ),
  *             ),
  *         ),
@@ -104,10 +104,11 @@ class MultiRateLimiter<O>(
                 val key = grouping.opGroup(op)
                 // For each rate, count the grants in this grouping
                 val rateAvailabilities: List<UInt> = grouping.rates.map { rate ->
-                    val count = grants.count { grant ->
-                        grouping.opGroup(grant.op) == key && grant.ts >= ff.now.minus(rate.window)
-                    }
-                    if (count >= rate.permits.toInt()) 0u else (rate.permits - count.toUInt())
+                    val cutoff = ff.now.minus(rate.window)
+                    val count = grants.filter { grant ->
+                        grouping.opGroup(grant.op) == key && grant.ts > cutoff
+                    }.sumOf { it.granted }
+                    if (count >= rate.permits) 0u else (rate.permits - count)
                 }
                 // This grouping is as restrictive as its lowest available rate.
                 rateAvailabilities.minOrNull() ?: 0u
