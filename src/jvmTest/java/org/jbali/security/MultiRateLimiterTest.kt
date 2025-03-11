@@ -146,23 +146,28 @@ class MultiRateLimiterTest {
         assertEquals(historyBefore - 1, historyAfter)
         // After giving back, a new request should succeed.
         rl.requirePermits(globalApiOp, 1u)
-        
+
         // === Multiple IPs and Users Test ===
         now = now.plusSeconds(10)
-        
-        // Two operations from different IPs share the same global limit for "/api" (3 permits/second).
-        
-        rl.requirePermits(Oppy("GET", "/api", ip1, anne))
-        // same IP can't do another request
+
+        // First, one IP hits its per-IP limit (3 permits/second).
+        rl.requirePermits(Oppy("GET", "/api", ip1, anne)) // ip1: 1, global: 1
+        rl.requirePermits(Oppy("GET", "/api", ip1, anne)) // ip1: 2, global: 2
+        rl.requirePermits(Oppy("GET", "/api", ip1, anne)) // ip1: 3, global: 3
         assertFailsWith<RateLimitExceededException> {
-            rl.requirePermits(Oppy("GET", "/api", ip1, anne))
+            rl.requirePermits(Oppy("GET", "/api", ip1, anne)) // 4th request from ip1 should fail.
         }
-        // but others can, up to the global limit 3
-        rl.requirePermits(Oppy("GET", "/api", ip2, bert))
-        rl.requirePermits(Oppy("GET", "/api", ip3, carl))
-        // Any further request—even from a different IP—should be rejected.
+
+        // Now, use different IPs to drive the global count to 6.
+        rl.requirePermits(Oppy("GET", "/api", ip2, bert))  // global: 4, ip2: 1
+        rl.requirePermits(Oppy("GET", "/api", ip3, carl))  // global: 5, ip3: 1
+        rl.requirePermits(Oppy("GET", "/api", ip4, dave))  // global: 6, ip4: 1
+
+        // With a global limit of 6, any additional request should be rejected,
+        // even if it's from an IP that hasn't hit its own limit.
         assertFailsWith<RateLimitExceededException> {
-            rl.requirePermits(Oppy("GET", "/api", ip4, dave))
+            rl.requirePermits(Oppy("GET", "/api", ip2, bert))
         }
+
     }
 }
