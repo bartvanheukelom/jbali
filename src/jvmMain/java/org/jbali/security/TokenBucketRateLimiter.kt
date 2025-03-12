@@ -1,6 +1,9 @@
 package org.jbali.security
 
 import kotlinx.coroutines.delay
+import kotlinx.serialization.Serializable
+import org.jbali.kotser.std.DurationSerializer
+import org.jbali.kotser.std.InstantSerializer
 import org.jbali.threeten.secondsDouble
 import java.time.Duration
 import java.time.Instant
@@ -184,6 +187,33 @@ class TokenBucketRateLimiter(
 
 }
 
-private data class FreezeFrame(
-    val now: Instant,
+
+@Serializable
+data class TokenBucketRateLimiterConfig(
+    val bufferSize: UInt,
+    val refillRate: Double,
+    // TODO doc that this cleanup also is responsible for refilling. if that's the case.
+    //      or just make it not the case. if it remains the case, auto calculate the default
+    //      such that waiting for 1 buffer to fill never takes longer than it should. or just auto refill if getting permits fails.
+    val cleanupInterval: @Serializable(with = DurationSerializer::class) Duration = Duration.ofMinutes(1),
 )
+
+
+@Serializable
+data class TokenBucketRateLimiterState(
+    val perKey: Map<String, KeyState> = emptyMap(),
+    val lastCleanup: @Serializable(with = InstantSerializer::class) Instant? = null,
+) {
+    
+    init {
+        require(perKey.isEmpty() == (lastCleanup == null)) {
+            "perKey and lastCleanup must be both empty/null or both have values"
+        }
+    }
+    
+    @Serializable
+    data class KeyState(
+        val lastRefill: @Serializable(with = InstantSerializer::class) Instant,
+        val permitsConsumed: UInt,
+    )
+}

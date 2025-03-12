@@ -12,13 +12,13 @@ import kotlin.reflect.KProperty
 
 // Ovservables TODO I guess rename because of java.util.Observable (and put in own package, or with events)
 
-interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T>, ReadOnlyProperty<Any?, T> {
+interface Observable<out T>: Supplier<@UnsafeVariance T>, Function0<T>, Listenable<T>, ReadOnlyProperty<Any?, T> {
 
     /**
      * Event that is dispatched whenever the value changes, with the old and new value.
      * If you only need the new value, use [onNewValue] instead.
      */
-    val onChange: Event<Change<T>>
+    val onChange: Event<Change<@UnsafeVariance T>>
 
     /**
      * Convenience event whose data is only the new value. Is dispatched exactly once for each [onChange] event.
@@ -26,7 +26,7 @@ interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T>, ReadOnlyPrope
      *
      * [Observable] implementors, see [setupNewValueDispatch].
      */
-    val onNewValue: Event<T>
+    val onNewValue: Event<@UnsafeVariance T>
 
     override fun listen(name: String?, callback: (arg: T) -> Unit) =
             onNewValue.listen(name, callback)
@@ -45,7 +45,7 @@ interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T>, ReadOnlyPrope
                 EventHandler.callWithErrorHandling(
                     handler = object : EventHandler<T> {
                         override val name: String get() = "bind"
-                        override val event: Event<T> get() = onNewValue
+                        override val event: Event<@UnsafeVariance T> get() = onNewValue
                     },
                     callback = handler,
                     data = get()
@@ -64,7 +64,7 @@ interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T>, ReadOnlyPrope
      * and whenever the value changes.
      */
     @HasBetterKotlinAlternative("bind")
-    fun bindj(handler: Consumer<T>): ListenerReference =
+    fun bindj(handler: Consumer<@UnsafeVariance T>): ListenerReference =
             bind { handler.accept(it) }
 
     /**
@@ -103,7 +103,7 @@ interface Observable<T>: Supplier<T>, Function0<T>, Listenable<T>, ReadOnlyPrope
  *
  * [before] and [after] may be equal. [different] reflects whether they are actually different.
  */
-data class Change<T>(
+data class Change<out T>(
     val before: T,
     val after: T,
 
