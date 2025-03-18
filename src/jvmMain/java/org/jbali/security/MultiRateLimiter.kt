@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import org.jbali.collect.removeLast
 import org.jbali.collect.removeWhile
 import org.jbali.kotser.std.InstantSerializer
+import org.jbali.util.logger
 import java.time.Duration
 import java.time.Instant
 import java.util.*
@@ -65,6 +66,8 @@ class MultiRateLimiter<O>(
     private val clock: () -> Instant = { Instant.now() },
 ) : OpRateLimiter<O> {
     
+    private val log = logger<MultiRateLimiter<*>>()
+    
     data class Rule<O>(
         val name: String,
         val scope: (O) -> Boolean,
@@ -99,15 +102,20 @@ class MultiRateLimiter<O>(
             
             ff.cullGrants()
             
+//            log.info("getAvailablePermits $op, recent grants:\n${grants.toTableString()}")
+            
             // Compute available permits for each grouping.
             val groupingAvailabilities: List<UInt> = rule.groupings.map { grouping ->
                 val key = grouping.opGroup(op)
                 // For each rate, count the grants in this grouping
                 val rateAvailabilities: List<UInt> = grouping.rates.map { rate ->
                     val cutoff = ff.now.minus(rate.window)
-                    val count = grants.filter { grant ->
+                    val windowGrants = grants.filter { grant ->
                         grouping.opGroup(grant.op) == key && grant.ts > cutoff
-                    }.sumOf { it.granted }
+                    }
+//                    log.info("For grouping ${grouping.name}, rate $rate, grants in window:\n${windowGrants.toTableString()}")
+                    val count = windowGrants.sumOf { it.granted }
+//                    log.info("${windowGrants.size} grants issued $count permits, ${rate.permits - count} available")
                     if (count >= rate.permits) 0u else (rate.permits - count)
                 }
                 // This grouping is as restrictive as its lowest available rate.
@@ -251,6 +259,26 @@ class MultiRateLimiter<O>(
     override suspend fun waitForPermits(op: O, permits: UInt, onWait: () -> Unit): Permits {
         TODO("Not yet implemented")
     }
+    
+    
+    data class RuleFlat(
+        val name: String,
+        val grouping: String,
+        val permits: UInt,
+        val window: Duration,
+    )
+    
+    companion object {
+        fun rulesFlat(rules: List<Rule<*>>): Sequence<RuleFlat> =
+            rules.asSequence().flatMap { rule ->
+                rule.groupings.asSequence().flatMap { grouping ->
+                    grouping.rates.asSequence().map { rate ->
+                        RuleFlat(rule.name, grouping.name, rate.permits, rate.window)
+                    }
+                }
+            }
+    }
+    
 }
 
 
