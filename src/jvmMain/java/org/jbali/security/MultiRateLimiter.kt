@@ -263,23 +263,29 @@ class MultiRateLimiter<O>(
             val matchingHandlers = ruleHandlers.filter { it.rule.scope(op) }
             
             // If no rule applies, consider the operation unlimited.
-            val overallAvailable: UInt = matchingHandlers
+            // TODO probably better to restructure, make no-rules its own branch
+            val overallAvailable: UInt? = matchingHandlers
                 .minOfOrNull { it.getAvailablePermits(
                     ff = this, op = op,
                     requested = permits, partial = partial,
-                ) } ?: UInt.MAX_VALUE
+                ) }
+            
+            overallAvailable?.let { // if no rules apply, we haven't evaluated anything
+                onRuleEvaluated.dispatch(RuleEvaluation(
+                    requested = permits,
+                    available = overallAvailable,
+                    partial = partial,
+                ))
+            }
             
             // Decide how many permits to grant.
             val granted: UInt = when {
+                overallAvailable == null -> permits
                 overallAvailable >= permits -> permits
                 partial -> overallAvailable
                 else -> 0u
             }
-            onRuleEvaluated.dispatch(RuleEvaluation(
-                requested = permits,
-                available = overallAvailable,
-                partial = partial,
-            ))
+            val apparentlyAvailable = overallAvailable ?: UInt.MAX_VALUE
             
             // If we are granting any permits, update each matching rule’s state.
             if (granted > 0u) {
@@ -287,7 +293,7 @@ class MultiRateLimiter<O>(
                     ts = now,
                     op = op,
                     requested = permits,
-                    available = overallAvailable,
+                    available = apparentlyAvailable,
                     granted = granted,
                 )
                 matchingHandlers.forEach { handler ->
@@ -295,7 +301,7 @@ class MultiRateLimiter<O>(
                 }
                 
                 return PermitsImpl(
-                    permits, overallAvailable,
+                    permits, apparentlyAvailable,
                     granted, null,
                     giveBackImpl = { p ->
                         require(p <= granted) { "Can't give back $p permits, only $granted granted" }
@@ -310,7 +316,7 @@ class MultiRateLimiter<O>(
                 )
             } else {
                 return PermitsImpl(
-                    permits, overallAvailable,
+                    permits, apparentlyAvailable,
                     0u, null,
                     giveBackImpl = { p -> require(p == 0u) { "Can't give back $p permits, none were granted" } },
                 )
