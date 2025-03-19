@@ -28,6 +28,8 @@ class DynamicMultiRateLimiter<O>(
         listener.detach()
     }
     
+    fun grantHistory() = synchronized(this) { limiter.grantHistory() }
+    
     override fun getAvailablePermits(op: O) = synchronized(this) {
         limiter.getAvailablePermits(op)
     }
