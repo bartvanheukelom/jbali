@@ -70,9 +70,9 @@ class MultiRateLimiter<O>(
     private val log = logger<MultiRateLimiter<*>>()
     
     data class RuleEvaluation(
-        val name: String,
-        val grouping: String,
-        val rate: BurstRate,
+        val name: String? = null,
+        val grouping: String? = null,
+        val rate: BurstRate? = null,
         val requested: UInt,
         val available: UInt,
         val partial: Boolean = false,
@@ -154,10 +154,29 @@ class MultiRateLimiter<O>(
                     available
                 }
                 // This grouping is as restrictive as its lowest available rate.
-                rateAvailabilities.minOrNull() ?: 0u
+                (rateAvailabilities.minOrNull() ?: 0u).also {
+                    if (requested != null) {
+                        onRuleEvaluated.dispatch(RuleEvaluation(
+                            name = rule.name,
+                            grouping = grouping.name,
+                            requested = requested,
+                            available = it,
+                            partial = partial!!,
+                        ))
+                    }
+                }
             }
             // The rule is as restrictive as its most constrained grouping.
-            return groupingAvailabilities.minOrNull() ?: UInt.MAX_VALUE
+            val ruleAvailability = groupingAvailabilities.minOrNull() ?: UInt.MAX_VALUE
+            if (requested != null) {
+                onRuleEvaluated.dispatch(RuleEvaluation(
+                    name = rule.name,
+                    requested = requested,
+                    available = ruleAvailability,
+                    partial = partial!!,
+                ))
+            }
+            return ruleAvailability
         }
         
         private fun FreezeFrame.cullGrants() {
@@ -256,6 +275,11 @@ class MultiRateLimiter<O>(
                 partial -> overallAvailable
                 else -> 0u
             }
+            onRuleEvaluated.dispatch(RuleEvaluation(
+                requested = permits,
+                available = overallAvailable,
+                partial = partial,
+            ))
             
             // If we are granting any permits, update each matching rule’s state.
             if (granted > 0u) {
