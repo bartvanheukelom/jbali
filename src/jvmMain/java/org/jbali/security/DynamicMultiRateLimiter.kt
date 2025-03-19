@@ -1,5 +1,6 @@
 package org.jbali.security
 
+import org.jbali.events.EventDelegate
 import org.jbali.events.Observable
 import java.time.Instant
 
@@ -8,14 +9,18 @@ class DynamicMultiRateLimiter<O>(
     private val clock: () -> Instant = { Instant.now() }
 ) : OpRateLimiter<O>, AutoCloseable {
     
+    val onRuleEvaluated by EventDelegate<MultiRateLimiter.RuleEvaluation>()
+    
     @Volatile
     private var limiter = MultiRateLimiter<O>(emptyList(), clock)
     
     private val listener = rules.bind {
         synchronized(this) {
             val grants = limiter.grantHistory()
-            limiter = MultiRateLimiter(it, clock)
-            limiter.addGrantHistory(grants)
+            limiter = MultiRateLimiter(it, clock).also {
+                it.onRuleEvaluated.listen(onRuleEvaluated::dispatch)
+                it.addGrantHistory(grants)
+            }
         }
     }
     

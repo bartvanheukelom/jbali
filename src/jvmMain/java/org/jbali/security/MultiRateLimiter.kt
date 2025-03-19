@@ -3,6 +3,7 @@ package org.jbali.security
 import kotlinx.serialization.Serializable
 import org.jbali.collect.removeLast
 import org.jbali.collect.removeWhile
+import org.jbali.events.EventDelegate
 import org.jbali.kotser.std.InstantSerializer
 import org.jbali.util.logger
 import java.time.Duration
@@ -68,6 +69,23 @@ class MultiRateLimiter<O>(
     
     private val log = logger<MultiRateLimiter<*>>()
     
+    data class RuleEvaluation(
+        val name: String,
+        val grouping: String,
+        val rate: BurstRate,
+        val requested: UInt,
+        val available: UInt,
+        val partial: Boolean = false,
+    ) {
+        val granted: UInt get() = when {
+            requested <= available -> requested
+            partial -> available
+            else -> 0u
+        }
+    }
+    
+    val onRuleEvaluated by EventDelegate<RuleEvaluation>()
+    
     data class Rule<O>(
         val name: String,
         val scope: (O) -> Boolean,
@@ -98,7 +116,7 @@ class MultiRateLimiter<O>(
          *
          * The rule’s available permits is the minimum over its groupings.
          */
-        fun getAvailablePermits(ff: FreezeFrame, op: O): UInt {
+        fun getAvailablePermits(ff: FreezeFrame, op: O, requested: UInt? = null, partial: Boolean? = null): UInt {
             
             ff.cullGrants()
             
@@ -110,13 +128,30 @@ class MultiRateLimiter<O>(
                 // For each rate, count the grants in this grouping
                 val rateAvailabilities: List<UInt> = grouping.rates.map { rate ->
                     val cutoff = ff.now.minus(rate.window)
-                    val windowGrants = grants.filter { grant ->
-                        grouping.opGroup(grant.op) == key && grant.ts > cutoff
-                    }
+//                    val windowGrants = grants.filter { grant ->
+//                        grouping.opGroup(grant.op) == key && grant.ts > cutoff
+//                    }
+                    val windowGrants = grants.asReversed().asSequence()
+                        .takeWhile { it.ts > cutoff }
+                        .filter { grouping.opGroup(it.op) == key }
+//                        .toList() // enable if enabling the below logs
 //                    log.info("For grouping ${grouping.name}, rate $rate, grants in window:\n${windowGrants.toTableString()}")
-                    val count = windowGrants.sumOf { it.granted }
-//                    log.info("${windowGrants.size} grants issued $count permits, ${rate.permits - count} available")
-                    if (count >= rate.permits) 0u else (rate.permits - count)
+                    
+                    val used = windowGrants.sumOf { it.granted }
+                    val available = maxOf(0u, rate.permits - used)
+                    if (requested != null) {
+                        onRuleEvaluated.dispatch(RuleEvaluation(
+                            name = rule.name,
+                            grouping = grouping.name,
+                            rate = rate,
+                            requested = requested,
+                            available = available,
+                            partial = partial!!,
+                        ))
+                    }
+                    
+//                    log.info("${windowGrants.size} grants issued $used permits, $available available")
+                    available
                 }
                 // This grouping is as restrictive as its lowest available rate.
                 rateAvailabilities.minOrNull() ?: 0u
@@ -210,7 +245,10 @@ class MultiRateLimiter<O>(
             
             // If no rule applies, consider the operation unlimited.
             val overallAvailable: UInt = matchingHandlers
-                .minOfOrNull { it.getAvailablePermits(this, op) } ?: UInt.MAX_VALUE
+                .minOfOrNull { it.getAvailablePermits(
+                    ff = this, op = op,
+                    requested = permits, partial = partial,
+                ) } ?: UInt.MAX_VALUE
             
             // Decide how many permits to grant.
             val granted: UInt = when {
