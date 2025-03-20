@@ -93,7 +93,13 @@ class MultiRateLimiter<O>(
     )
     data class Grouping<O, G>(
         val name: String,
-        val opGroup: (O) -> G,
+        /**
+         * Function that extracts the group key from an operation.
+         * For a global grouping, use `{ Unit }`, which is optimized.
+         * Returning `Unit` for some ops and not others (e.g. under return type `Any`)
+         * results in undefined behaviour.
+         */
+        val opGroup: ((O) -> G),
         val rates: List<BurstRate>,
     )
     
@@ -131,10 +137,14 @@ class MultiRateLimiter<O>(
 //                    val windowGrants = grants.filter { grant ->
 //                        grouping.opGroup(grant.op) == key && grant.ts > cutoff
 //                    }
-                    val windowGrants = grants.asReversed().asSequence()
+                    var windowGrants = grants.asReversed().asSequence()
                         .takeWhile { it.ts > cutoff }
-                        .filter { grouping.opGroup(it.op) == key }
 //                        .toList() // enable if enabling the below logs
+                    if (key != Unit) {
+                        windowGrants = windowGrants.filter { g ->
+                            grouping.opGroup(g.op) == key
+                        }
+                    }
 //                    log.info("For grouping ${grouping.name}, rate $rate, grants in window:\n${windowGrants.toTableString()}")
                     
                     val used = windowGrants.sumOf { it.granted }
