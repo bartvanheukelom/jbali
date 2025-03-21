@@ -203,9 +203,16 @@ class MultiRateLimiterTest {
         log.info("Initializing rate limiter with $rules rules.")
         val rl: MultiRateLimiter<Oppy> = MultiRateLimiter(
             rules = (0 until rules).map { i ->
+                val rePath = Regex(if (i % 2 == 0) {
+                    "^/api/fun$i(/.*)?$"
+                } else {
+                    "^/[^/]+/fun$i(/.*)?$"
+                })
                 MultiRateLimiter.Rule(
                     name = "rule-$i",
-                    scope = { it.path == "/api/fun$i" },
+                    scope = {
+                        it.method == "GET" && rePath.matches(it.path)
+                    },
                     groupings = listOf(
                         MultiRateLimiter.Grouping(
                             name = "global",
@@ -281,5 +288,6 @@ class MultiRateLimiterTest {
     
     // results:
     // 36000 - initial
+    // 40000 - regex match instead of simple string equals (expected it to be worse)
     
 }
