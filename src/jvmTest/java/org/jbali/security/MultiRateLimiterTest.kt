@@ -194,7 +194,7 @@ class MultiRateLimiterTest {
         val numUsers = 200
         
         val repeatTest = 10
-        val testPreseed = 1000
+        val testPreseed = 10_000
         val testDuration = NanoDuration.ofSeconds(1.0)
         val testRequestsPerIter = 100
         
@@ -235,6 +235,11 @@ class MultiRateLimiterTest {
             clock = { now }
         )
         
+        var rulesEvaled = 0
+        rl.onRuleEvaluated.listen { re ->
+            rulesEvaled += minOf(re.toString().length + 1, 1) // make sure toString() is not optimized away
+        }
+        
         val rng = Random(383495493912)
         
         val ips = (0 until numIps).map {
@@ -254,6 +259,8 @@ class MultiRateLimiterTest {
             log.info("Iteration ${iteration + 1}: Advancing time by 24 hours to clear history.")
             now = now.plus(Duration.ofHours(24))
             
+            val realStart = NanoTime.now()
+            
             log.info("Iteration ${iteration + 1}: Preseeding with $testPreseed random requests.")
             repeat(testPreseed) {
                 try {
@@ -262,11 +269,12 @@ class MultiRateLimiterTest {
                     // Ignore exceeded permits during preseeding.
                 }
             }
+            val tsAfterSeed = NanoTime.now()
+            log.info("Iteration ${iteration + 1}: Preseeded in ${NanoDuration.between(realStart, tsAfterSeed)}")
             
-            log.info("Iteration ${iteration + 1}: Starting performance loop for $testDuration")
-            val realStart = NanoTime.now()
-            val targetEnd = realStart + testDuration
+            val targetEnd = tsAfterSeed + testDuration
             var count = 0L
+            rulesEvaled = 0
             
             // Loop until the simulated clock has advanced by testDuration.
             while (NanoTime.now() < targetEnd) {
@@ -280,7 +288,7 @@ class MultiRateLimiterTest {
                 count += testRequestsPerIter
             }
             val realElapsed = NanoDuration.since(realStart)
-            log.info("Iteration ${iteration + 1}: Completed $count requests in $realElapsed")
+            log.info("Iteration ${iteration + 1}: Completed $count requests, evaluated $rulesEvaled rules, in $realElapsed")
         }
         
         log.info("Performance test completed.")
@@ -289,5 +297,5 @@ class MultiRateLimiterTest {
     // results:
     // 36000 - initial
     // 40000 - regex match instead of simple string equals (expected it to be worse)
-    
+    // 31000 - toString on rule eval
 }
