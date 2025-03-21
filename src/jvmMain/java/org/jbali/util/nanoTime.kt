@@ -4,6 +4,7 @@ package org.jbali.util
 
 import com.google.common.math.LongMath
 import org.jbali.math.toUIntClamped
+import org.jbali.text.format
 import java.time.Duration
 import kotlin.time.Duration.Companion.microseconds
 import kotlin.time.Duration.Companion.nanoseconds
@@ -27,6 +28,9 @@ import kotlin.time.Duration.Companion.nanoseconds
      */
     fun elapsed() = NanoDuration.since(this)
     
+    operator fun plus(other: NanoDuration) = NanoTime(nt + other.ns)
+    operator fun minus(other: NanoDuration) = NanoTime(nt - other.ns)
+    
     companion object {
         fun now() = NanoTime(System.nanoTime())
     }
@@ -39,7 +43,7 @@ import kotlin.time.Duration.Companion.nanoseconds
  */
 @JvmInline value class NanoDuration(val ns: Long) : Comparable<NanoDuration> {
     
-    override fun toString() = "$ns ns"
+    override fun toString() = "${ns.format()} ns"
     
     /**
      * Convert this duration to a [MicroDuration], discarding any fractional microseconds.
@@ -75,8 +79,12 @@ import kotlin.time.Duration.Companion.nanoseconds
          */
         fun between(from: NanoTime, to: NanoTime) =
             NanoDuration(LongMath.saturatedSubtract(to.nt, from.nt))
+        
+        fun ofSeconds(seconds: Double) = NanoDuration((seconds * 1_000_000_000).toLong())
+        
     }
 }
+
 
 fun Duration.toNanoDuration() = NanoDuration(this.toNanos())
 
@@ -117,7 +125,7 @@ fun Duration.toNanoDuration() = NanoDuration(this.toNanos())
  */
 @JvmInline value class MicroDuration(val us: Long) : Comparable<MicroDuration> {
     
-    override fun toString() = "$us μs"
+    override fun toString() = "${us.format()} μs"
     
     /**
      * Convert this duration to a [NanoDuration]. This can overflow if the duration is too large.

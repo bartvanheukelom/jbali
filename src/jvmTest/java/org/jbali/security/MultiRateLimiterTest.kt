@@ -1,13 +1,20 @@
 package org.jbali.security
 
+import org.jbali.util.NanoDuration
+import org.jbali.util.NanoTime
+import org.jbali.util.logger
 import org.junit.Test
+import java.net.Inet4Address
 import java.net.InetAddress
 import java.time.Duration
 import java.time.Instant
+import kotlin.random.Random
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class MultiRateLimiterTest {
+    
+    private val log = logger<MultiRateLimiterTest>()
     
     data class Oppy(
         val method: String,
@@ -178,4 +185,101 @@ class MultiRateLimiterTest {
         }
 
     }
+    
+    @Test fun testPerformance() {
+        
+        val rules = 100
+        
+        val numIps = 100
+        val numUsers = 200
+        
+        val repeatTest = 10
+        val testPreseed = 1000
+        val testDuration = NanoDuration.ofSeconds(1.0)
+        val testRequestsPerIter = 100
+        
+        var now: Instant = Instant.parse("2021-01-01T00:00:00Z")
+        
+        log.info("Initializing rate limiter with $rules rules.")
+        val rl: MultiRateLimiter<Oppy> = MultiRateLimiter(
+            rules = (0 until rules).map { i ->
+                MultiRateLimiter.Rule(
+                    name = "rule-$i",
+                    scope = { it.path == "/api/fun$i" },
+                    groupings = listOf(
+                        MultiRateLimiter.Grouping(
+                            name = "global",
+                            opGroup = { Unit },
+                            rates = listOf(BurstRate(999999u, Duration.ofSeconds(1)))
+                        ),
+                        MultiRateLimiter.Grouping(
+                            name = "ip",
+                            opGroup = { it.ip },
+                            rates = listOf(BurstRate(999999u, Duration.ofSeconds(1)))
+                        ),
+                        MultiRateLimiter.Grouping(
+                            name = "user",
+                            opGroup = { it.user },
+                            rates = listOf(BurstRate(999999u, Duration.ofSeconds(1)))
+                        )
+                    )
+                )
+            },
+            clock = { now }
+        )
+        
+        val rng = Random(383495493912)
+        
+        val ips = (0 until numIps).map {
+            Inet4Address.getByAddress(byteArrayOf(10, 0, 0, (10 + it).toByte()))
+        }
+        val users = (0 until numUsers).map { it.toLong() }
+        
+        fun randomRequest() {
+            rl.requirePermits(Oppy(
+                "GET", "/api/fun${rng.nextInt(rules)}",
+                ip = ips.random(rng),
+                user = users.random(rng)
+            ))
+        }
+        
+        repeat(repeatTest) { iteration ->
+            log.info("Iteration ${iteration + 1}: Advancing time by 24 hours to clear history.")
+            now = now.plus(Duration.ofHours(24))
+            
+            log.info("Iteration ${iteration + 1}: Preseeding with $testPreseed random requests.")
+            repeat(testPreseed) {
+                try {
+                    randomRequest()
+                } catch (e: RateLimitExceededException) {
+                    // Ignore exceeded permits during preseeding.
+                }
+            }
+            
+            log.info("Iteration ${iteration + 1}: Starting performance loop for $testDuration")
+            val realStart = NanoTime.now()
+            val targetEnd = realStart + testDuration
+            var count = 0L
+            
+            // Loop until the simulated clock has advanced by testDuration.
+            while (NanoTime.now() < targetEnd) {
+                repeat(testRequestsPerIter) {
+                    try {
+                        randomRequest()
+                    } catch (e: RateLimitExceededException) {
+                        // Ignore exceptions to keep counting throughput.
+                    }
+                }
+                count += testRequestsPerIter
+            }
+            val realElapsed = NanoDuration.since(realStart)
+            log.info("Iteration ${iteration + 1}: Completed $count requests in $realElapsed")
+        }
+        
+        log.info("Performance test completed.")
+    }
+    
+    // results:
+    // 36000 - initial
+    
 }
