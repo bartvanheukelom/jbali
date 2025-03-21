@@ -3,6 +3,7 @@ package org.jbali.security
 import io.micrometer.core.instrument.Metrics
 import org.jbali.util.NanoDuration
 import org.jbali.util.NanoTime
+import org.jbali.util.cast
 import org.jbali.util.logger
 import org.junit.Test
 import java.net.Inet4Address
@@ -17,12 +18,25 @@ class MultiRateLimiterTest {
     
     private val log = logger<MultiRateLimiterTest>()
     
+    sealed class Moppy {
+        abstract val ip: InetAddress
+        abstract val user: Long
+    }
+    
     data class Oppy(
         val method: String,
         val path: String,
-        val ip: InetAddress,
-        val user: Long,
-    )
+        override val ip: InetAddress,
+        override val user: Long,
+    ) : Moppy()
+    
+    data class Soppy(
+        val serviceClass: String,
+        val serviceKey: String?,
+        val operation: String,
+        override val ip: InetAddress,
+        override val user: Long,
+    ) : Moppy()
     
     // Helper factory to build a new rate limiter with fixed rules and a mutable clock.
     private fun createLimiter(clock: () -> Instant): MultiRateLimiter<Oppy> {
@@ -194,44 +208,75 @@ class MultiRateLimiterTest {
         val numIps = 100
         val numUsers = 200
         
+        val rate = BurstRate(10u, Duration.ofMinutes(5))
+        
         val repeatTest = 10
         val testPreseed = 10_000
         val testDuration = NanoDuration.ofSeconds(1.0)
         val testRequestsPerIter = 100
+        val testTimeAdvancePerIter = Duration.ofMinutes(1)
         
         var now: Instant = Instant.parse("2021-01-01T00:00:00Z")
         
         log.info("Initializing rate limiter with $rules rules.")
-        val rl: MultiRateLimiter<Oppy> = MultiRateLimiter(
+        val rl: MultiRateLimiter<Moppy> = MultiRateLimiter(
             rules = (0 until rules).map { i ->
-                val rePath = Regex(if (i % 2 == 0) {
-                    "^/api/fun$i(/.*)?$"
-                } else {
-                    "^/[^/]+/fun$i(/.*)?$"
-                })
-                MultiRateLimiter.Rule(
-                    name = "rule-$i",
-                    scope = {
-                        it.method == "GET" && rePath.matches(it.path)
-                    },
-                    groupings = listOf(
-                        MultiRateLimiter.Grouping(
-                            name = "global",
-                            opGroup = { Unit },
-                            rates = listOf(BurstRate(999999u, Duration.ofSeconds(1)))
-                        ),
-                        MultiRateLimiter.Grouping(
-                            name = "ip",
-                            opGroup = { it.ip },
-                            rates = listOf(BurstRate(999999u, Duration.ofSeconds(1)))
-                        ),
-                        MultiRateLimiter.Grouping(
-                            name = "user",
-                            opGroup = { it.user },
-                            rates = listOf(BurstRate(999999u, Duration.ofSeconds(1)))
+                if (i % 2 == 0) {
+                    val rePath = Regex(if (i % 4 == 0) {
+                        "^/api/fun$i(/.*)?$"
+                    } else {
+                        "^/[^/]+/fun$i(/.*)?$"
+                    })
+                    MultiRateLimiter.Rule(
+                        name = "rule-$i",
+                        scope = {
+                            it is Oppy &&
+                            it.method == "GET" && rePath.matches(it.path)
+                        },
+                        groupings = listOf(
+                            MultiRateLimiter.Grouping(
+                                name = "global",
+                                opGroup = { Unit },
+                                rates = listOf(rate * 50),
+                            ),
+                            MultiRateLimiter.Grouping(
+                                name = "ip",
+                                opGroup = { it.ip },
+                                rates = listOf(rate * 4),
+                            ),
+                            MultiRateLimiter.Grouping(
+                                name = "user",
+                                opGroup = { it.user },
+                                rates = listOf(rate),
+                            )
                         )
                     )
-                )
+                } else {
+                    MultiRateLimiter.Rule(
+                        name = "rule-$i",
+                        scope = {
+                            it is Soppy &&
+                            it.serviceClass == "Service" && it.operation == "fun$i"
+                        },
+                        groupings = listOf(
+                            MultiRateLimiter.Grouping(
+                                name = "global",
+                                opGroup = { it.cast<Soppy>().serviceKey },
+                                rates = listOf(rate * 50),
+                            ),
+                            MultiRateLimiter.Grouping(
+                                name = "ip",
+                                opGroup = { Pair(it.cast<Soppy>().serviceKey, it.ip) },
+                                rates = listOf(rate * 4),
+                            ),
+                            MultiRateLimiter.Grouping(
+                                name = "user",
+                                opGroup = { Pair(it.cast<Soppy>().serviceKey, it.user) },
+                                rates = listOf(rate),
+                            )
+                        )
+                    )
+                }
             },
             clock = { now }
         )
@@ -264,11 +309,20 @@ class MultiRateLimiterTest {
         val users = (0 until numUsers).map { it.toLong() }
         
         fun randomRequest() {
-            rl.requirePermits(Oppy(
-                "GET", "/api/fun${rng.nextInt(rules)}",
-                ip = ips.random(rng),
-                user = users.random(rng)
-            ))
+            val rule = rng.nextInt(rules)
+            rl.requirePermits(when (rule % 2) {
+                0 -> Oppy(
+                    "GET", "/api/fun${rule}",
+                    ip = ips.random(rng),
+                    user = users.random(rng)
+                )
+                1 -> Soppy(
+                    "Service", "thaService", "fun${rule}",
+                    ip = ips.random(rng),
+                    user = users.random(rng)
+                )
+                else -> error("")
+            })
         }
         
         repeat(repeatTest) { iteration ->
@@ -315,4 +369,7 @@ class MultiRateLimiterTest {
     // 40000 - regex match instead of simple string equals (expected it to be worse)
     // 31000 - toString on rule eval
     // 30000 - with micrometer counter
+    // 30000 - soppy
+    // 30000 - low rates
+    
 }
