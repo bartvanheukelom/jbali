@@ -1,5 +1,6 @@
 package org.jbali.security
 
+import io.micrometer.core.instrument.Metrics
 import org.jbali.util.NanoDuration
 import org.jbali.util.NanoTime
 import org.jbali.util.logger
@@ -235,9 +236,24 @@ class MultiRateLimiterTest {
             clock = { now }
         )
         
+        val meterRegistry = Metrics.globalRegistry
+        
         var rulesEvaled = 0
         rl.onRuleEvaluated.listen { re ->
             rulesEvaled += minOf(re.toString().length + 1, 1) // make sure toString() is not optimized away
+            meterRegistry.counter("ruleEvaluated",
+                "depth", when {
+                    re.rate != null -> "rate"
+                    re.grouping != null -> "group"
+                    re.name != null -> "rule"
+                    else -> "all"
+                },
+                "name", re.name ?: "_",
+                "grouping", re.grouping ?: "_",
+                "rate_permits", re.rate?.permits?.toString() ?: "_",
+                "rate_window", re.rate?.window?.toMillis()?.toString() ?: "_",
+                "result", if (re.granted > 0u) "pass" else "reject",
+            ).increment()
         }
         
         val rng = Random(383495493912)
@@ -298,4 +314,5 @@ class MultiRateLimiterTest {
     // 36000 - initial
     // 40000 - regex match instead of simple string equals (expected it to be worse)
     // 31000 - toString on rule eval
+    // 30000 - with micrometer counter
 }
