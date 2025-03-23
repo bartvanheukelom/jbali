@@ -5,6 +5,8 @@ import org.jbali.collect.removeLast
 import org.jbali.collect.removeWhile
 import org.jbali.events.EventDelegate
 import org.jbali.kotser.std.InstantSerializer
+import org.jbali.util.NanoDuration
+import org.jbali.util.NanoTime
 import org.jbali.util.logger
 import java.time.Duration
 import java.time.Instant
@@ -69,6 +71,12 @@ class MultiRateLimiter<O>(
     
     private val log = logger<MultiRateLimiter<*>>()
     
+    data class MutationMetrics(
+        val operation: String,
+        val waitedFor: NanoDuration,
+        val ranFor: NanoDuration,
+    )
+    
     data class RuleEvaluation(
         val name: String? = null,
         val grouping: String? = null,
@@ -84,6 +92,7 @@ class MultiRateLimiter<O>(
         }
     }
     
+    val onMutated by EventDelegate<MutationMetrics>()
     val onRuleEvaluated by EventDelegate<RuleEvaluation>()
     
     data class Rule<O>(
@@ -211,7 +220,7 @@ class MultiRateLimiter<O>(
      * Meant for restoring from persistence or unit tests.
      */
     fun addGrantHistory(grants: List<MultiRateLimiterGrant<O>>) {
-        mutate {
+        mutate("addGrantHistory") {
             var added = false
             for (grant in grants) {
                 for (rule in ruleHandlers) {
@@ -233,7 +242,7 @@ class MultiRateLimiter<O>(
      * Meant for persistence or debugging.
      */
     fun grantHistory(): List<MultiRateLimiterGrant<O>> =
-        mutate { // not actually mutating, just locking
+        mutate("grantHistory") { // not actually mutating, just locking
             ruleHandlers
                 .flatMap { it.grants }
                 .sortedBy { it.ts }
@@ -241,10 +250,26 @@ class MultiRateLimiter<O>(
                 .distinctBy { it }
         }
     
-    private inline fun <T> mutate(block: FreezeFrame.() -> T): T =
-        synchronized(this) {
-            with(FreezeFrame(clock())) {
-                block()
+    private inline fun <T> mutate(operation: String, block: FreezeFrame.() -> T): T =
+        if (onMutated.hasListeners()) {
+            val tsPreLock = NanoTime.now()
+            synchronized(this) {
+                val tsPostLock = NanoTime.now()
+                val result = with(FreezeFrame(clock())) {
+                    block()
+                }
+                onMutated.dispatch(MutationMetrics(
+                    operation = operation,
+                    waitedFor = NanoDuration.between(tsPreLock, tsPostLock),
+                    ranFor = NanoDuration.since(tsPostLock),
+                ))
+                result
+            }
+        } else {
+            synchronized(this) {
+                with(FreezeFrame(clock())) {
+                    block()
+                }
             }
         }
     
@@ -254,7 +279,7 @@ class MultiRateLimiter<O>(
      * If no rules apply, returns UInt.MAX_VALUE (i.e. effectively unlimited).
      */
     override fun getAvailablePermits(op: O): UInt =
-        mutate {
+        mutate("getAvailablePermits") {
             ruleHandlers.filter { it.rule.scope(op) }
                 .minOfOrNull { it.getAvailablePermits(this, op) } ?: UInt.MAX_VALUE
         }
@@ -267,7 +292,7 @@ class MultiRateLimiter<O>(
      * The state is updated in all matching rules only if some permits are granted.
      */
     override fun requestPermits(op: O, permits: UInt, partial: Boolean): Permits {
-        mutate {
+        mutate("requestPermits") {
             
             // Determine which rules apply.
             val matchingHandlers = ruleHandlers.filter { it.rule.scope(op) }

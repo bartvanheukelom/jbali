@@ -9,6 +9,7 @@ class DynamicMultiRateLimiter<O>(
     private val clock: () -> Instant = { Instant.now() }
 ) : OpRateLimiter<O>, AutoCloseable {
     
+    val onMutated by EventDelegate<MultiRateLimiter.MutationMetrics>()
     val onRuleEvaluated by EventDelegate<MultiRateLimiter.RuleEvaluation>()
     
     @Volatile
@@ -18,6 +19,7 @@ class DynamicMultiRateLimiter<O>(
         synchronized(this) {
             val grants = limiter.grantHistory()
             limiter = MultiRateLimiter(it, clock).also {
+                it.onMutated.listen(onMutated::dispatch)
                 it.onRuleEvaluated.listen(onRuleEvaluated::dispatch)
                 it.addGrantHistory(grants)
             }
