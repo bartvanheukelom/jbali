@@ -79,7 +79,14 @@ class MultiRateLimiter<O>(
     )
     
     enum class RuleDepth {
-        All, Rule, Grouping, Rate
+        All, Rule, Grouping, Rate;
+        
+        val lowerName get() = when (this) {
+            All -> "all"
+            Rule -> "rule"
+            Grouping -> "grouping"
+            Rate -> "rate"
+        }
     }
     
     data class RuleEvaluation(
@@ -163,72 +170,48 @@ class MultiRateLimiter<O>(
          *
          * The rule’s available permits is the minimum over its groupings.
          */
-        fun getAvailablePermits(ff: FreezeFrame, op: O, requested: UInt? = null, partial: Boolean? = null): UInt {
-            
-            ff.cullGrants()
-            
-//            log.info("getAvailablePermits $op, recent grants:\n${grants.toTableString()}")
-            
-            // Compute available permits for each grouping.
-            val groupingAvailabilities: List<UInt> = rule.groupings.map { grouping ->
-                val key = grouping.opGroup(op)
-                // For each rate, count the grants in this grouping
-                val rateAvailabilities: List<UInt> = grouping.rates.map { rate ->
-                    val cutoff = ff.now.minus(rate.window)
-//                    val windowGrants = grants.filter { grant ->
-//                        grouping.opGroup(grant.op) == key && grant.ts > cutoff
-//                    }
-                    var windowGrants = grants.asReversed().asSequence()
-                        .takeWhile { it.ts > cutoff }
-//                        .toList() // enable if enabling the below logs
-                    if (key != Unit) {
-                        windowGrants = windowGrants.filter { g ->
-                            grouping.opGroup(g.op) == key
+        fun getAvailablePermits(ff: FreezeFrame, op: O, requested: UInt? = null, partial: Boolean? = null): UInt =
+            ruleEval(requested, partial, name = rule.name) {
+                
+                ff.cullGrants()
+                
+    //            log.info("getAvailablePermits $op, recent grants:\n${grants.toTableString()}")
+                
+                // Compute available permits for each grouping.
+                val groupingAvailabilities: List<UInt> = rule.groupings.map { grouping ->
+                    ruleEval(requested, partial, name = rule.name, grouping = grouping.name) {
+                        
+                        val key = grouping.opGroup(op)
+                        // For each rate, count the grants in this grouping
+                        val rateAvailabilities: List<UInt> = grouping.rates.map { rate ->
+                            val available = ruleEval(requested, partial, name = rule.name, grouping = grouping.name, rate = rate) {
+                                val cutoff = ff.now.minus(rate.window)
+            //                    val windowGrants = grants.filter { grant ->
+            //                        grouping.opGroup(grant.op) == key && grant.ts > cutoff
+            //                    }
+                                var windowGrants = grants.asReversed().asSequence()
+                                    .takeWhile { it.ts > cutoff }
+            //                        .toList() // enable if enabling the below logs
+                                if (key != Unit) {
+                                    windowGrants = windowGrants.filter { g ->
+                                        grouping.opGroup(g.op) == key
+                                    }
+                                }
+            //                    log.info("For grouping ${grouping.name}, rate $rate, grants in window:\n${windowGrants.toTableString()}")
+                                
+                                val used = windowGrants.sumOf { it.granted }
+                                maxOf(0u, rate.permits - used)
+                            }
+        //                    log.info("${windowGrants.size} grants issued $used permits, $available available")
+                            available
                         }
-                    }
-//                    log.info("For grouping ${grouping.name}, rate $rate, grants in window:\n${windowGrants.toTableString()}")
-                    
-                    val used = windowGrants.sumOf { it.granted }
-                    val available = maxOf(0u, rate.permits - used)
-                    if (requested != null) {
-                        onRuleEvaluated.dispatch(RuleEvaluation(
-                            name = rule.name,
-                            grouping = grouping.name,
-                            rate = rate,
-                            requested = requested,
-                            available = available,
-                            partial = partial!!,
-                        ))
-                    }
-                    
-//                    log.info("${windowGrants.size} grants issued $used permits, $available available")
-                    available
+                        // This grouping is as restrictive as its lowest available rate.
+                        rateAvailabilities.minOrNull()
+                    } ?: 0u
                 }
-                // This grouping is as restrictive as its lowest available rate.
-                (rateAvailabilities.minOrNull() ?: 0u).also {
-                    if (requested != null) {
-                        onRuleEvaluated.dispatch(RuleEvaluation(
-                            name = rule.name,
-                            grouping = grouping.name,
-                            requested = requested,
-                            available = it,
-                            partial = partial!!,
-                        ))
-                    }
-                }
+                // The rule is as restrictive as its most constrained grouping.
+                groupingAvailabilities.minOrNull() ?: UInt.MAX_VALUE
             }
-            // The rule is as restrictive as its most constrained grouping.
-            val ruleAvailability = groupingAvailabilities.minOrNull() ?: UInt.MAX_VALUE
-            if (requested != null) {
-                onRuleEvaluated.dispatch(RuleEvaluation(
-                    name = rule.name,
-                    requested = requested,
-                    available = ruleAvailability,
-                    partial = partial!!,
-                ))
-            }
-            return ruleAvailability
-        }
         
         private fun FreezeFrame.cullGrants() {
             // Cull any expired grants. Since longestWindow is the maximum of all group windows,
@@ -331,20 +314,11 @@ class MultiRateLimiter<O>(
             
             // If no rule applies, consider the operation unlimited.
             // TODO probably better to restructure, make no-rules its own branch
-            val (_, duration, overallAvailable) = NanoDuration.measure {
+            val overallAvailable = ruleEval(permits, partial) {
                 matchingHandlers.minOfOrNull { it.getAvailablePermits(
                     ff = this, op = op,
                     requested = permits, partial = partial,
                 ) }
-            }
-            
-            overallAvailable?.let { // if no rules apply, we haven't evaluated anything
-                onRuleEvaluated.dispatch(RuleEvaluation(
-                    duration = duration,
-                    requested = permits,
-                    available = overallAvailable,
-                    partial = partial,
-                ))
             }
             
             // Decide how many permits to grant.
@@ -397,6 +371,36 @@ class MultiRateLimiter<O>(
         TODO("Not yet implemented")
     }
     
+    private fun <A : UInt?> ruleEval(
+        requested: UInt?,
+        partial: Boolean?,
+        
+        name: String? = null,
+        grouping: String? = null,
+        rate: BurstRate? = null,
+        
+        eval: () -> A,
+    ): A {
+        if (requested != null) {
+            val (available, duration) = NanoDuration.measure {
+                eval()
+            }
+            available?.let {  // if no rules apply, we haven't evaluated anything
+                onRuleEvaluated.dispatch(RuleEvaluation(
+                    duration = duration,
+                    name = name,
+                    grouping = grouping,
+                    rate = rate,
+                    requested = requested,
+                    available = available,
+                    partial = partial!!,
+                ))
+            }
+            return available
+        } else {
+            return eval()
+        }
+    }
     
     data class RuleFlat(
         val name: String,

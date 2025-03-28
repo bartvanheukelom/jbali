@@ -96,10 +96,10 @@ import kotlin.time.Duration.Companion.nanoseconds
 fun Duration.toNanoDuration() = NanoDuration(this.toNanos())
 
 data class NanoTimedValue<T>(
-    val tsStart: NanoTime,
+    val value: T,
     // storing duration and deriving tsEnd, because usually duration is more interesting (e.g. in toString)
     val duration: NanoDuration,
-    val value: T,
+    val tsStart: NanoTime, // last because in unpacking you often omit it
 ) {
     val tsEnd get() = tsStart + duration
     // TODO val period = NanoPeriod(tsStart, tsEnd) (or Interval?) yes Interval
@@ -108,7 +108,7 @@ data class NanoTimedValue<T>(
 fun <T> NanoDuration.Companion.measure(block: () -> T): NanoTimedValue<T> {
     val tsStart = NanoTime.now()
     val value = block()
-    return NanoTimedValue(tsStart, since(tsStart), value)
+    return NanoTimedValue(value = value, duration = since(tsStart), tsStart = tsStart)
 }
 
 
