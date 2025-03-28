@@ -8,6 +8,7 @@ import org.jbali.kotser.std.InstantSerializer
 import org.jbali.util.NanoDuration
 import org.jbali.util.NanoTime
 import org.jbali.util.logger
+import org.jbali.util.measure
 import java.time.Duration
 import java.time.Instant
 import java.util.*
@@ -77,15 +78,45 @@ class MultiRateLimiter<O>(
         val ranFor: NanoDuration,
     )
     
+    enum class RuleDepth {
+        All, Rule, Grouping, Rate
+    }
+    
     data class RuleEvaluation(
+        val duration: NanoDuration,
         val name: String? = null,
         val grouping: String? = null,
         val rate: BurstRate? = null,
         val requested: UInt,
         val available: UInt,
         val partial: Boolean = false,
-        val duration: NanoDuration = NanoDuration.ZERO,
     ) {
+        
+        val depth: RuleDepth get() =
+            when (name) {
+                null -> when (grouping) {
+                    null -> when (rate) {
+                        null -> RuleDepth.All
+                        else -> null
+                    }
+                    else -> null
+                }
+                else -> when (grouping) {
+                    null -> when (rate) {
+                        null -> RuleDepth.Rule // aka name
+                        else -> null
+                    }
+                    else -> when (rate) {
+                        null -> RuleDepth.Grouping
+                        else -> RuleDepth.Rate
+                    }
+                }
+            } ?: throw IllegalArgumentException("Invalid combination of name, grouping, and rate")
+        
+        init {
+            depth // check for invalid combinations
+        }
+        
         val granted: UInt get() = when {
             requested <= available -> requested
             partial -> available
@@ -300,14 +331,16 @@ class MultiRateLimiter<O>(
             
             // If no rule applies, consider the operation unlimited.
             // TODO probably better to restructure, make no-rules its own branch
-            val overallAvailable: UInt? = matchingHandlers
-                .minOfOrNull { it.getAvailablePermits(
+            val (_, duration, overallAvailable) = NanoDuration.measure {
+                matchingHandlers.minOfOrNull { it.getAvailablePermits(
                     ff = this, op = op,
                     requested = permits, partial = partial,
                 ) }
+            }
             
             overallAvailable?.let { // if no rules apply, we haven't evaluated anything
                 onRuleEvaluated.dispatch(RuleEvaluation(
+                    duration = duration,
                     requested = permits,
                     available = overallAvailable,
                     partial = partial,
