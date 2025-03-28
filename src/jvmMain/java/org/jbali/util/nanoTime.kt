@@ -66,6 +66,8 @@ import kotlin.time.Duration.Companion.nanoseconds
     operator fun minus(other: NanoDuration) = NanoDuration(ns - other.ns)
     
     companion object {
+        
+        val ZERO = NanoDuration(0)
         val MAX = NanoDuration(Long.MAX_VALUE)
         val MAX_NEGATIVE = NanoDuration(Long.MIN_VALUE)
         
@@ -82,11 +84,32 @@ import kotlin.time.Duration.Companion.nanoseconds
         
         fun ofSeconds(seconds: Double) = NanoDuration((seconds * 1_000_000_000).toLong())
         
+        fun ofSeconds(seconds: Long) = NanoDuration(seconds * 1_000_000_000)
+        fun ofMillis(millis: Long) = NanoDuration(millis * 1_000_000)
+        fun ofMicros(micros: Long) = NanoDuration(micros * 1_000)
+        fun ofNanos(nanos: Long) = NanoDuration(nanos)
+        
     }
 }
 
 
 fun Duration.toNanoDuration() = NanoDuration(this.toNanos())
+
+data class NanoTimedValue<T>(
+    val tsStart: NanoTime,
+    // storing duration and deriving tsEnd, because usually duration is more interesting (e.g. in toString)
+    val duration: NanoDuration,
+    val value: T,
+) {
+    val tsEnd get() = tsStart + duration
+    // TODO val period = NanoPeriod(tsStart, tsEnd) (or Interval?) yes Interval
+}
+
+fun <T> NanoDuration.Companion.measure(block: () -> T): NanoTimedValue<T> {
+    val tsStart = NanoTime.now()
+    val value = block()
+    return NanoTimedValue(tsStart, since(tsStart), value)
+}
 
 
 

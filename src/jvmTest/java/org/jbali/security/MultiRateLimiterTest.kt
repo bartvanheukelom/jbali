@@ -212,7 +212,7 @@ class MultiRateLimiterTest {
         
         val repeatTest = 10
         val testPreseed = 10_000
-        val testDuration = NanoDuration.ofSeconds(1.0)
+        val testDuration = NanoDuration.ofSeconds(1)
         val testRequestsPerIter = 100
         val testTimeAdvancePerIter = Duration.ofMinutes(1)
         

@@ -84,6 +84,7 @@ class MultiRateLimiter<O>(
         val requested: UInt,
         val available: UInt,
         val partial: Boolean = false,
+        val duration: NanoDuration = NanoDuration.ZERO,
     ) {
         val granted: UInt get() = when {
             requested <= available -> requested
