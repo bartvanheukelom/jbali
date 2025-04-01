@@ -1,6 +1,9 @@
 package org.jbali.security
 
+import arrow.core.left
+import arrow.core.right
 import kotlinx.serialization.Serializable
+import org.jbali.arrow.getOrRethrow
 import org.jbali.collect.removeLast
 import org.jbali.collect.removeWhile
 import org.jbali.events.EventDelegate
@@ -76,6 +79,7 @@ class MultiRateLimiter<O>(
         val operation: String,
         val waitedFor: NanoDuration,
         val ranFor: NanoDuration,
+        val exception: Throwable? = null,
     )
     
     enum class RuleDepth {
@@ -270,15 +274,20 @@ class MultiRateLimiter<O>(
             val tsPreLock = NanoTime.now()
             synchronized(this) {
                 val tsPostLock = NanoTime.now()
-                val result = with(FreezeFrame(clock())) {
-                    block()
+                val res = try {
+                    with(FreezeFrame(clock())) {
+                        block()
+                    }.right()
+                } catch (e: Throwable) {
+                    e.left()
                 }
                 onMutated.dispatch(MutationMetrics(
                     operation = operation,
                     waitedFor = NanoDuration.between(tsPreLock, tsPostLock),
                     ranFor = NanoDuration.since(tsPostLock),
+                    exception = res.fold({ it }, { null }),
                 ))
-                result
+                res.getOrRethrow()
             }
         } else {
             synchronized(this) {
