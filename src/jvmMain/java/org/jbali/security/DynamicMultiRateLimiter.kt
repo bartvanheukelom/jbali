@@ -3,6 +3,8 @@ package org.jbali.security
 import org.jbali.events.EventDelegate
 import org.jbali.events.Observable
 import java.time.Instant
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.concurrent.withLock
 
 class DynamicMultiRateLimiter<O>(
     private val rules: Observable<List<MultiRateLimiter.Rule<O>>>,
@@ -16,8 +18,11 @@ class DynamicMultiRateLimiter<O>(
     @Volatile
     private var limiter = MultiRateLimiter<O>(emptyList(), clock)
     
+    private val lock = ReentrantReadWriteLock()
+    
+    // Use the write lock only here when updating the limiter.
     private val listener = rules.bind {
-        synchronized(this) {
+        lock.writeLock().withLock {
             val grants = limiter.grantHistory()
             limiter = MultiRateLimiter(it, clock).also {
                 it.onMutationStarted.listen(onMutationStarted::dispatch)
@@ -32,17 +37,19 @@ class DynamicMultiRateLimiter<O>(
         listener.detach()
     }
     
-    fun grantHistory() = synchronized(this) { limiter.grantHistory() }
+    fun grantHistory() = lock.readLock().withLock {
+        limiter.grantHistory()
+    }
     
-    override fun getAvailablePermits(op: O) = synchronized(this) {
+    override fun getAvailablePermits(op: O) = lock.readLock().withLock {
         limiter.getAvailablePermits(op)
     }
     
-    override fun requestPermits(op: O, permits: UInt, partial: Boolean) = synchronized(this) {
+    override fun requestPermits(op: O, permits: UInt, partial: Boolean) = lock.readLock().withLock {
         limiter.requestPermits(op, permits, partial)
     }
     
     override suspend fun waitForPermits(op: O, permits: UInt, onWait: () -> Unit) =
-        synchronized(this) { limiter }.waitForPermits(op, permits, onWait)
+        lock.readLock().withLock { limiter }.waitForPermits(op, permits, onWait)
     
 }
