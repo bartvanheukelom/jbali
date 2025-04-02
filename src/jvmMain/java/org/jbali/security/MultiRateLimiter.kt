@@ -135,6 +135,7 @@ class MultiRateLimiter<O>(
         }
     }
     
+    val onMutationStarted by EventDelegate<String>()
     val onMutated by EventDelegate<MutationMetrics>()
     val onRuleEvaluated by EventDelegate<RuleEvaluation>()
     
@@ -264,13 +265,16 @@ class MultiRateLimiter<O>(
         mutate("grantHistory") { // not actually mutating, just locking
             ruleHandlers
                 .flatMap { it.grants }
+                // TODO the rest could be done outside the lock, but then it's also not timed
                 .sortedBy { it.ts }
                 // deduplicate by identity
                 .distinctBy { it }
         }
     
-    private inline fun <T> mutate(operation: String, block: FreezeFrame.() -> T): T =
-        if (onMutated.hasListeners()) {
+    private fun <T> mutate(operation: String, block: FreezeFrame.() -> T): T {
+        onMutationStarted.dispatch(operation)
+//        log.info("QQQ mutate $operation, hasListeners=${onMutated.hasListeners()}")
+        return if (onMutated.hasListeners()) {
             val tsPreLock = NanoTime.now()
             synchronized(this) {
                 val tsPostLock = NanoTime.now()
@@ -281,12 +285,15 @@ class MultiRateLimiter<O>(
                 } catch (e: Throwable) {
                     e.left()
                 }
-                onMutated.dispatch(MutationMetrics(
-                    operation = operation,
-                    waitedFor = NanoDuration.between(tsPreLock, tsPostLock),
-                    ranFor = NanoDuration.since(tsPostLock),
-                    exception = res.fold({ it }, { null }),
-                ))
+//                log.info("QQQ mutated $operation, took ${NanoDuration.between(tsPreLock, tsPostLock)}")
+                onMutated.dispatch(
+                    MutationMetrics(
+                        operation = operation,
+                        waitedFor = NanoDuration.between(tsPreLock, tsPostLock),
+                        ranFor = NanoDuration.since(tsPostLock),
+                        exception = res.fold({ it }, { null }),
+                    )
+                )
                 res.getOrRethrow()
             }
         } else {
@@ -295,7 +302,9 @@ class MultiRateLimiter<O>(
                     block()
                 }
             }
+//                .also { log.info("QQQ mutated $operation, not measured") }
         }
+    }
     
     
     /**
@@ -315,7 +324,7 @@ class MultiRateLimiter<O>(
      *
      * The state is updated in all matching rules only if some permits are granted.
      */
-    override fun requestPermits(op: O, permits: UInt, partial: Boolean): Permits {
+    override fun requestPermits(op: O, permits: UInt, partial: Boolean): Permits =
         mutate("requestPermits") {
             
             // Determine which rules apply.
@@ -352,7 +361,7 @@ class MultiRateLimiter<O>(
                     handler.grants.add(grant)
                 }
                 
-                return PermitsImpl(
+                PermitsImpl(
                     permits, apparentlyAvailable,
                     granted, null,
                     giveBackImpl = { p ->
@@ -367,14 +376,13 @@ class MultiRateLimiter<O>(
                     },
                 )
             } else {
-                return PermitsImpl(
+                PermitsImpl(
                     permits, apparentlyAvailable,
                     0u, null,
                     giveBackImpl = { p -> require(p == 0u) { "Can't give back $p permits, none were granted" } },
                 )
             }
         }
-    }
     
     override suspend fun waitForPermits(op: O, permits: UInt, onWait: () -> Unit): Permits {
         TODO("Not yet implemented")

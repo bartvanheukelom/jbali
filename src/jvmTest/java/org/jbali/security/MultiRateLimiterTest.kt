@@ -1,6 +1,8 @@
 package org.jbali.security
 
 import io.micrometer.core.instrument.Metrics
+import org.jbali.security.MultiRateLimiter.MutationMetrics
+import org.jbali.security.MultiRateLimiter.RuleEvaluation
 import org.jbali.util.NanoDuration
 import org.jbali.util.NanoTime
 import org.jbali.util.cast
@@ -13,6 +15,7 @@ import java.time.Instant
 import kotlin.random.Random
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class MultiRateLimiterTest {
     
@@ -107,10 +110,46 @@ class MultiRateLimiterTest {
         val foobarsOp = Oppy("GET", "/api/foobars", ip1, 42L)
         val otherOp = Oppy("GET", "/other", ip1, 99L)
         
+        val mutationStartedEvents = mutableListOf<String>()
+        val mutatedEvents = mutableListOf<MutationMetrics>()
+        val ruleEvaluatedEvents = mutableListOf<RuleEvaluation>()
+        fun clearEvents() {
+            mutationStartedEvents.clear()
+            mutatedEvents.clear()
+            ruleEvaluatedEvents.clear()
+        }
+        rl.onMutationStarted.listen(mutationStartedEvents::add)
+        rl.onMutated.listen(mutatedEvents::add)
+        rl.onRuleEvaluated.listen(ruleEvaluatedEvents::add)
+        
+        // check mutation events
+        clearEvents()
+        rl.grantHistory()
+        mutationStartedEvents.single().let {
+            assertEquals("grantHistory", it)
+        }
+        mutatedEvents.single().let {
+            assertEquals("grantHistory", it.operation)
+            assertEquals(null, it.exception)
+        }
+        assertEquals(0, ruleEvaluatedEvents.size)
+        
+        
         // === Global API Limit Test ===
         
         // For "/api": the global grouping allows 3 permits per second.
-        repeat(3) { rl.requirePermits(globalApiOp) }
+        repeat(3) {
+            clearEvents()
+            rl.requirePermits(globalApiOp)
+            mutationStartedEvents.single().let {
+                assertEquals("requestPermits", it) // actually implementation detail
+            }
+            mutatedEvents.single().let {
+                assertEquals("requestPermits", it.operation)
+                assertEquals(null, it.exception)
+            }
+            assertTrue(ruleEvaluatedEvents.isNotEmpty())
+        }
         // A 4th permit request in the same second should be rejected.
         assertFailsWith<RateLimitExceededException> {
             rl.requirePermits(globalApiOp)
