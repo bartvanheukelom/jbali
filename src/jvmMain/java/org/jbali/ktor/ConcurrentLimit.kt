@@ -74,11 +74,19 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
         else -> Semaphore(configuration.maxActiveRequests)
     }
     
-    private val counterRequestsRejected = configuration.meterRegistry?.let { registry ->
+    private val counterRequestsRejectedTotal = configuration.meterRegistry?.let { registry ->
         Counter.builder("ktor.http.requests.rejected")
             .tag("debugName", configuration.debugName ?: "")
+            .tag("scope", "global")
             .register(registry)
     }
+    private val counterRequestsRejectedForIp = configuration.meterRegistry?.let { registry ->
+        Counter.builder("ktor.http.requests.rejected")
+            .tag("debugName", configuration.debugName ?: "")
+            .tag("scope", "ip")
+            .register(registry)
+    }
+    
     private val meters = configuration.meterRegistry?.let { registry ->
         listOf(
             Gauge.builder("ktor.http.requests.queued") {
@@ -213,10 +221,10 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
     private suspend fun PipelineContext<Unit, ApplicationCall>.proceedWithLimit() {
         val uuid = call.uuid
         val requestInfo = RequestInfo(
-            uuid = uuid,
-            ip = call.request.origin.remoteIpOrNull,
+            uuid   = uuid,
+            ip     = call.request.origin.remoteIpOrNull,
             method = call.request.httpMethod,
-            path = call.request.path(),
+            path   = call.request.path(),
         )
         if (activeRequestSemaphore == null || activeRequestSemaphore.tryAcquire()) {
             synchronized(stateLock) {
@@ -235,9 +243,22 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
         } else {
             val next: suspend () -> Unit
             synchronized(stateLock) {
+                
+                val queuedForIp = requestInfo.ip?.let { ip ->
+                    queuedRequests.values.count { it.ip == ip }
+                } ?: 0
+                
                 if (queuedRequests.size >= configuration.maxQueuedRequests) {
                     log.warn("Rejecting request $uuid because too many queued requests")
-                    counterRequestsRejected?.increment()
+                    counterRequestsRejectedTotal?.increment()
+                    next = {
+                        configuration.rejectHandler(call)
+                        finish()
+                    }
+                } else if (queuedForIp >= configuration.maxQueuedRequestsPerIp) {
+                    log.warn("Rejecting request $uuid from ${requestInfo.ip} " +
+                                "because too many queued requests ($queuedForIp) from this IP")
+                    counterRequestsRejectedForIp?.increment()
                     next = {
                         configuration.rejectHandler(call)
                         finish()
@@ -281,10 +302,18 @@ class ConcurrentLimit private constructor(private val configuration: Configurati
         
         var maxActiveRequests = 32
         
+        /**
+         * Maximum number of total queued requests. If this limit is reached, new requests will be rejected.
+         */
         var maxQueuedRequests = 256
+        /**
+         * Maximum number of queued requests per IP address. If this limit is reached, new requests from
+         * this IP will be rejected.
+         */
+        var maxQueuedRequestsPerIp = 8
         
         override fun toString(): String {
-            return "maxActiveRequests=$maxActiveRequests, maxQueuedRequests=$maxQueuedRequests"
+            return "maxActiveRequests=$maxActiveRequests, maxQueuedRequests=$maxQueuedRequests, maxQueuedRequestsPerIp=$maxQueuedRequestsPerIp"
         }
         
         var meterRegistry: MeterRegistry? = null
