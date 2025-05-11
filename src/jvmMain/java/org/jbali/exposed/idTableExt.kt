@@ -1,8 +1,10 @@
 package org.jbali.exposed
 
+import org.jbali.util.cast
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
@@ -60,3 +62,9 @@ open class ULongIdTable(name: String = "", columnName: String = "id") : IdTable<
     override val id: Column<EntityID<ULong>> = ulong(columnName).entityId()
     override val primaryKey by lazy { super.primaryKey ?: PrimaryKey(id) }
 }
+
+val <T : Comparable<T>> Column<EntityID<T>>.idColumn: Column<T>
+    get() = columnType.cast<EntityIDColumnType<T>>().idColumn
+
+infix fun <T : Comparable<T>> Column<EntityID<T>>.eq(other: Expression<T>) =
+    idColumn eq other
