@@ -72,6 +72,10 @@ interface Observable<out T>: Supplier<@UnsafeVariance T>, Function0<T>, Listenab
      * When the source is changed, the [derivation] function is executed with its new value once,
      * and the result is stored and distributed further.
      *
+     * If [derivation] throws during the initial call, the exception is propagated.
+     * If it throws when handling a source change, the exception is logged by [ListenerErrorCallbacks.default]
+     * and the derived observable maintains its outdated value until the next source change.
+     *
      * If [derivation] is trivial, consider using [sub] instead.
      */
     fun <D> derived(derivation: (T) -> D): Observable<D> =
