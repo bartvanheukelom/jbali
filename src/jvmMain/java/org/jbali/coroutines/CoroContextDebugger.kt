@@ -18,7 +18,7 @@ import kotlin.coroutines.coroutineContext
 import kotlin.random.Random
 
 class CoroContextDebugger(
-//    val throwOnFail: Boolean = false,
+    val throwOnFail: Boolean = false,
     val logAllSlices: Boolean = false,
 ) : AutoCloseable {
     
@@ -75,7 +75,14 @@ class CoroContextDebugger(
     val activeExecs: MutableSet<Execution> =
         Collections.newSetFromMap(ConcurrentHashMap<Execution, Boolean>())
     
-    var failed by OneTimeFlag()
+    val failed = OneTimeFlag()
+
+    fun registerFailure() {
+        failed.flagIfUnflagged()
+        if (throwOnFail) {
+            throw AssertionError("CoroContextDebugger failure")
+        }
+    }
     
     suspend inline fun <T> execute(crossinline block: suspend CoroutineScope.(exec: Execution) -> T): T {
 
@@ -105,7 +112,7 @@ class CoroContextDebugger(
     
     fun checkLeakedContexts() {
         if (activeExecs.isNotEmpty()) {
-            failed = true
+            registerFailure()
             log.warn("Leaked contexts: ${activeExecs.joinToString { it.code }}")
             logContextHistory(activeExecs.map { it.code }.toSet())
         }
@@ -170,7 +177,7 @@ class CoroContextDebugger(
         val tc = threadCode.get()
         if (tc != code) {
             log.warn("${Thread.currentThread().desc()} should have context $code but has $tc $at")
-            failed = true
+            registerFailure()
             logContextHistory(setOf(code, tc))
             logged = true
         }
@@ -179,7 +186,7 @@ class CoroContextDebugger(
         val coroCode = coroutineContext[Execution.Key]?.code
         if (coroCode != code) {
             log.warn("${Thread.currentThread().desc()} should have coro context $code but has $coroCode $at")
-            failed = true
+            registerFailure()
             if (!logged) {
                 logContextHistory(setOf(code, coroCode))
             }

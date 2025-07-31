@@ -12,6 +12,7 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import org.jbali.coroutines.Suspending
 import org.jbali.coroutines.runBlockingInterruptable
+import org.jbali.errors.removeCurrentStack
 import org.jbali.json2.JSONString
 import org.jbali.kotser.BasicJson
 import org.jbali.kotser.put
@@ -114,34 +115,34 @@ class TextMessageServiceClient<S : Any>(
                 ntStart = null
             }
         }
-        
+
         tracer.clientSpan("${ifaceInfo.shortName}.${method.name}") { otSpan ->
-            
+
             TMSMeters.activeRequestsClient.increment()
             try {
-                
+
                 TMSMeters.recordStartedClientRequest(ifaceInfo.metricsName, method.name)
-                
+
                 Proxies.handleTEH(proxy, method, args, "${toStringed}.blocking")
                     ?.right() // toString, equals or hashCode
                     ?: run {
-                        
+
                         // --- ok, it's a real method --- //
-                        
+
                         val tMethod = ifaceInfo.methods.getValue(method.name.lowercase())
                         val func = tMethod.method(ifaceK)
                         if (func.javaMethod != method) {
                             // TODO does this happen?
                             log.warn("Called '$method' is not equal to found '${func.javaMethod}'. Argument serialization may fail.")
                         }
-                        
+
                         with(otSpan) {
                             setAttribute(TMSOTelAttributes.iface, ifaceInfo.metricsName)
                             setAttribute(TMSOTelAttributes.method, method.name)
                         }
-                        
+
                         val argsObj = buildJsonObject {
-                            
+
                             args?.forEachIndexed { p, arg ->
                                 val par = tMethod.params[p]
                                 val kpar = par.param(func)
@@ -155,10 +156,10 @@ class TextMessageServiceClient<S : Any>(
                                 // TODO something smart with secrets. or, secrets should just be transfered out of band to prevent logging anywhere
                                 otSpan.setAttribute(TMSOTelAttributes.arg(par.name), BasicJson.stringify(argEl, false))
                             }
-                            
+
                             otel.propagate { k, v -> put("otel:$k", v) }
                         }
-                        
+
                         // serialize the invocation to JSON
                         val reqJson = buildJsonArray {
                             add(method.name.toJsonElement())
@@ -166,7 +167,7 @@ class TextMessageServiceClient<S : Any>(
                                 add(argsObj)
                             }
                         }
-                        
+
                         // send the request
                         val reqStr = JSONString.stringify(reqJson, prettyPrint = false).string
                         val respJson = when {
@@ -174,12 +175,12 @@ class TextMessageServiceClient<S : Any>(
                             coroRequestHandler != null -> runBlockingInterruptable { coroRequestHandler(reqStr) }
                             else -> throw IllegalStateException("Must provide at least one of blockRequestHandler or coroRequestHandler")
                         }
-                        
+
                         // parse the response
                         val respParsed = JSONString(respJson).parse() as JsonArray
                         val respStatus = (respParsed[TextMessageService.RSIDX_STATUS].unwrap() as Double).toInt()
                         val respJsonEl = respParsed[TextMessageService.RSIDX_RESPONSE]
-                        
+
                         // return or throw it
                         when (respStatus) {
                             TextMessageService.STATUS_OK -> {
@@ -192,18 +193,22 @@ class TextMessageServiceClient<S : Any>(
                                 // the response should be an exception
                                 JjsAsTms
                                     .detransform(respJsonEl)
-                                    
+
                                     // add the local stack trace to the remote exception,
                                     // otherwise that info is lost - unless we wrap the exception in a new local one,
                                     // which we don't want because it breaks the remote API.
                                     .also { if (it is Throwable) augmentStackTrace(
                                         err = it,
                                         // discard traces like:
-                                        //     at org.jbali.jmsrpc.TextMessageServiceClient.create$lambda-6(TextMessageServiceClient.kt:106)
-                                        //     at com.sun.proxy.$Proxy8.${ifaceMethodThatWasInvoked}(Unknown Source)
-                                        discard = 2
+                                        //    at org.jbali.jmsrpc.TextMessageServiceClient$Companion.access$augmentStackTrace(TextMessageServiceClient.kt:51)
+                                        //    at org.jbali.jmsrpc.TextMessageServiceClient$blocking$1$1.invoke(TextMessageServiceClient.kt:200)
+                                        //    at org.jbali.jmsrpc.TextMessageServiceClient$blocking$1$1.invoke(TextMessageServiceClient.kt:119)
+                                        //    at org.jbali.otel.SpanKt.startAndRun(span.kt:64)
+                                        //    at org.jbali.otel.SpanKt.clientSpan(span.kt:29)
+                                        //    at org.jbali.jmsrpc.TextMessageServiceClient.blocking$lambda$1(TextMessageServiceClient.kt:119)
+                                        discard = 6
                                     ) }
-                                    
+
                                     .let { when (it) {
                                         is TextMessageServiceClientException ->
                                             RuntimeException("Service returned the following exception, i.e. it wasn't generated locally: $it", it)
@@ -212,24 +217,24 @@ class TextMessageServiceClient<S : Any>(
                                         else ->
                                             RuntimeException("Service returned an error that is not Throwable but ${it?.javaClass}")
                                     } }
-                                    
+
                                     .also { record(it) }
-                                    
+
                                     .left()
                             }
                         }
-                        
+
                     }
-                
+
             } catch (e: Throwable) {
                 record(e)
                 throw TextMessageServiceClientException("A local/meta exception occured when invoking $toStringed.${method.name}: $e", e)
             } finally {
                 TMSMeters.activeRequestsClient.decrement()
             }.getOrHandle { throw it }
-            
+
         }
-        
+
     }
     
     val suspending = object : Suspending<S> {

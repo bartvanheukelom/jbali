@@ -255,13 +255,31 @@ public class TextMessageServiceTest {
 			client.nope();
 			fail();
 		} catch (Exception e) {
+			/*
+				Stack trace should be something like:
+				java.util.NoSuchElementException: Unknown method 'nope'
+					at org.jbali.jmsrpc.TextMessageService.handleRequest(TextMessageService.kt:95)
+					at org.jbali.jmsrpc.TextMessageServiceTest.lambda$testClient$0(TextMessageServiceTest.java:216)
+					at whatever, we don't care
+					at ==========================.(TextMessageService)
+					at jdk.proxy3/jdk.proxy3.$Proxy24.nope(Unknown Source)
+					at org.jbali.jmsrpc.TextMessageServiceTest.testClient(TextMessageServiceTest.java:255)
+			 */
 			assertTrue(e instanceof NoSuchElementException);
 			StackTraceElement[] stack = e.getStackTrace();
 			findBarrier: {
 				e.printStackTrace();
+				// find the barrier line "====.(TextMessageService)"
 				for (int i = 0; i < stack.length; i++) {
 					if (stack[i].getClassName().startsWith("====")) {
+
+						// first line after barrier should name the method we're calling:
+						//   at jdk.proxy3/jdk.proxy3.$Proxy24.nope(Unknown Source)
+						assertEquals("nope", stack[i+1].getMethodName());
+						// next line should be the caller i.e. this test:
+						//   at org.jbali.jmsrpc.TextMessageServiceTest.testClient(TextMessageServiceTest.java:255)
 						assertEquals(TextMessageServiceTest.class.getName(), stack[i+2].getClassName());
+
 						break findBarrier;
 					}
 				}
