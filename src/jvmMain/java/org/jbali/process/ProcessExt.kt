@@ -34,6 +34,31 @@ fun runAndReadLines(vararg command: String): List<String> {
 }
 
 /**
+ * Start a process and wait for it to complete.
+ * If it completes with an error code, throws a ProcessExitValueException
+ * with populated `stderr`.
+ * `stdout` is inherited.
+ */
+@Throws(InterruptedException::class)
+fun runOrReadErr(vararg command: String) {
+    val p = buildProcess(*command)
+        .redirectError(ProcessBuilder.Redirect.PIPE)
+        .start()
+
+    val err = p.errorStream.use { ins ->
+        ins.readAllBytes()
+    }
+
+    // should complete instantly
+    val name = command.first().substringAfterLast('/')
+    val exitValue = p.waitForExit(name = name)
+    if (exitValue != 0) {
+        throw ProcessExitValueException("Process '$name' exited with value $exitValue and stderr:\n${err.decodeToString()}", exitValue, stderr = err)
+    }
+}
+
+
+/**
  * Start the process and wait for it to terminate successfully, or throw an exception.
  *
  * If the wait is stopped before the process terminates, the process will be destroyed.
@@ -52,7 +77,12 @@ fun ProcessBuilder.run(
 
 typealias ProcessExitValue = Int
 
-class ProcessExitValueException(msg: String, val exitValue: ProcessExitValue) : RuntimeException(msg)
+class ProcessExitValueException(
+    msg: String,
+    val exitValue: ProcessExitValue,
+    val stdout: ByteArray? = null,
+    val stderr: ByteArray? = null,
+) : RuntimeException(msg)
 
 /**
  * Wait for this process to terminate successfully, or throw an exception.
