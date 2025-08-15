@@ -2,6 +2,8 @@ package org.jbali.exposed
 
 import org.intellij.lang.annotations.Language
 import org.jbali.jdbc.map
+import org.jbali.json2.jsonQuote
+import org.jbali.text.truncatedWithEllipsis
 import org.jetbrains.exposed.sql.IColumnType
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.statements.Statement
@@ -27,7 +29,19 @@ fun Transaction.execUpdate(
  * Determine the [StatementType] of the given SQL statement by looking at its first word.
  */
 fun statementTypeOf(@Language("sql") stmt: String): StatementType =
-    StatementType.values().single { stmt.trim().startsWith(it.name, true) }
+    statementTypeOrNullOf(stmt)
+        ?: throw IllegalArgumentException("Failed to determine statementTypeOf(${stmt.truncatedWithEllipsis(16).jsonQuote()})")
+
+fun statementTypeOrNullOf(@Language("sql") stmt: String): StatementType? {
+    val trim = stmt.trim()
+    return if (trim.startsWith("SET", true)) {
+        StatementType.OTHER
+    } else {
+        StatementType.entries.singleOrNull {
+            stmt.trim().startsWith(it.name, true)
+        }
+    }
+}
 
 /**
  * Execute the given query, which should be a SELECT or some other statement that returns a result set,

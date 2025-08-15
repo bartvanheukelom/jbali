@@ -40,3 +40,13 @@ fun <Q : Query> Q.groupAndOrderBy(vararg columns: Expression<*>): Q =
 
 fun <Q : AbstractQuery<Q>> Q.orderBy(vararg order: Expression<*>): Q =
     orderBy(*order.map { it to org.jetbrains.exposed.sql.SortOrder.ASC }.toTypedArray())
+
+interface ExposedTxScope {
+    val exposedTx: Transaction
+
+    data class Simple(override val exposedTx: Transaction) : ExposedTxScope
+    companion object {
+        context(Transaction)
+        fun current() = Simple(this@Transaction)
+    }
+}
