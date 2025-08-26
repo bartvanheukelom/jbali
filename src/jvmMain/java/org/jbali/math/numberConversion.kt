@@ -40,6 +40,18 @@ fun UShort.toByteExact():  Byte  = if (this and   0x7FU == this) toByte()  else 
 fun UByte.toByteExact():  Byte  = if (this and 0x7FU == this) toByte()  else throw ArithmeticException("$this is not representable as byte")
 
 
+// unsigned to signed bit-preserving conversions, i.e. with wrapping.
+// is the default, but these aliases make it more explicit.
+
+fun ULong.toLongBits() = toLong()
+fun UInt.toIntBits() = toInt()
+fun UShort.toShortBits() = toShort()
+
+fun Long.toULongBits() = toULong()
+fun Int.toUIntBits() = toUInt()
+fun Short.toUShortBits() = toUShort()
+
+
 // exact float to int conversions
 
 fun Float.toLongExact(): Long = toDouble().toLongExact()

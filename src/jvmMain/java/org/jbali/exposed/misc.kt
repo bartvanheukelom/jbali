@@ -2,6 +2,7 @@ package org.jbali.exposed
 
 import org.jbali.util.SortOrder
 import org.jetbrains.exposed.sql.*
+import java.sql.Connection
 
 
 val <E : Enum<E>> E.sqlLiteral: String

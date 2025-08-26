@@ -23,6 +23,9 @@ infix fun <A, B : Any> A.asClass(to: KClass<B>): B =
 
 inline fun <reified T : Any> Any.cast() = this as T
 
+// SAD! platform declaration clash, as expected. and @InlineOnly is not public...
+//inline fun <reified T> Any?.cast() = this as T
+
 //fun <P, C : P> P.cast() = this as C
 
 @Suppress("UNCHECKED_CAST")

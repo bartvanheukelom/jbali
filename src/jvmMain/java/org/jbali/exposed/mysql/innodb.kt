@@ -1,7 +1,10 @@
 package org.jbali.exposed.mysql
 
 import org.jbali.exposed.ExposedTxScope
-import org.jbali.util.boxed
+import org.jbali.math.toLongBits
+import org.jbali.sql.my.getCurrentInnoDBTrxInfo
+import org.jbali.util.cast
+import java.sql.Connection
 import java.time.Instant
 
 /**
@@ -20,21 +23,7 @@ import java.time.Instant
  * the user does not have the required permissions to access the
  * information_schema, or the database is not MySQL.
  */
-// TODO to jbali
 context(ExposedTxScope)
 fun innoDbTrxInfo(): Pair<Long, Instant>? =
-    exposedTx.exec("""
-        SELECT trx_id,
-               UNIX_TIMESTAMP(CONVERT_TZ(trx_started, @@GLOBAL.time_zone, @@SESSION.time_zone)) as trx_started_unix
-        FROM information_schema.innodb_trx
-        WHERE trx_mysql_thread_id = connection_id()
-    """.trimIndent()
-    ) { rs ->
-        if (rs.next()) {
-            val id = rs.getLong(1)
-            val started = rs.getLong(2).let { Instant.ofEpochSecond(it) }
-            Pair(id, started)
-        } else {
-            null
-        }.boxed() // exposed doesn't allow returning a bare null here
-    }?.contents
+    exposedTx.connection.connection.cast<Connection>().getCurrentInnoDBTrxInfo()
+        ?.let { Pair(it.trxId.toLongBits(), it.trxStarted) }
