@@ -73,6 +73,13 @@ suspend fun <T> Deferred<T>.awaitFor(timeout: Duration) =
 suspend fun <T> Deferred<T>.awaitOrNull(timeout: Duration): Box<T>? =
     withTimeoutOrNull(timeout) { Box(await()) }
 
+/**
+ * Calls [Deferred.await] within [runBlocking].
+ */
+fun <T> Deferred<T>.awaitBlocking() =
+    runBlocking { await() }
+
+
 
 /**
  * Calls [runBlocking] with the given [context] and [block].
