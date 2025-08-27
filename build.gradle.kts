@@ -9,15 +9,16 @@ buildscript {
     }
     dependencies {
         // supplied by included build `gradle-tools`
-        "classpath"("org.jbali:jbali-gradle-tools")
+        classpath("org.jbali:jbali-gradle-tools")
+        classpath("org.jetbrains.dokka:dokka-gradle-plugin:1.4.20")
     }
 }
 
 plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
-    id("org.jetbrains.dokka")
 }
+apply(plugin = "org.jetbrains.dokka")
 
 // check gradle version, for when not running with the included wrapper (e.g. included in another project)
 val supportedGradleVersions = setOf(
