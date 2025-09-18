@@ -30,7 +30,7 @@ import kotlin.time.Duration.Companion.nanoseconds
     
     operator fun plus(other: NanoDuration) = NanoTime(nt + other.ns)
     operator fun minus(other: NanoDuration) = NanoTime(nt - other.ns)
-    
+
     companion object {
         fun now() = NanoTime(System.nanoTime())
     }
@@ -72,12 +72,19 @@ import kotlin.time.Duration.Companion.nanoseconds
         val MAX_NEGATIVE = NanoDuration(Long.MIN_VALUE)
         
         /**
-         * @return The duration [between] the given time and [NanoTime.now], clamped to [MAX] and [MAX_NEGATIVE] if necessary.
+         * The duration [between] the given time and [NanoTime.now]. See [between] for details.
          */
         fun since(from: NanoTime) = between(from, NanoTime.now())
+
+        /**
+         * The duration [between] [NanoTime.now] and the given time. See [between] for details.
+         */
+        fun until(to: NanoTime) = between(NanoTime.now(), to)
         
         /**
-         * @return The [NanoDuration] between the given times, clamped to [MAX] and [MAX_NEGATIVE] if necessary.
+         * The [NanoDuration] between the given instants. Negative if [to] is before [from].
+         * _Extremely large_ differences (covering more than half the range of [NanoTime]) are clamped beteen [MAX_NEGATIVE] and [MAX].
+         * They do not wrap around or throw an exception.
          */
         fun between(from: NanoTime, to: NanoTime) =
             NanoDuration(LongMath.saturatedSubtract(to.nt, from.nt))
@@ -93,7 +100,15 @@ import kotlin.time.Duration.Companion.nanoseconds
 }
 
 
+// --- JSR-310 Duration interop --- //
+
 fun Duration.toNanoDuration() = NanoDuration(this.toNanos())
+
+operator fun NanoTime.plus(other: Duration) = this + other.toNanoDuration()
+operator fun NanoTime.minus(other: Duration) = this - other.toNanoDuration()
+
+
+// --- measure --- //
 
 data class NanoTimedValue<T>(
     val value: T,

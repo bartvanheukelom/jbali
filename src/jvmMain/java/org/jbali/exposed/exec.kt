@@ -17,9 +17,10 @@ import java.sql.ResultSet
  */
 fun Transaction.execUpdate(
     @Language("sql") stmt: String,
+    args: Iterable<Pair<IColumnType, Any?>> = emptyList(),
 ): Int =
     exec(object : Statement<Int>(statementTypeOf(stmt), emptyList()) {
-        override fun arguments() = emptyList<Nothing>()
+        override fun arguments() = listOf(args)
         override fun prepareSQL(transaction: Transaction) = stmt
         override fun PreparedStatementApi.executeInternal(transaction: Transaction): Int =
             executeUpdate()
