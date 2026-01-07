@@ -22,10 +22,12 @@ fun <T> Tracer.serverSpan(
 
 fun <T> Tracer.clientSpan(
     name: String,
+    parent: Context? = null,
     block: (span: Span) -> T,
 ): T =
     spanBuilder(name)
         .setSpanKind(SpanKind.CLIENT)
+        .apply { parent?.let(::setParent) }
         .startAndRun(block)
 
 fun <T> Tracer.internalSpan(
@@ -89,10 +91,12 @@ suspend fun <T> Tracer.serverSpanSuspending(
 
 suspend fun <T> Tracer.clientSpanSuspending(
     name: String,
+    parent: Context? = null,
     block: suspend (span: Span) -> T,
 ): T =
     spanBuilder(name)
         .setSpanKind(SpanKind.CLIENT)
+        .apply { parent?.let(::setParent) }
         .startAndRunSuspending(block)
 
 suspend fun <T> Tracer.internalSpanSuspending(
@@ -115,10 +119,12 @@ suspend fun <T> Tracer.producerSpanSuspending(
 
 suspend fun <T> Tracer.consumerSpanSuspending(
     name: String,
+    producer: SpanContext? = null,
     block: suspend (span: Span) -> T,
 ): T =
     spanBuilder(name)
         .setSpanKind(SpanKind.CONSUMER)
+        .apply { producer?.let(::addLink) }
         .startAndRunSuspending(block)
 
 
