@@ -6,6 +6,7 @@ import arrow.core.right
 import io.opentelemetry.api.GlobalOpenTelemetry
 import io.opentelemetry.api.OpenTelemetry
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.buildJsonArray
@@ -239,7 +240,7 @@ class TextMessageServiceClient<S : Any>(
     
     val suspending = object : Suspending<S> {
         override suspend fun <R> invoke(call: S.() -> R): R =
-            withContext(Dispatchers.IO) {
+            runInterruptible(Dispatchers.IO) {
                 blocking.call()
             }
     }
