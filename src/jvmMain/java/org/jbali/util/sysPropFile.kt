@@ -200,12 +200,19 @@ class MonitoredFileReader(
  * This class provides safe, auditable updates to [System.getProperties]. It "owns" the properties it sets
  * and can restore them to their original values when they're removed from subsequent updates.
  *
+ * **Value handling:**
+ * - Supports any property value type (String, Integer, Boolean, custom objects, etc.)
+ * - Distinguishes between `null` values (key present, value is null) and absent keys
+ * - Values are compared using `==` for equality
+ * - Non-string values in existing properties are preserved and can be restored to their original type
+ *
  * **Ownership model:**
  * - When a property is set via [update], this class takes ownership and records:
- *   - The original system value (or absence thereof)
+ *   - Whether the key was originally present
+ *   - The original value (which may be any Object type, or null)
  *   - The new value that was set
  * - When a previously-owned property is absent from a subsequent [update]:
- *   - If the current system value equals our set value → restore original value
+ *   - If the current system value equals our set value → restore original state (value or absent)
  *   - If the current system value differs → log a warning (external modification detected) and release ownership
  *
  * **Logging:**
@@ -219,8 +226,8 @@ class MonitoredFileReader(
  * **Example usage:**
  * ```kotlin
  * val updater = SystemPropertyRuntimeUpdater("config.properties")
- * updater.update(mapOf("foo" to "bar", "baz" to "qux"))  // Sets foo=bar, baz=qux
- * updater.update(mapOf("foo" to "modified"))              // Updates foo, restores baz to original
+ * updater.update(mapOf("foo" to "bar", "baz" to 123))  // Sets foo=bar, baz=123
+ * updater.update(mapOf("foo" to "modified"))            // Updates foo, restores baz to original
  * ```
  *
  * @param name Optional identifier for this property source, used in logging (e.g., "file:/etc/app.properties").
@@ -232,8 +239,9 @@ class SystemPropertyRuntimeUpdater(
     private val log = logger<SystemPropertyRuntimeUpdater>()
 
     private data class OwnedProperty(
-        val originalValue: String?,
-        val currentValue: String
+        val originalKeyPresent: Boolean,
+        val originalValue: Any?,
+        val currentValue: Any?
     )
 
     private val ownedProperties = mutableMapOf<String, OwnedProperty>()
@@ -249,20 +257,26 @@ class SystemPropertyRuntimeUpdater(
      *
      * All changes are logged with details about previous and new values.
      *
-     * @param props The desired system properties. Keys are property names, values are property values.
+     * @param props The desired system properties. Keys are property names, values can be any type (or null).
      */
-    fun update(props: Map<String, String>) {
+    fun update(props: Map<String, Any?>) {
+        val sysProps = System.getProperties()
+
         // Handle new and updated properties
         for ((key, newValue) in props) {
-            val currentSystemValue = System.getProperty(key)
+            val currentSystemValue = sysProps[key]
             val owned = ownedProperties[key]
 
             when {
                 owned == null -> {
                     // New property - take ownership
-                    System.setProperty(key, newValue)
-                    ownedProperties[key] = OwnedProperty(currentSystemValue, newValue)
-                    if (currentSystemValue == null) {
+                    sysProps[key] = newValue
+                    ownedProperties[key] = OwnedProperty(
+                        originalKeyPresent = sysProps.containsKey(key),
+                        originalValue = currentSystemValue,
+                        currentValue = newValue
+                    )
+                    if (!sysProps.containsKey(key) || currentSystemValue == null) {
                         log.info("Set system property$sourceName: $key=$newValue")
                     } else {
                         log.info("Override system property$sourceName: $key: $currentSystemValue → $newValue")
@@ -274,7 +288,7 @@ class SystemPropertyRuntimeUpdater(
                         log.warn("System property $key was externally modified$sourceName: " +
                                 "expected=${owned.currentValue}, actual=$currentSystemValue, setting to $newValue")
                     }
-                    System.setProperty(key, newValue)
+                    sysProps[key] = newValue
                     ownedProperties[key] = owned.copy(currentValue = newValue)
                     log.info("Update system property$sourceName: $key: ${owned.currentValue} → $newValue")
                 }
@@ -286,15 +300,15 @@ class SystemPropertyRuntimeUpdater(
         val removedKeys = ownedProperties.keys - props.keys
         for (key in removedKeys) {
             val owned = ownedProperties[key]!!
-            val currentSystemValue = System.getProperty(key)
+            val currentSystemValue = sysProps[key]
 
             if (currentSystemValue == owned.currentValue) {
                 // Our value is still in place - restore original
-                if (owned.originalValue == null) {
-                    System.clearProperty(key)
+                if (!owned.originalKeyPresent) {
+                    sysProps.remove(key)
                     log.info("Restore system property$sourceName: $key removed (was ${owned.currentValue})")
                 } else {
-                    System.setProperty(key, owned.originalValue)
+                    sysProps[key] = owned.originalValue
                     log.info("Restore system property$sourceName: $key: ${owned.currentValue} → ${owned.originalValue}")
                 }
             } else {
