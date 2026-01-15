@@ -1,13 +1,12 @@
 package org.jbali.util
 
 import org.jbali.bytes.BinaryData
-import org.jbali.bytes.toByteArray
 import org.jbali.events.ListenerReference
 import org.jbali.events.MutableObservable
 import org.jbali.events.Observable
 import org.jbali.sched.GlobalScheduler
 import org.jbali.sched.ScheduledTask
-import org.jbali.sched.TaskToSchedule
+import org.jbali.sched.Scheduler.TaskToSchedule
 import org.jbali.util.logger
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -84,18 +83,26 @@ class MonitoredFileReader(
 
         // Set up polling if requested
         pollInterval?.let { interval ->
-            pollingTask = GlobalScheduler.schedule(
-                TaskToSchedule.Recurring(
-                    delay = interval,
-                    interval = interval,
-                    name = "MonitoredFileReader.poll(${file.path})"
-                ) {
+            scheduleRecurringPoll(interval)
+        }
+    }
+
+    private fun scheduleRecurringPoll(interval: Duration) {
+        pollingTask = GlobalScheduler.schedule(
+            TaskToSchedule(
+                delay = interval,
+                body = {
                     if (!closed.get()) {
                         readAndUpdate()
+                        // Reschedule if not closed
+                        if (!closed.get()) {
+                            scheduleRecurringPoll(interval)
+                        }
                     }
-                }
+                },
+                name = "MonitoredFileReader.poll(${file.path})"
             )
-        }
+        )
     }
 
     private fun setupWatcher() {
@@ -155,7 +162,7 @@ class MonitoredFileReader(
     private fun readAndUpdate() {
         try {
             val newContents = if (file.exists()) {
-                BinaryData.of(file.readBytes())
+                BinaryData(file.readBytes())
             } else {
                 null
             }
@@ -399,7 +406,7 @@ class SystemPropertyFileRuntimeUpdater(
                 else -> {
                     // Parse properties file
                     val properties = Properties()
-                    ByteArrayInputStream(binaryData.toByteArray()).use { inputStream ->
+                    ByteArrayInputStream(binaryData.data).use { inputStream ->
                         properties.load(inputStream)
                     }
 
