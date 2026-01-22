@@ -206,22 +206,3 @@ inline fun <T : Any> createOrUpdate(
                 .also(setter)
 
 
-data class IndexOf(
-        val index: Int,
-        val total: Int
-) {
-    init {
-        require(index >= 0)
-        require(index < total)
-    }
-
-    override fun toString() =
-            "$index/$total"
-
-    companion object {
-        fun range(total: Int): Sequence<IndexOf> =
-                (0 until total).asSequence().map {
-                    IndexOf(it, total)
-                }
-    }
-}
