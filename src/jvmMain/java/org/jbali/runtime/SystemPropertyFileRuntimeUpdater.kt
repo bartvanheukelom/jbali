@@ -8,8 +8,6 @@ import java.io.ByteArrayInputStream
 import java.io.File
 import java.time.Duration
 import java.util.Properties
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 
 /**
  * Automatically synchronizes system properties from a monitored properties file.
@@ -37,7 +35,7 @@ import java.util.concurrent.TimeUnit
  *
  * **Resource management:**
  * - Implements [AutoCloseable] - must be closed to release resources
- * - Closing stops file monitoring and does NOT restore original system property values
+ * - Closing stops file monitoring and restores all system properties to their original values
  *
  * **Thread safety:**
  * - All operations are thread-safe
@@ -72,28 +70,14 @@ class SystemPropertyFileRuntimeUpdater(
 
     private val log = logger<SystemPropertyFileRuntimeUpdater>()
 
-    private val reader = MonitoredFileReader(file, pollInterval)
+    private val reader = MonitoredFileReader(file, pollInterval, initRead = initComplete)
     private val updater = SystemPropertyRuntimeUpdater("file:${file.absolutePath}")
 
-    private val initLatch = if (initComplete && file.exists()) CountDownLatch(1) else null
     private val listener: ListenerReference
 
     init {
-        listener = reader.contents.listen { binaryData ->
+        listener = reader.contents.bind { binaryData ->
             processFileContents(binaryData)
-            initLatch?.countDown()
-        }
-
-        // Wait for initial read if requested and file exists
-        initLatch?.let {
-            try {
-                if (!it.await(30, TimeUnit.SECONDS)) {
-                    log.warn("Timeout waiting for initial read of: ${file.absolutePath}")
-                }
-            } catch (e: InterruptedException) {
-                log.warn("Interrupted while waiting for initial read of: ${file.absolutePath}")
-                Thread.currentThread().interrupt()
-            }
         }
     }
 
@@ -139,6 +123,8 @@ class SystemPropertyFileRuntimeUpdater(
     override fun close() {
         listener.detach()
         reader.close()
+        // Restore all properties to their original values
+        updater.update(emptyMap())
     }
 
 }

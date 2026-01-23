@@ -28,9 +28,17 @@ import java.util.concurrent.atomic.AtomicBoolean
  * - `null` indicates the file does not exist
  * - Non-null [org.jbali.bytes.BinaryData] contains the complete file contents
  *
+ * **Initialization:**
+ * - If [initRead] is `true` (default), performs an immediate blocking read in the constructor
+ * - If the file doesn't exist, initializes with `null` (does not throw)
+ * - If a read error occurs, throws the exception
+ * - If [initRead] is `false`, the observable starts as `null` and the first read happens asynchronously
+ *   after construction (dispatched to observers as if triggered by the file watcher)
+ *
  * **Error handling:**
  * - Read errors (I/O exceptions, permission denied, etc.) are logged but do not affect the observable state
  * - The observable retains its previous value when a read error occurs
+ * - Exception: if [initRead] is `true` and the initial read fails, the constructor throws
  *
  * **Partial write mitigation:**
  * - A small delay (100ms) is applied after detecting changes to allow writes to complete
@@ -47,12 +55,15 @@ import java.util.concurrent.atomic.AtomicBoolean
  * @param file The file to monitor. Need not exist initially.
  * @param pollInterval If non-null, the file is re-read at this interval in addition to file system events.
  *        Use this as a fallback when file system events may be unreliable. Defaults to 10 seconds.
+ * @param initRead If `true` (default), perform an immediate blocking read in the constructor (throws on error).
+ *        If `false`, the first read happens asynchronously and the observable may be `null` until it completes.
  *
  * @see contents The observable that emits file contents
  */
 class MonitoredFileReader(
     private val file: File,
     private val pollInterval: Duration? = Duration.ofSeconds(10),
+    initRead: Boolean = true,
 ) : AutoCloseable {
 
     private val log = logger<MonitoredFileReader>()
@@ -74,8 +85,19 @@ class MonitoredFileReader(
     private var watchThread: Thread? = null
 
     init {
-        // Perform initial read
-        readAndUpdate()
+        if (initRead) {
+            // Perform initial read immediately and blocking (throws on error)
+            readAndUpdateBlocking()
+        } else {
+            // Schedule async initial read (as if watcher triggered)
+            GlobalScheduler.schedule(
+                Scheduler.TaskToSchedule(
+                    delay = Duration.ZERO,
+                    body = { readAndUpdate() },
+                    name = "MonitoredFileReader.initialRead(${file.path})"
+                )
+            )
+        }
 
         // Set up file system watching
         setupWatcher()
@@ -158,6 +180,21 @@ class MonitoredFileReader(
         }
     }
 
+    /**
+     * Blocking read that throws on error. Used for initRead=true.
+     */
+    private fun readAndUpdateBlocking() {
+        val newContents = if (file.exists()) {
+            BinaryData(file.readBytes())
+        } else {
+            null
+        }
+        mContents.value = newContents
+    }
+
+    /**
+     * Non-throwing read that logs errors. Used for async reads (watcher, polling).
+     */
     private fun readAndUpdate() {
         try {
             val newContents = if (file.exists()) {
