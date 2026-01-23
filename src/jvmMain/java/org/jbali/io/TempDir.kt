@@ -1,6 +1,7 @@
 package org.jbali.io
 
 import org.jbali.random.nextHex
+import org.jbali.util.OneTimeFlag
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import kotlin.io.path.*
@@ -19,26 +20,29 @@ class TempDir(
     private val deleteRecursively: Boolean = false,
     private val ignoreCloseErrors: Boolean = false,
 ) : AutoCloseable {
-    
+
     private val log = LoggerFactory.getLogger(TempDir::class.java)
-    
+
     // store the inode or whatever windows' equivalent is, so we can later check if the dir is still the same
-    
+
     private val inode = dir.inodeOrNull()
-    
+
+    private val closed = OneTimeFlag()
+
     override fun toString() =
         "TempDir($dir)"
-    
+
     override fun close() {
-        doClose()
-        if (ignoreCloseErrors) {
-            try {
+        closed.ifUnflagged {
+            if (ignoreCloseErrors) {
+                try {
+                    doClose()
+                } catch (e: Exception) {
+                    log.warn("Failed to delete $dir", e)
+                }
+            } else {
                 doClose()
-            } catch (e: Exception) {
-                log.warn("Failed to delete $dir", e)
             }
-        } else {
-            doClose()
         }
     }
     
