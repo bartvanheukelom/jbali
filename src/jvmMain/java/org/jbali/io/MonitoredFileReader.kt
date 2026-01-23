@@ -185,6 +185,19 @@ class MonitoredFileReader(
                 log.warn("Error closing watch service for: ${file.path}", e)
             }
 
+            // Wait for watch thread to terminate to ensure directory handle is released
+            watchThread?.let { thread ->
+                try {
+                    thread.join(1000) // Wait up to 1 second
+                    if (thread.isAlive) {
+                        log.warn("Watch thread did not terminate within timeout for: ${file.path}")
+                    }
+                } catch (e: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    log.warn("Interrupted while waiting for watch thread to terminate for: ${file.path}")
+                }
+            }
+
             // Clean up observable
             mContents.destroy()
         }
