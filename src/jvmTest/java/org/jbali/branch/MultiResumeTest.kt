@@ -6,6 +6,8 @@ import org.jbali.random.nextHex
 import org.jbali.test.assertEquals
 import org.jbali.test.expectFailureOfUnfinished
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
 import kotlin.concurrent.thread
 import kotlin.coroutines.suspendCoroutine
 import kotlin.random.Random
@@ -23,16 +25,23 @@ enum class Plant {
     Tree, Bush
 }
 
-class MultiResumeTest {
-    
-    // P = Capturing
-    // B = Callback
-    
-    // P: Pass
-    // B: ?
+@RunWith(Parameterized::class)
+class MultiResumeTest(
+    private val strategy: BranchingStrategy
+) {
+
+    companion object {
+        @JvmStatic
+        @Parameterized.Parameters(name = "{0}")
+        fun strategies(): Collection<Array<Any>> = listOf(
+            arrayOf(BranchingStrategy.CAPTURING),
+            arrayOf(BranchingStrategy.CALLBACK)
+        )
+    }
+
     @Test
     fun testLambda() {
-        runBranching {
+        runBranching(strategy) {
             
             val scope = this
             println("Scope: $scope")
@@ -80,12 +89,10 @@ class MultiResumeTest {
             println("$key: $value")
         }
     }
-    
-    // P: Pass
-    // B: ?
+
     @Test fun testResumeForward() {
         var resumed = ""
-        runBranching {
+        runBranching(strategy) {
             val a = branch("A", listOf("a")) // NOTE: not even branching
             assertEquals("", resumed); resumed = "A"
             assertEquals("a", a)
@@ -100,11 +107,9 @@ class MultiResumeTest {
             assertTrue(zz == "z" || zz == "Z")
         }
     }
-    
-    // P: Pass
-    // B: ?
+
     @Test fun testExample() {
-        runBranching {
+        runBranching(strategy) {
             when (branch("animal", Animal.values().toList())) {
                 Animal.Dog ->
                     "Woof"
@@ -117,13 +122,22 @@ class MultiResumeTest {
         }
             .forEach { (k, v) -> println("$k: $v") }
     }
-    
-    // P: FAIL
-    // B: ?
+
     @Test
     fun testMemberFun() {
-        expectFailureOfUnfinished {
-            runBranching {
+        // CAPTURING strategy fails on this test because it doesn't handle branching
+        // across multiple suspend function calls
+        if (strategy == BranchingStrategy.CAPTURING) {
+            expectFailureOfUnfinished {
+                runMemberFunTest()
+            }
+        } else {
+            runMemberFunTest()
+        }
+    }
+
+    private fun runMemberFunTest() {
+        runBranching(strategy) {
                 voice()
             }
                 .also {
@@ -138,9 +152,8 @@ class MultiResumeTest {
                     )
                 }
                 .forEach { (k, v) -> println("$k: $v") }
-        }
     }
-    
+
     private suspend fun sleep(ms: Long) {
         suspendCoroutine<Unit>{ cont ->
             thread {
